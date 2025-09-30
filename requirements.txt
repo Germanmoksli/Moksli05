@@ -1,0 +1,22 @@
+# Python package requirements for the apart‑hotel management application
+#
+# This file lists the third‑party dependencies required to run the
+# Flask web application.  When deploying to a platform like
+# Render.com or Vercel, ensure that your build process installs
+# these packages via pip, e.g. `pip install -r requirements.txt`.
+
+# Flask is the web framework used for the application.  A fairly
+# recent version is recommended.  Werkzeug is installed as a
+# dependency of Flask but is listed explicitly here for clarity.
+Flask>=2.2
+Werkzeug>=2.2
+
+# psycopg2-binary provides the PostgreSQL driver used when
+# DATABASE_URL is set.  If you are not using PostgreSQL you may
+# omit this dependency, but it is required for Render deployments
+# targeting a Postgres database.
+psycopg2-binary>=2.9
+
+# Additional dependencies can be added here as your project grows.
+# Gunicorn is a production-ready WSGI server for Flask
+gunicorn>=20.1

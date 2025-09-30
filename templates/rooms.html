@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Комнаты{% endblock %}
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="text-primary fw-bold fs-4">Комнаты</h2>
+    <a href="{{ url_for('add_room') }}" class="btn btn-primary">Добавить комнату</a>
+  </div>
+  {% if rooms %}
+    <table class="table table-striped table-hover">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Номер</th>
+          <th>ЖК</th>
+          <th>Вместимость</th>
+          <th>Примечания</th>
+          <th>Ссылка</th>
+          <th>Действия</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for room in rooms %}
+          <tr>
+            <td>{{ room['id'] }}</td>
+            <td>{{ room['room_number'] }}</td>
+            <td>{{ room['residential_complex'] or '' }}</td>
+            <td>{{ room['capacity'] or '' }}</td>
+            <td>{{ room['notes'] or '' }}</td>
+            <td>
+              {% if room['listing_url'] %}
+                <a href="{{ room['listing_url'] }}" target="_blank">Перейти</a>
+              {% endif %}
+            </td>
+            <td>
+              <div class="d-flex gap-2">
+                <a href="{{ url_for('edit_room', room_id=room['id']) }}" class="btn btn-sm btn-secondary">Редактировать</a>
+                <form method="post" action="{{ url_for('delete_room', room_id=room['id']) }}" onsubmit="return confirm('Вы уверены, что хотите удалить этот объект? Это действие необратимо.');">
+                  <button type="submit" class="btn btn-sm btn-soft-danger">Удалить</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>Нет комнат в системе.</p>
+  {% endif %}
+{% endblock %}

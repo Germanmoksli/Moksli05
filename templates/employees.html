@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}Сотрудники{% endblock %}
+
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="text-primary fw-bold fs-4 mb-0">Сотрудники</h2>
+  </div>
+  <table class="table table-striped table-hover">
+    <thead>
+      <tr>
+        <th scope="col">ID</th>
+        <th scope="col">Имя пользователя</th>
+        <th scope="col">Роль</th>
+        <th scope="col">Имя</th>
+        <th scope="col">Контактные данные</th>
+        {% if session.get('user_role') == 'owner' %}
+          <th scope="col">Действия</th>
+        {% endif %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for user in users %}
+        <tr>
+          <th scope="row">{{ user.id }}</th>
+          <td>{{ user.username }}</td>
+          <td>{{ user.role | role_ru }}</td>
+          <td>{{ user.name or '' }}</td>
+          <td>{{ user.contact_info or '' }}</td>
+          {% if session.get('user_role') == 'owner' %}
+            <td>
+              {# Для владельца отображаем формы действий: смена роли и увольнение. #}
+              {% if user.id != session.get('user_id') %}
+                {# Форма для смены роли сотрудника #}
+                <form method="post" action="{{ url_for('update_employee_role', user_id=user.id) }}" class="d-flex mb-1">
+                  <select name="new_role" class="form-select form-select-sm me-2" style="width: auto;">
+                    <option value="owner" {% if user.role == 'owner' %}selected{% endif %}>Владелец</option>
+                    <option value="manager" {% if user.role == 'manager' %}selected{% endif %}>Менеджер</option>
+                    <option value="maid" {% if user.role == 'maid' %}selected{% endif %}>Горничная</option>
+                  </select>
+                  <button type="submit" class="btn btn-secondary btn-sm">Сменить</button>
+                </form>
+                {# Форма для увольнения сотрудника #}
+                <form method="post" action="{{ url_for('fire_employee', user_id=user.id) }}" onsubmit="return confirm('Уволить сотрудника {{ user.username }}?');">
+                  <button type="submit" class="btn btn-soft-danger btn-sm">Уволить</button>
+                </form>
+              {% else %}
+                <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+          {% endif %}
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {# For owners: show pending registration requests directly on the employees page. This section
+     reuses the same layout as the standalone registration_requests page, allowing
+     the owner to approve or reject new account requests. #}
+  {% if session.get('user_role') == 'owner' %}
+    <h3 class="text-primary fw-bold fs-4 mt-4">Запросы на регистрацию</h3>
+    <table class="table table-striped">
+      <thead>
+        <tr>
+          <th scope="col">Имя пользователя</th>
+          <th scope="col">Дата запроса</th>
+          <th scope="col">Действия</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if requests %}
+          {% for req in requests %}
+            <tr>
+              <td>{{ req['username'] }}</td>
+              <td>{{ req['created_at'] }}</td>
+              <td>
+                <form method="post" action="{{ url_for('list_employees') }}" class="d-flex align-items-center">
+                  <input type="hidden" name="request_id" value="{{ req['id'] }}">
+                  <select name="role" class="form-select form-select-sm me-2" style="width: auto;">
+                    {% for role in roles %}
+                      <option value="{{ role }}">{{ role | role_ru }}</option>
+                    {% endfor %}
+                  </select>
+                  <button type="submit" name="action" value="approve" class="btn btn-sm btn-primary me-2">Одобрить</button>
+                  <button type="submit" name="action" value="reject" class="btn btn-sm btn-soft-danger">Отклонить</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+        {% else %}
+          <tr><td colspan="3" class="text-center">Нет новых запросов.</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  {% endif %}
+{% endblock %}

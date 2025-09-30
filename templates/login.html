@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Вход{% endblock %}
+{% block content %}
+  <!-- Центрируем форму авторизации как по горизонтали, так и по вертикали. Используем flex‑контейнер
+       с минимальной высотой, равной высоте окна, чтобы разместить форму в самом центре. -->
+  <div class="d-flex align-items-center justify-content-center min-vh-100">
+    <div style="max-width: 400px; width: 100%;">
+      <h2 class="mb-4 text-center text-primary fw-bold fs-4">MOKSLI</h2>
+      <form method="post" class="needs-validation" novalidate>
+        <div class="mb-3">
+          <label for="email" class="form-label">E‑mail</label>
+          <input type="email" class="form-control" id="email" name="email" required>
+          <div class="invalid-feedback">Введите e‑mail.</div>
+        </div>
+        <div class="mb-3">
+          <label for="password" class="form-label">Пароль</label>
+          <input type="password" class="form-control" id="password" name="password" required>
+          <div class="invalid-feedback">Введите пароль.</div>
+        </div>
+        <div class="d-flex justify-content-center align-items-center gap-2 mt-2">
+          <button type="submit" class="btn btn-primary">Войти</button>
+          <a href="{{ url_for('register') }}" class="btn btn-secondary">Регистрация</a>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endblock %}

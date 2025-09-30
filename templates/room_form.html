@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Добавить квартиру{% endblock %}
+{% block content %}
+  <div class="mx-auto" style="max-width: 600px;">
+    <h2 class="text-center text-primary fw-bold fs-4">Добавить квартиру</h2>
+    <form method="post" class="needs-validation" novalidate>
+      <div class="mb-3">
+        <label for="room_number" class="form-label">Название квартиры</label>
+        <input type="text" class="form-control" id="room_number" name="room_number" required>
+        <div class="invalid-feedback">Введите название квартиры.</div>
+      </div>
+      <div class="mb-3">
+        <label for="residential_complex" class="form-label">Жилой комплекс</label>
+        <select class="form-select" id="residential_complex" name="residential_complex">
+          <option value="" selected>Не указан</option>
+          <option value="Auezov City">ЖК Auezov City</option>
+          <option value="Шахристан">ЖК Шахристан</option>
+          <option value="Lake Town">ЖК Lake Town</option>
+        </select>
+        <div class="form-text">Выберите жилой комплекс, если применимо.</div>
+      </div>
+      <div class="mb-3">
+        <label for="listing_url" class="form-label">Ссылка на объявление (URL)</label>
+        <input type="url" class="form-control" id="listing_url" name="listing_url">
+        <div class="form-text">Опционально: укажите ссылку на размещение объекта на стороннем сайте.</div>
+      </div>
+      <!-- Кнопки сохранения и отмены расположены по центру -->
+      <div class="text-center">
+        <button type="submit" class="btn btn-primary me-2">Сохранить</button>
+        <a href="{{ url_for('list_rooms') }}" class="btn btn-soft-danger">Отмена</a>
+      </div>
+    </form>
+  </div>
+  <script>
+    // Bootstrap validation script remains unchanged
+    (function () {
+      'use strict'
+      var forms = document.querySelectorAll('.needs-validation')
+      Array.prototype.slice.call(forms)
+        .forEach(function (form) {
+          form.addEventListener('submit', function (event) {
+            if (!form.checkValidity()) {
+              event.preventDefault()
+              event.stopPropagation()
+            }
+            form.classList.add('was-validated')
+          }, false)
+        })
+    })()
+  </script>
+{% endblock %}

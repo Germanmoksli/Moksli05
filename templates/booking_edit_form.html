@@ -1,0 +1,309 @@
+{% extends "base.html" %}
+{% block title %}Редактировать бронирование{% endblock %}
+{% block content %}
+  <div class="mx-auto" style="max-width: 600px;">
+    <h2 class="text-primary fw-bold fs-4 mb-4">Редактировать бронирование</h2>
+    <!-- Локальные стили для формы редактирования: усиливаем заголовки и приглушаем текст -->
+    <style>
+      .booking-form .form-label {
+        font-weight: 600;
+        padding-bottom: 2px;
+      }
+      .booking-form .form-control {
+        color: #6c757d;
+      }
+    </style>
+    <div class="booking-form">
+      <form method="post" class="needs-validation" novalidate>
+        {# Передаём guest_id скрытым полем, чтобы сервер получил существующего гостя. Это предотвращает требование выбрать гостя заново #}
+        <input type="hidden" name="guest_id" value="{{ booking['guest_id'] }}">
+        {# Сохраняем scroll_date, чтобы после сохранения вернуться к нужной дате в календаре #}
+        {% if scroll_date %}
+          <input type="hidden" name="scroll_date" value="{{ scroll_date }}">
+        {% endif %}
+        <!-- 1. Имя гостя (нельзя изменить) -->
+        <div class="mb-3 clickable-field" onclick="this.querySelector('input').focus();">
+          <label for="guest_name" class="form-label">Имя</label>
+          <div class="position-relative">
+            {# Имя гостя отображается, редактирование не разрешено #}
+            <input type="text" class="form-control" id="guest_name" name="guest_name" value="{{ guest_name }}" disabled style="padding-right: 2.25rem;">
+            {# Дополнительный телефон вводится в отдельном поле; кнопка не требуется #}
+          </div>
+        </div>
+        <!-- 1b. Дополнительный телефон гостя: отображается под именем. Значение подставляется из guest_extra_phone. -->
+        <div class="mb-3 clickable-field" onclick="this.querySelector('input').focus();">
+          <label for="extra_phone" class="form-label">Доп. телефон</label>
+          <input type="tel" class="form-control" id="extra_phone" name="extra_phone"
+                 placeholder="Введите дополнительный номер" value="{{ guest_extra_phone }}">
+        </div>
+
+        <!-- Менеджер, оформивший бронирование (информация только для чтения) -->
+        <div class="mb-3 clickable-field">
+          <label class="form-label">Менеджер</label>
+          <input type="text" class="form-control" value="{{ manager_name or '' }}" disabled>
+        </div>
+        <!-- 2. Даты заезда и выезда -->
+        <div class="mb-3 row g-2 align-items-end">
+          <div class="col clickable-field" onclick="this.querySelector('input').showPicker ? this.querySelector('input').showPicker() : this.querySelector('input').focus();">
+            <label for="check_in" class="form-label">Дата заезда</label>
+            <input type="date" class="form-control" id="check_in" name="check_in" required value="{{ booking['check_in_date'] }}">
+            <div class="invalid-feedback">Укажите дату заезда.</div>
+          </div>
+          <div class="col clickable-field" onclick="this.querySelector('input').showPicker ? this.querySelector('input').showPicker() : this.querySelector('input').focus();">
+            <label for="check_out" class="form-label">Дата выезда</label>
+            <input type="date" class="form-control" id="check_out" name="check_out" required value="{{ booking['check_out_date'] }}">
+            <div class="invalid-feedback">Укажите дату выезда.</div>
+          </div>
+        </div>
+        <!-- 3. Выбор квартиры -->
+        <div class="mb-3 clickable-field" onclick="this.querySelector('select').focus();">
+          <label for="room_id" class="form-label">Квартира</label>
+          <select class="form-select" id="room_id" name="room_id" required>
+            <option value="" disabled {% if not selected_room_id %}selected{% endif %}>Выберите квартиру</option>
+            {% for r in rooms %}
+              <option value="{{ r['id'] }}" {% if selected_room_id and selected_room_id == r['id'] %}selected{% endif %}>{{ r['room_number'] }}</option>
+            {% endfor %}
+          </select>
+          <div class="invalid-feedback">Выберите квартиру.</div>
+        </div>
+        <!-- 4. Сумма за сутки и общая сумма -->
+        <div class="mb-3 row g-2 align-items-end">
+          <div class="col clickable-field" onclick="this.querySelector('input').focus();">
+            <label for="total_amount" class="form-label">Цена за сутки (₸)</label>
+            <input type="number" step="0.01" class="form-control" id="total_amount" name="total_amount" value="{{ rate_value }}">
+          </div>
+          <div class="col clickable-field" onclick="this.querySelector('input').focus();">
+            <label for="total_price_display" class="form-label">Общая стоимость (₸)</label>
+            <input type="text" class="form-control" id="total_price_display" value="{{ total_price_value }}" readonly>
+          </div>
+        </div>
+        <!-- 5. Сумма депозита и статус депозита -->
+        <div class="mb-3 row g-2 align-items-end">
+          <div class="col clickable-field" onclick="this.querySelector('input').focus();">
+            <label for="paid_amount" class="form-label">Сумма депозита (₸)</label>
+            <input type="number" step="0.01" class="form-control" id="paid_amount" name="paid_amount" value="{{ booking['paid_amount'] }}">
+          </div>
+          <div class="col clickable-field" onclick="this.querySelector('select').focus();">
+            <label for="deposit_status" class="form-label">Статус депозита</label>
+            <select id="deposit_status" name="deposit_status" class="form-select">
+              <option value="paid" data-class="bg-warning-subtle text-dark" {% if booking['status'] == 'paid' %}selected{% endif %}>Оплачен</option>
+              <option value="withheld" data-class="bg-danger-subtle text-dark" {% if booking['status'] == 'withheld' %}selected{% endif %}>Удержан</option>
+              <option value="returned" data-class="bg-success-subtle text-dark" {% if booking['status'] == 'returned' %}selected{% endif %}>Возвращен</option>
+            </select>
+          </div>
+        </div>
+        <!-- 6. Примечания -->
+        <div class="mb-3 clickable-field" onclick="this.querySelector('textarea').focus();">
+          <label for="notes" class="form-label">Примечания</label>
+          <textarea class="form-control" id="notes" name="notes" rows="3">{{ booking['notes'] }}</textarea>
+        </div>
+        <!-- 7. Кнопки сохранить и отмена -->
+        <div class="text-center mb-3">
+          <button type="submit" class="btn btn-primary me-2">Сохранить</button>
+          {#
+            Ссылка Отмена должна возвращать пользователя в календарь, а не в список бронирований.
+            Если в шаблон переданы scroll_date, scroll_year и scroll_month (когда редактирование
+            было вызвано из календаря), используем их, чтобы перейти на нужный месяц.
+            В противном случае переходим на текущий календарь без параметров.
+          #}
+          {% if scroll_date and scroll_year and scroll_month %}
+            <a href="{{ url_for('calendar_view', year=scroll_year, month=scroll_month, scroll_date=scroll_date) }}" class="btn btn-soft-danger">Отмена</a>
+          {% else %}
+            <a href="{{ url_for('calendar_view') }}" class="btn btn-soft-danger">Отмена</a>
+          {% endif %}
+        </div>
+      </form>
+      <!-- 8. Кнопка отменить бронирование -->
+      <div class="text-center mt-3">
+        <form method="post"
+              action="{{ url_for('delete_booking', booking_id=booking['id']) }}"
+              onsubmit="return confirm('Вы уверены, что хотите отменить бронирование?');"
+              class="d-inline">
+          {% if scroll_date %}
+            <input type="hidden" name="scroll_date" value="{{ scroll_date }}">
+          {% endif %}
+          <button type="submit" class="p-0 text-secondary"
+                  style="background: none; border: none; border-bottom: 2px solid #6c757d; text-decoration: none;">
+            Отменить бронирование
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+  <!-- Скрипты -->
+  <script>
+    // Валидация формы
+    (function () {
+      'use strict'
+      var forms = document.querySelectorAll('.needs-validation')
+      Array.prototype.slice.call(forms)
+        .forEach(function (form) {
+          form.addEventListener('submit', function (event) {
+            if (!form.checkValidity()) {
+              event.preventDefault()
+              event.stopPropagation()
+            }
+            form.classList.add('was-validated')
+          }, false)
+        })
+    })();
+    // Обновление классов статуса депозита
+    document.addEventListener('DOMContentLoaded', function () {
+      var select = document.getElementById('deposit_status');
+      if (select) {
+        function updateDepositClass() {
+          select.classList.remove('bg-warning-subtle', 'bg-success-subtle', 'bg-danger-subtle', 'text-dark');
+          var opt = select.options[select.selectedIndex];
+          var cls = opt.getAttribute('data-class');
+          if (cls) {
+            cls.split(/\s+/).forEach(function (c) {
+              if (c) select.classList.add(c);
+            });
+          }
+        }
+        updateDepositClass();
+        select.addEventListener('change', updateDepositClass);
+      }
+    });
+    // Автоматический пересчёт общей стоимости в зависимости от дат и цены за сутки
+    document.addEventListener('DOMContentLoaded', function () {
+      var rateInput = document.getElementById('total_amount');
+      var checkInInput = document.getElementById('check_in');
+      var checkOutInput = document.getElementById('check_out');
+      var totalDisplay = document.getElementById('total_price_display');
+      function updateTotalPrice() {
+        var rate = parseFloat(rateInput.value);
+        var checkInDate = new Date(checkInInput.value);
+        var checkOutDate = new Date(checkOutInput.value);
+        if (isNaN(rate) || !checkInInput.value || !checkOutInput.value) {
+          return;
+        }
+        var diffMs = checkOutDate - checkInDate;
+        var nights = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        if (nights <= 0) {
+          if (nights < 0) {
+            totalDisplay.value = '';
+            return;
+          }
+          nights = 1;
+        }
+        var total = (rate * nights).toFixed(2);
+        totalDisplay.value = total;
+      }
+      ['change', 'input'].forEach(function (evt) {
+        rateInput.addEventListener(evt, updateTotalPrice);
+        checkInInput.addEventListener(evt, updateTotalPrice);
+        checkOutInput.addEventListener(evt, updateTotalPrice);
+      });
+      updateTotalPrice();
+    });
+  </script>
+  <!-- Модальное окно для ввода дополнительного номера телефона -->
+  <div class="modal fade" id="extraPhoneModal" tabindex="-1" aria-labelledby="extraPhoneModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="extraPhoneModalLabel">Дополнительный номер</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Дополнительный номер</label>
+            <div class="row g-2">
+              <div class="col-auto">
+                <select id="extra_country_code" class="form-select">
+                  <option value="+7" data-mask="(XXX) XXX XX XX" data-length="10" data-flag="🇰🇿">🇰🇿 +7</option>
+                  <option value="+1" data-mask="(XXX) XXX-XXXX" data-length="10" data-flag="🇺🇸">🇺🇸 +1</option>
+                  <option value="+44" data-mask="(XXXX) XXX XXXX" data-length="10" data-flag="🇬🇧">🇬🇧 +44</option>
+                  <option value="+49" data-mask="(XXXX) XXX XXXX" data-length="10" data-flag="🇩🇪">🇩🇪 +49</option>
+                  <option value="+81" data-mask="(XXXX) XXX XXX" data-length="9" data-flag="🇯🇵">🇯🇵 +81</option>
+                </select>
+              </div>
+              <div class="col">
+                <input type="tel" class="form-control" id="extra_phone_input" placeholder="(XXX) XXX XX XX">
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+          <button type="button" class="btn btn-primary" id="save_extra_phone_btn">Сохранить</button>
+        </div>
+      </div>
+        <!-- Поле для дополнительного телефона: отображается под именем -->
+        <div class="mb-3 clickable-field" onclick="this.querySelector('input').focus();">
+          <label for="extra_phone" class="form-label">Доп. телефон</label>
+          <input type="tel" class="form-control" id="extra_phone" name="extra_phone" value="{{ guest_extra_phone }}" placeholder="Введите дополнительный номер">
+        </div>
+    </div>
+  </div>
+  <script>
+    // Скрипт для ввода дополнительного номера телефона и маски
+    document.addEventListener('DOMContentLoaded', function () {
+      var extraCountry = document.getElementById('extra_country_code');
+      var extraInput = document.getElementById('extra_phone_input');
+      var hiddenExtra = document.getElementById('extra_phone');
+      var extraMask = '(XXX) XXX XX XX';
+      var extraLength = 10;
+      function updateExtraMask() {
+        var selected = extraCountry.options[extraCountry.selectedIndex];
+        extraMask = selected.getAttribute('data-mask');
+        extraLength = parseInt(selected.getAttribute('data-length'));
+        extraInput.value = '';
+        extraInput.placeholder = extraMask;
+      }
+      function formatExtra(digits) {
+        var result = '';
+        var digitIndex = 0;
+        for (var i = 0; i < extraMask.length; i++) {
+          var ch = extraMask[i];
+          if (ch === 'X') {
+            if (digitIndex < digits.length) {
+              result += digits[digitIndex++];
+            } else {
+              break;
+            }
+          } else {
+            result += ch;
+          }
+        }
+        return result;
+      }
+      extraCountry.addEventListener('change', updateExtraMask);
+      updateExtraMask();
+      extraInput.addEventListener('input', function () {
+        var digits = extraInput.value.replace(/\D/g, '');
+        if (digits.length > extraLength) {
+          digits = digits.slice(0, extraLength);
+        }
+        extraInput.value = formatExtra(digits);
+      });
+      extraInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Backspace') {
+          e.preventDefault();
+          var digits = extraInput.value.replace(/\D/g, '');
+          if (digits.length > 0) {
+            digits = digits.slice(0, -1);
+            extraInput.value = formatExtra(digits);
+          }
+        }
+      });
+      extraInput.addEventListener('focus', function () {
+        var len = extraInput.value.length;
+        extraInput.setSelectionRange(len, len);
+      });
+      document.getElementById('save_extra_phone_btn').addEventListener('click', function () {
+        var code = extraCountry.value.replace(/\D/g, '');
+        var digits = extraInput.value.replace(/\D/g, '');
+        if (digits.length === 0) {
+          hiddenExtra.value = '';
+        } else {
+          hiddenExtra.value = '+' + code + digits;
+        }
+        var modalEl = document.getElementById('extraPhoneModal');
+        var modalInstance = bootstrap.Modal.getInstance(modalEl);
+        if (modalInstance) modalInstance.hide();
+      });
+    });
+  </script>
+{% endblock %}

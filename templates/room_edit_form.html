@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Редактировать квартиру{% endblock %}
+{% block content %}
+  <div class="mx-auto" style="max-width: 600px;">
+    <h2 class="text-center text-primary fw-bold fs-4">Редактировать квартиру</h2>
+    <form method="post" class="needs-validation" novalidate>
+      <div class="mb-3">
+        <label for="room_number" class="form-label">Название квартиры</label>
+        <input type="text" class="form-control" id="room_number" name="room_number" value="{{ room['room_number'] }}" required>
+        <div class="invalid-feedback">Введите название квартиры.</div>
+      </div>
+      <div class="mb-3">
+        <label for="residential_complex" class="form-label">Жилой комплекс</label>
+        <select class="form-select" id="residential_complex" name="residential_complex">
+          <option value="" {% if not room['residential_complex'] %}selected{% endif %}>Не указан</option>
+          <option value="Auezov City" {% if room['residential_complex'] == 'Auezov City' %}selected{% endif %}>ЖК Auezov City</option>
+          <option value="Шахристан" {% if room['residential_complex'] == 'Шахристан' %}selected{% endif %}>ЖК Шахристан</option>
+          <option value="Lake Town" {% if room['residential_complex'] == 'Lake Town' %}selected{% endif %}>ЖК Lake Town</option>
+        </select>
+        <div class="form-text">Выберите жилой комплекс, если применимо.</div>
+      </div>
+      <div class="mb-3">
+        <label for="listing_url" class="form-label">Ссылка на объявление (URL)</label>
+        <input type="url" class="form-control" id="listing_url" name="listing_url" value="{{ room['listing_url'] or '' }}">
+        <div class="form-text">Опционально: укажите ссылку на размещение объекта на стороннем сайте.</div>
+      </div>
+      <div class="text-center">
+        <button type="submit" class="btn btn-primary me-2">Сохранить</button>
+        <a href="{{ url_for('list_rooms') }}" class="btn btn-soft-danger">Отмена</a>
+      </div>
+    </form>
+  </div>
+  <script>
+    // Bootstrap validation script remains unchanged
+    (function () {
+      'use strict'
+      var forms = document.querySelectorAll('.needs-validation')
+      Array.prototype.slice.call(forms)
+        .forEach(function (form) {
+          form.addEventListener('submit', function (event) {
+            if (!form.checkValidity()) {
+              event.preventDefault()
+              event.stopPropagation()
+            }
+            form.classList.add('was-validated')
+          }, false)
+        })
+    })()
+  </script>
+{% endblock %}
