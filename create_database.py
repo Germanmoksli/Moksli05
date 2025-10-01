@@ -53,7 +53,7 @@ def create_tables(connection: sqlite3.Connection) -> None:
     cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS guests (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             name TEXT NOT NULL,
             phone TEXT,
             email TEXT,
@@ -66,7 +66,7 @@ def create_tables(connection: sqlite3.Connection) -> None:
     cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS rooms (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             room_number TEXT NOT NULL UNIQUE,
             capacity INTEGER,
             notes TEXT,
@@ -82,7 +82,7 @@ def create_tables(connection: sqlite3.Connection) -> None:
     cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS bookings (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             guest_id INTEGER NOT NULL,
             room_id INTEGER NOT NULL,
             check_in_date DATE NOT NULL,
@@ -101,7 +101,7 @@ def create_tables(connection: sqlite3.Connection) -> None:
     cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS payments (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             booking_id INTEGER NOT NULL,
             amount REAL NOT NULL,
             date DATE NOT NULL,
@@ -117,7 +117,7 @@ def create_tables(connection: sqlite3.Connection) -> None:
     cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS expenses (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             category TEXT NOT NULL,
             amount REAL NOT NULL,
             date DATE NOT NULL,
@@ -130,7 +130,7 @@ def create_tables(connection: sqlite3.Connection) -> None:
     cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS cleaning_tasks (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             room_id INTEGER NOT NULL,
             scheduled_date DATETIME NOT NULL,
             status TEXT NOT NULL DEFAULT 'scheduled',
@@ -144,7 +144,7 @@ def create_tables(connection: sqlite3.Connection) -> None:
     cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             username TEXT NOT NULL UNIQUE,
             password_hash TEXT NOT NULL,
             role TEXT NOT NULL,
@@ -159,7 +159,7 @@ def create_tables(connection: sqlite3.Connection) -> None:
     cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS registration_requests (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             username TEXT NOT NULL UNIQUE,
             password_hash TEXT NOT NULL,
             status TEXT NOT NULL DEFAULT 'pending',
@@ -187,7 +187,7 @@ def create_tables(connection: sqlite3.Connection) -> None:
     cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS messages (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             user_id INTEGER NOT NULL,
             message TEXT NOT NULL,
             timestamp TEXT NOT NULL,

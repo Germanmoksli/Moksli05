@@ -1196,7 +1196,7 @@ def ensure_guest_comments_table(conn: sqlite3.Connection) -> None:
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS guest_comments (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY ,
             guest_id INTEGER NOT NULL,
             comment TEXT,
             created_at TEXT,
@@ -1215,7 +1215,7 @@ def ensure_subscriptions_table(conn: sqlite3.Connection) -> None:
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS subscriptions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             user_id INTEGER NOT NULL,
             plan_name TEXT NOT NULL,
             status TEXT NOT NULL,
@@ -1279,7 +1279,7 @@ def ensure_registration_requests_table(conn: sqlite3.Connection) -> None:
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS registration_requests (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             username TEXT NOT NULL UNIQUE,
             password_hash TEXT NOT NULL,
             status TEXT NOT NULL DEFAULT 'pending',
@@ -1311,7 +1311,7 @@ def ensure_chat_rooms_table(conn: sqlite3.Connection) -> None:
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS chat_rooms (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             name TEXT NOT NULL,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         )
@@ -1356,7 +1356,7 @@ def ensure_messages_table(conn: sqlite3.Connection) -> None:
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS messages (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             room_id INTEGER NOT NULL DEFAULT 1,
             user_id INTEGER NOT NULL,
             message TEXT NOT NULL,
