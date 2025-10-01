@@ -1283,7 +1283,7 @@ def ensure_registration_requests_table(conn: sqlite3.Connection) -> None:
             username TEXT NOT NULL UNIQUE,
             password_hash TEXT NOT NULL,
             status TEXT NOT NULL DEFAULT 'pending',
-            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
         """
     )
@@ -1613,7 +1613,7 @@ def view_guest(guest_id: int):
     # Query all comments; order by created_at descending
     try:
         comments_rows = conn.execute(
-            "SELECT comment, created_at FROM guest_comments WHERE guest_id = ? ORDER BY datetime(created_at) DESC",
+            "SELECT comment, created_at FROM guest_comments WHERE guest_id = %s ORDER BY created_at DESC" ,
             (guest_id,),
         ).fetchall()
     except Exception:
@@ -1689,8 +1689,11 @@ def edit_guest(guest_id: int):
                 # Insert comment with current timestamp
                 timestamp = datetime.utcnow().isoformat()
                 conn.execute(
-                    "INSERT INTO guest_comments (guest_id, comment, created_at) VALUES (?, ?, ?)",
-                    (guest_id, notes, timestamp),
+                    """
+                    INSERT INTO guest_comments (guest_id comment)
+                    VALUES (%?, %?)
+                    """,
+                    (guest_id, notes),
                 )
             except Exception:
                 pass
