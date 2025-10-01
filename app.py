@@ -750,7 +750,7 @@ def inject_current_user():
         # Ensure the photo column exists before querying
         ensure_photo_column(conn)
         user = conn.execute(
-            'SELECT id, username, role, name, photo FROM users WHERE id = ?',
+            'SELECT id, username, role, name, photo FROM users WHERE id = %?',
             (session['user_id'],)
         ).fetchone()
         conn.close()
@@ -909,7 +909,7 @@ def register():
             conn.close()
             return redirect(url_for('register'))
         # Check if email exists in users or pending requests
-        existing_user = conn.execute('SELECT id FROM users WHERE username = ?', (email,)).fetchone()
+        existing_user = conn.execute('SELECT id FROM users WHERE username = %?', (email,)).fetchone()
         existing_req = conn.execute('SELECT id FROM registration_requests WHERE username = ?', (email,)).fetchone()
         if existing_user or existing_req:
             conn.close()
@@ -1038,7 +1038,7 @@ def login():
         conn = get_db_connection()
         # Ensure registration_requests table exists before querying it
         ensure_registration_requests_table(conn)
-        user = conn.execute('SELECT * FROM users WHERE username = ?', (email,)).fetchone()
+        user = conn.execute('SELECT * FROM users WHERE username = %?', (email,)).fetchone()
         if user and check_password_hash(user['password_hash'], password):
             # Store user id and role in the session
             session['user_id'] = user['id']
@@ -4273,7 +4273,7 @@ def chat_rooms():
                 return redirect(url_for('chat', room_id=row['room_id']))
             # Create a new private room with a simple name
             # Fetch names to construct a human‑readable title
-            other_user = conn.execute('SELECT name FROM users WHERE id = ?', (other_id,)).fetchone()
+            other_user = conn.execute('SELECT name FROM users WHERE id = %?', (other_id,)).fetchone()
             other_name = other_user['name'] if other_user and other_user['name'] else 'Собеседник'
             room_name = f'Диалог с {other_name}'
             cur = conn.cursor()
@@ -4597,7 +4597,7 @@ def account():
         flash('Профиль обновлён.')
         return redirect(url_for('account'))
     # GET: show profile data
-    user = conn.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
+    user = conn.execute('SELECT * FROM users WHERE id = %?', (user_id,)).fetchone()
     conn.close()
     return render_template('account.html', user=user)
 
@@ -4618,7 +4618,7 @@ def employee_profile(user_id: int):
         ensure_photo_column(conn)
     except Exception:
         pass
-    user = conn.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
+    user = conn.execute('SELECT * FROM users WHERE id = %?', (user_id,)).fetchone()
     conn.close()
     if not user:
         flash('Сотрудник не найден.')
