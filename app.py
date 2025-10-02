@@ -749,8 +749,13 @@ def inject_current_user():
         conn = get_db_connection()
         # Ensure the photo column exists before querying
         ensure_photo_column(conn)
+        # Use a positional placeholder rather than the erroneous "%?".  The
+        # SQLite API accepts "?" which our PostgreSQL compatibility layer
+        # automatically converts into "%s" for psycopg2.  Without this
+        # change psycopg2 would interpret "%?" as a literal percent sign
+        # followed by an unknown placeholder and raise a syntax error.
         user = conn.execute(
-            'SELECT id, username, role, name, photo FROM users WHERE id = %?',
+            'SELECT id, username, role, name, photo FROM users WHERE id = ?',
             (session['user_id'],)
         ).fetchone()
         conn.close()
@@ -909,7 +914,10 @@ def register():
             conn.close()
             return redirect(url_for('register'))
         # Check if email exists in users or pending requests
-        existing_user = conn.execute('SELECT id FROM users WHERE username = %?', (email,)).fetchone()
+        # Use the correct SQLite placeholder.  The psycopg2 wrapper will
+        # translate '?' into '%s' on PostgreSQL.  The previous version
+        # mistakenly used "%?" which caused a syntax error in Postgres.
+        existing_user = conn.execute('SELECT id FROM users WHERE username = ?', (email,)).fetchone()
         existing_req = conn.execute('SELECT id FROM registration_requests WHERE username = ?', (email,)).fetchone()
         if existing_user or existing_req:
             conn.close()
@@ -1038,7 +1046,9 @@ def login():
         conn = get_db_connection()
         # Ensure registration_requests table exists before querying it
         ensure_registration_requests_table(conn)
-        user = conn.execute('SELECT * FROM users WHERE username = %?', (email,)).fetchone()
+        # Correct placeholder usage for user lookup.  See comments in
+        # register() above for details.
+        user = conn.execute('SELECT * FROM users WHERE username = ?', (email,)).fetchone()
         if user and check_password_hash(user['password_hash'], password):
             # Store user id and role in the session
             session['user_id'] = user['id']
@@ -1612,8 +1622,12 @@ def view_guest(guest_id: int):
     ensure_guest_comments_table(conn)
     # Query all comments; order by created_at descending
     try:
+        # Use SQLite‑style placeholder.  Our database wrapper will
+        # convert '?' into '%s' for psycopg2 when connected to
+        # PostgreSQL.  The previous version used '%s' directly, which
+        # SQLite does not understand and therefore raised an exception.
         comments_rows = conn.execute(
-            "SELECT comment, created_at FROM guest_comments WHERE guest_id = %s ORDER BY created_at DESC" ,
+            "SELECT comment, created_at FROM guest_comments WHERE guest_id = ? ORDER BY created_at DESC",
             (guest_id,),
         ).fetchall()
     except Exception:
@@ -1686,16 +1700,22 @@ def edit_guest(guest_id: int):
             try:
                 # Ensure comments table exists
                 ensure_guest_comments_table(conn)
-                # Insert comment with current timestamp
+                # Insert comment with current timestamp.  The guest_comments table
+                # defines columns (id, guest_id, comment, created_at).  Use
+                # positional placeholders rather than the erroneous "%?" and include
+                # the created_at timestamp.  Without specifying created_at,
+                # the insert would fail because the column is non‑nullable on
+                # PostgreSQL and you would lose the note timestamp on SQLite.
                 timestamp = datetime.utcnow().isoformat()
                 conn.execute(
                     """
-                    INSERT INTO guest_comments (guest_id comment)
-                    VALUES (%?, %?)
+                    INSERT INTO guest_comments (guest_id, comment, created_at)
+                    VALUES (?, ?, ?)
                     """,
-                    (guest_id, notes),
+                    (guest_id, notes, timestamp),
                 )
             except Exception:
+                # Ignore insert failures; the notes will simply not be saved.
                 pass
         # Update guest record with the latest note
         with conn:
@@ -4273,7 +4293,8 @@ def chat_rooms():
                 return redirect(url_for('chat', room_id=row['room_id']))
             # Create a new private room with a simple name
             # Fetch names to construct a human‑readable title
-            other_user = conn.execute('SELECT name FROM users WHERE id = %?', (other_id,)).fetchone()
+            # Correct the placeholder when fetching a single user by id.
+            other_user = conn.execute('SELECT name FROM users WHERE id = ?', (other_id,)).fetchone()
             other_name = other_user['name'] if other_user and other_user['name'] else 'Собеседник'
             room_name = f'Диалог с {other_name}'
             cur = conn.cursor()
@@ -4597,7 +4618,8 @@ def account():
         flash('Профиль обновлён.')
         return redirect(url_for('account'))
     # GET: show profile data
-    user = conn.execute('SELECT * FROM users WHERE id = %?', (user_id,)).fetchone()
+    # Use correct placeholder for id lookup; see comments above.
+    user = conn.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
     conn.close()
     return render_template('account.html', user=user)
 
@@ -4618,7 +4640,8 @@ def employee_profile(user_id: int):
         ensure_photo_column(conn)
     except Exception:
         pass
-    user = conn.execute('SELECT * FROM users WHERE id = %?', (user_id,)).fetchone()
+    # Use correct placeholder for id lookup; see comments above.
+    user = conn.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
     conn.close()
     if not user:
         flash('Сотрудник не найден.')
