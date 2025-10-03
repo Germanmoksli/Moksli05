@@ -1710,27 +1710,46 @@ def ensure_user_room_last_seen_table(conn: sqlite3.Connection) -> None:
     (notably PostgreSQL) that reject a CREATE TABLE referencing a missing
     foreign key table. If chat_rooms already exists this call is a no-op.
     """
-    # Ensure chat_rooms table exists to satisfy foreign key constraint.  If
-    # ensure_chat_rooms_table fails for any reason, we still proceed to
-    # attempt creating user_room_last_seen; this may raise an error if
-    # chat_rooms truly doesn't exist.
+    # Attempt to clear any aborted transaction state.  If a previous SQL error
+    # left the connection in a failed transaction, subsequent statements will
+    # raise ``InFailedSqlTransaction`` until a rollback.  This call does
+    # nothing if the connection is not in a transaction or if rollback is
+    # unsupported.
+    try:
+        conn.rollback()
+    except Exception:
+        pass
+    # Ensure chat_rooms table exists to satisfy the foreign key constraint.  If
+    # this call fails, we ignore the error and continue; the subsequent CREATE
+    # may still succeed on SQLite.  On PostgreSQL, if chat_rooms is missing
+    # CREATE TABLE will fail and we'll handle it below.
     try:
         ensure_chat_rooms_table(conn)
     except Exception:
         pass
-    conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS user_room_last_seen (
-            user_id INTEGER NOT NULL,
-            room_id INTEGER NOT NULL,
-            last_seen_message_id INTEGER NOT NULL,
-            PRIMARY KEY (user_id, room_id),
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-            FOREIGN KEY (room_id) REFERENCES chat_rooms(id) ON DELETE CASCADE
+    # Create the user_room_last_seen table with appropriate foreign keys.  Wrap
+    # the execution and commit in a try/except so that any failure rolls back
+    # the transaction.  Without rollback, a failed CREATE leaves the
+    # connection in an aborted state and all subsequent commands will error.
+    try:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS user_room_last_seen (
+                user_id INTEGER NOT NULL,
+                room_id INTEGER NOT NULL,
+                last_seen_message_id INTEGER NOT NULL,
+                PRIMARY KEY (user_id, room_id),
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (room_id) REFERENCES chat_rooms(id) ON DELETE CASCADE
+            )
+            """
         )
-        """
-    )
-    conn.commit()
+        conn.commit()
+    except Exception:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
 
 
 
