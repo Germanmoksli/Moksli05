@@ -523,15 +523,89 @@ def get_db_connection():
                         """,
                         """
                         CREATE TABLE IF NOT EXISTS blacklist (
-                            phone TEXT PRIMARY KEY
+                            phone TEXT PRIMARY KEY,
+                            reason TEXT,
+                            added_at TEXT
                         );
                         """,
                         """
                         CREATE TABLE IF NOT EXISTS messages (
                             id SERIAL PRIMARY KEY,
+                            room_id INTEGER NOT NULL DEFAULT 1,
                             user_id INTEGER NOT NULL,
                             message TEXT NOT NULL,
                             timestamp TEXT NOT NULL,
+                            file_name TEXT,
+                            file_type TEXT,
+                            FOREIGN KEY (room_id) REFERENCES chat_rooms(id) ON DELETE CASCADE,
+                            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                        );
+                        """,
+                        # Chat rooms and related tables
+                        """
+                        CREATE TABLE IF NOT EXISTS chat_rooms (
+                            id SERIAL PRIMARY KEY,
+                            name TEXT NOT NULL,
+                            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                        );
+                        """,
+                        """
+                        CREATE TABLE IF NOT EXISTS chat_room_members (
+                            room_id INTEGER NOT NULL,
+                            user_id INTEGER NOT NULL,
+                            PRIMARY KEY (room_id, user_id),
+                            FOREIGN KEY (room_id) REFERENCES chat_rooms(id) ON DELETE CASCADE,
+                            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                        );
+                        """,
+                        """
+                        CREATE TABLE IF NOT EXISTS user_last_seen (
+                            user_id INTEGER PRIMARY KEY,
+                            last_seen_message_id INTEGER,
+                            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                        );
+                        """,
+                        """
+                        CREATE TABLE IF NOT EXISTS user_room_last_seen (
+                            user_id INTEGER NOT NULL,
+                            room_id INTEGER NOT NULL,
+                            last_seen_message_id INTEGER NOT NULL,
+                            PRIMARY KEY (user_id, room_id),
+                            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                            FOREIGN KEY (room_id) REFERENCES chat_rooms(id) ON DELETE CASCADE
+                        );
+                        """,
+                        # Guest comments and room status
+                        """
+                        CREATE TABLE IF NOT EXISTS guest_comments (
+                            id SERIAL PRIMARY KEY,
+                            guest_id INTEGER NOT NULL,
+                            comment TEXT,
+                            created_at TEXT,
+                            FOREIGN KEY (guest_id) REFERENCES guests(id) ON DELETE CASCADE
+                        );
+                        """,
+                        """
+                        CREATE TABLE IF NOT EXISTS room_statuses (
+                            room_id INTEGER NOT NULL,
+                            date TEXT NOT NULL,
+                            status TEXT NOT NULL,
+                            PRIMARY KEY (room_id, date),
+                            FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
+                        );
+                        """,
+                        # Subscriptions table with payment details
+                        """
+                        CREATE TABLE IF NOT EXISTS subscriptions (
+                            id SERIAL PRIMARY KEY,
+                            user_id INTEGER NOT NULL,
+                            plan_name TEXT NOT NULL,
+                            status TEXT NOT NULL,
+                            price REAL,
+                            created_at TEXT,
+                            next_billing_date TEXT,
+                            payment_id TEXT,
+                            payment_url TEXT,
                             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
                         );
                         """,
@@ -539,6 +613,15 @@ def get_db_connection():
                     cur = conn.cursor()
                     for stmt in statements:
                         cur.execute(stmt)
+                    # Insert a default global chat room if none exists (id=1)
+                    try:
+                        cur.execute("SELECT id FROM chat_rooms WHERE id = 1")
+                        row = cur.fetchone()
+                        if not row:
+                            cur.execute("INSERT INTO chat_rooms (id, name) VALUES (%s, %s)", (1, 'Общий чат'))
+                    except Exception:
+                        # If the table does not yet exist, ignore; it will be created
+                        pass
                     conn.commit()
                     cur.close()
                 except Exception as e:
