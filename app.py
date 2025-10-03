@@ -410,6 +410,16 @@ def get_db_connection():
             # of 'require'.  Internal connections will silently ignore this
             # parameter if SSL isn't needed.
             pg_conn = psycopg2.connect(db_url, sslmode=os.environ.get("PGSSLMODE", "require"))
+            # Enable autocommit so each statement runs in its own transaction.  Without
+            # autocommit, a failed SQL statement would leave the connection in an
+            # aborted transaction state (InFailedSqlTransaction) until an explicit
+            # rollback, causing subsequent statements to fail.  Autocommit mirrors
+            # SQLite's autocommit behaviour and improves resiliency when running
+            # arbitrary queries from view functions.
+            try:
+                pg_conn.autocommit = True
+            except Exception:
+                pass
         except Exception as exc:
             # Fall back to SQLite on connection failure
             print(
@@ -757,22 +767,24 @@ def get_db_connection():
                         return self
                     # Otherwise translate query
                     translated = self._translate_query(query)
-                    # Do not unconditionally append RETURNING id here. The decision to
-                    # add a RETURNING clause (for tables with an integer primary key named
-                    # "id") is handled in _translate_query(). Unconditionally appending
-                    # RETURNING id would break inserts into tables without an id column.
-                    low = translated.strip().lower()
-                    # We intentionally avoid auto-appending RETURNING here.
-                    # Convert placeholders
-                    converted = self._convert_placeholders(translated)
-                    try:
-                        self._cur.execute(converted, params)
-                    except Exception as exc:
-                        raise
-                    # Capture lastrowid only if a RETURNING clause is present in the SQL.
-                    # Without a RETURNING, fetchone() should not be called as it would
-                    # consume the next result set or block.
-                    if "returning" in converted.lower():
+                    # Prepare to convert SQLite-style placeholders to psycopg2 format.
+                    converted_query = translated
+                    bound_params = params
+                    # When params is a mapping, expand named parameters (e.g. :start_date)
+                    if params and isinstance(params, dict):
+                        import re
+                        pattern = re.compile(r":([A-Za-z_][A-Za-z0-9_]*)")
+                        names = pattern.findall(converted_query)
+                        if names:
+                            converted_query = pattern.sub("%s", converted_query)
+                            # order values according to appearance of placeholders
+                            bound_params = [params[name] for name in names]
+                    # Convert any remaining '?' placeholders to '%s'
+                    converted_query = self._convert_placeholders(converted_query)
+                    # Execute the translated statement with bound parameters
+                    self._cur.execute(converted_query, bound_params)
+                    # Capture lastrowid if a RETURNING clause is present
+                    if "returning" in converted_query.lower():
                         try:
                             returned = self._cur.fetchone()
                             if returned is not None:
@@ -781,19 +793,30 @@ def get_db_connection():
                                 else:
                                     self.lastrowid = returned[0]
                         except Exception:
-                            # If fetching fails, do not set lastrowid
                             self.lastrowid = None
+                    else:
+                        self.lastrowid = None
                     return self
 
                 def executemany(self, query: str, param_list):
                     translated = self._translate_query(query)
-                    # Remove RETURNING when doing executemany
-                    low = translated.strip().lower()
-                    if low.startswith("insert") and "returning" not in low:
-                        # Do not append RETURNING for executemany
-                        pass
-                    converted = self._convert_placeholders(translated)
-                    self._cur.executemany(converted, param_list)
+                    converted_query = translated
+                    params_to_use = param_list
+                    # Support named parameters: if first param set is a mapping
+                    if param_list and isinstance(param_list[0], dict):
+                        import re
+                        pattern = re.compile(r":([A-Za-z_][A-Za-z0-9_]*)")
+                        names = pattern.findall(converted_query)
+                        if names:
+                            converted_query = pattern.sub("%s", converted_query)
+                            new_params = []
+                            for p in param_list:
+                                new_params.append([p[name] for name in names])
+                            params_to_use = new_params
+                    # Convert any '?' to '%s'
+                    converted_query = self._convert_placeholders(converted_query)
+                    # Execute against the list of parameters
+                    self._cur.executemany(converted_query, params_to_use)
                     self.lastrowid = None
                     return self
 
@@ -880,7 +903,21 @@ def get_db_connection():
                         self.commit()
                     self.close()
 
-            return SQLiteCompatConnection(pg_conn)
+            # Wrap the raw psycopg2 connection in a SQLiteCompatConnection that
+            # provides a subset of the sqlite3 API (execute/cursor/commit/rollback).
+            wrapper_conn = SQLiteCompatConnection(pg_conn)
+            # Ensure the bookings table includes a created_by column.  When
+            # operating on PostgreSQL, our PRAGMA implementation uses
+            # information_schema to introspect the schema.  If the column is
+            # missing it will be added.  This helper is idempotent so it is
+            # safe to call on every connection.
+            try:
+                ensure_booking_creator_column(wrapper_conn)
+            except Exception:
+                # Do not abort if schema introspection fails; the rest of the
+                # application will operate without a created_by column.
+                pass
+            return wrapper_conn
     # No PostgreSQL connection could be established, and fallback to SQLite is disabled.
     # Raise an explicit error so that missing configuration is detected early.
     raise RuntimeError(
@@ -2356,27 +2393,46 @@ def delete_room(room_id: int):
 
 def ensure_booking_creator_column(conn: sqlite3.Connection) -> None:
     """
-    Ensure that the bookings table contains a ``created_by`` column referencing
-    the user who created the booking. If the column does not exist, it will be
-    added without a foreign key constraint.  This helper is idempotent and safe
-    to call each time a database connection is opened.  It does not emit any
-    user‑facing messages or perform redirects.
+    Ensure that the ``bookings`` table contains a ``created_by`` column.
+
+    On startup, older databases may lack a ``created_by`` column used to
+    associate a booking with the user who created it.  This helper
+    introspects the table schema and adds the column if it is missing.  It
+    works for both SQLite and PostgreSQL connections because the PRAGMA
+    statement is intercepted by the PostgreSQL compatibility layer to query
+    ``information_schema``.  The helper is idempotent: if the column
+    already exists or the table does not yet exist, no action is taken.  Any
+    exceptions encountered are suppressed to avoid breaking the caller.
 
     Parameters
     ----------
-    conn : sqlite3.Connection
-        An open database connection.
+    conn : sqlite3.Connection or SQLiteCompatConnection
+        An open database connection or its compatibility wrapper.
     """
     try:
-        cur = conn.cursor()
-        # Inspect existing columns
-        cur.execute("PRAGMA table_info(bookings)")
-        cols = [row[1] for row in cur.fetchall()]
-        if 'created_by' not in cols:
-            cur.execute("ALTER TABLE bookings ADD COLUMN created_by INTEGER")
-            conn.commit()
+        # Use PRAGMA to inspect columns.  On PostgreSQL the compatibility
+        # layer will return tuples of (cid, name, type, notnull, dflt, pk).
+        cur = conn.execute("PRAGMA table_info(bookings)")
+        rows = cur.fetchall()
+        # Extract column names regardless of row type (tuple or mapping)
+        col_names = []
+        for row in rows:
+            try:
+                # sqlite3.Row exposes row[1] as column name
+                col_names.append(row[1])
+            except Exception:
+                # RealDictRow from psycopg2 exposes 'name'
+                if isinstance(row, dict) and 'name' in row:
+                    col_names.append(row['name'])
+        if 'created_by' not in col_names:
+            conn.execute("ALTER TABLE bookings ADD COLUMN created_by INTEGER")
+            # Attempt to commit if supported.  In autocommit mode this is a no-op.
+            try:
+                conn.commit()
+            except Exception:
+                pass
     except Exception:
-        # Silently ignore if the table does not exist yet or column cannot be added
+        # Silently ignore if introspection or alteration fails.
         pass
 
 
@@ -3153,102 +3209,129 @@ def dashboard():
         day = start_date + timedelta(days=i)
         next_day = day + timedelta(days=1)
         pickup_dates.append(day.strftime('%d.%m'))
-        # Nights sold on this day: count overlapping bookings
-        sold_row = conn.execute(
-            """
-            SELECT COALESCE(SUM(
-                CASE
-                    WHEN b.check_in_date <= :day AND b.check_out_date > :day THEN 1 ELSE 0
-                END
-            ), 0) AS sold
-            FROM bookings AS b
-            """,
-            {'day': day.isoformat()}
-        ).fetchone()
-        sold_for_day = sold_row['sold'] if sold_row else 0
+        # Compute nights sold for this day by scanning bookings.  A night is sold
+        # if a booking covers the date (check_in_date <= day < check_out_date).
+        sold_for_day = 0
+        revenue_for_day = 0.0
+        try:
+            # Fetch all bookings that could overlap this day once per iteration
+            day_rows = conn.execute(
+                "SELECT check_in_date, check_out_date, total_amount FROM bookings WHERE check_in_date <= ? AND check_out_date > ?",
+                (day.isoformat(), day.isoformat())
+            ).fetchall()
+        except Exception:
+            day_rows = []
+        for row in day_rows:
+            # Support both dict-like and tuple rows
+            try:
+                ci = row['check_in_date']
+                co = row['check_out_date']
+                total_amt = row['total_amount']
+            except Exception:
+                ci = row[0]
+                co = row[1]
+                total_amt = row[2]
+            try:
+                ci_date = date.fromisoformat(ci)
+                co_date = date.fromisoformat(co)
+            except Exception:
+                continue
+            if ci_date <= day < co_date:
+                sold_for_day += 1
+                # Allocate revenue proportionally by nights
+                nights_total = (co_date - ci_date).days
+                if nights_total > 0 and total_amt is not None:
+                    revenue_for_day += float(total_amt) / nights_total
         occ_for_day = (sold_for_day / rooms_count * 100) if rooms_count > 0 else 0
         pickup_occ.append(round(occ_for_day, 2))
-        # Revenue for this day: allocate revenue proportionally by nights; here we simply count
-        # bookings that cover the day and divide each booking's total amount by its total nights
-        rev_row = conn.execute(
-            """
-            SELECT COALESCE(SUM(
-                b.total_amount / CAST(
-                    (JULIANDAY(b.check_out_date) - JULIANDAY(b.check_in_date)) AS FLOAT
-                )
-            ), 0) AS rev
-            FROM bookings AS b
-            WHERE b.check_in_date <= :day AND b.check_out_date > :day
-            """,
-            {'day': day.isoformat()}
-        ).fetchone()
-        rev_for_day = rev_row['rev'] if rev_row else 0
-        pickup_revenue.append(round(float(rev_for_day), 2))
+        pickup_revenue.append(round(revenue_for_day, 2))
     # -------------------------------------------------------------------------
-    # Per‑room statistics
-    # For each room, compute nights sold, revenue (allocated for overlapping nights),
-    # number of bookings and deposit statuses. We use SQL aggregation to calculate
-    # these values efficiently.
+    # Per-room statistics: compute nights sold, revenue and booking count in Python.
     room_stats = []
-    # Fetch aggregated data per room
-    room_rows = conn.execute(
-        """
-        SELECT
-            b.room_id,
-            SUM(CAST(
-                (JULIANDAY(MIN(b.check_out_date, :end_plus)) - JULIANDAY(MAX(b.check_in_date, :start_date)))
-            AS INTEGER)) AS nights_sold,
-            SUM(
-                CASE
-                    WHEN (JULIANDAY(b.check_out_date) - JULIANDAY(b.check_in_date)) > 0 THEN
-                        (b.total_amount / (JULIANDAY(b.check_out_date) - JULIANDAY(b.check_in_date))) *
-                        (JULIANDAY(MIN(b.check_out_date, :end_plus)) - JULIANDAY(MAX(b.check_in_date, :start_date)))
-                    ELSE 0
-                END
-            ) AS revenue,
-            COUNT(*) AS booking_count
-        FROM bookings AS b
-        WHERE b.check_out_date > :start_date AND b.check_in_date < :end_plus
-        GROUP BY b.room_id
-        """,
-        {
-            'start_date': start_date.isoformat(),
-            'end_plus': (end_date + timedelta(days=1)).isoformat(),
-        }
-    ).fetchall()
-    # Map aggregated results by room_id
-    agg_by_room = {row['room_id']: row for row in room_rows}
-    # Deposit counts by room and status
+    # Fetch bookings overlapping the selected period
+    try:
+        all_bookings = conn.execute(
+            "SELECT room_id, check_in_date, check_out_date, total_amount FROM bookings WHERE check_out_date > ? AND check_in_date < ?",
+            (start_date.isoformat(), (end_date + timedelta(days=1)).isoformat())
+        ).fetchall()
+    except Exception:
+        all_bookings = []
+    # Initialize aggregates by room
+    agg_by_room: dict = {}
+    for row in all_bookings:
+        # Extract fields from either dict-like or tuple rows
+        try:
+            room_id = row['room_id']
+            ci = row['check_in_date']
+            co = row['check_out_date']
+            total_amt = row['total_amount']
+        except Exception:
+            room_id = row[0]
+            ci = row[1]
+            co = row[2]
+            total_amt = row[3]
+        try:
+            ci_date = date.fromisoformat(ci)
+            co_date = date.fromisoformat(co)
+        except Exception:
+            continue
+        # Compute overlap with selected period [start_date, end_date + 1)
+        overlap_start = max(ci_date, start_date)
+        overlap_end = min(co_date, end_date + timedelta(days=1))
+        nights_overlap = (overlap_end - overlap_start).days
+        if nights_overlap <= 0:
+            continue
+        if room_id not in agg_by_room:
+            agg_by_room[room_id] = {
+                'nights_sold': 0,
+                'revenue': 0.0,
+                'booking_count': 0,
+            }
+        agg = agg_by_room[room_id]
+        agg['nights_sold'] += nights_overlap
+        agg['booking_count'] += 1
+        nights_total = (co_date - ci_date).days
+        if nights_total > 0 and total_amt is not None:
+            agg['revenue'] += float(total_amt) / nights_total * nights_overlap
+    # Deposit counts by room and status (keep original SQL; no JULIANDAY)
     deposit_by_room_rows = conn.execute(
         """
         SELECT room_id, status, COUNT(*) AS count
         FROM bookings
         WHERE paid_amount IS NOT NULL AND paid_amount > 0
-          AND check_out_date > :start_date AND check_in_date < :end_plus
+          AND check_out_date > ? AND check_in_date < ?
         GROUP BY room_id, status
         """,
-        {
-            'start_date': start_date.isoformat(),
-            'end_plus': (end_date + timedelta(days=1)).isoformat(),
-        }
+        (start_date.isoformat(), (end_date + timedelta(days=1)).isoformat())
     ).fetchall()
-    deposit_by_room = {}
+    deposit_by_room: dict = {}
     for row in deposit_by_room_rows:
-        room_id = row['room_id']
-        if room_id not in deposit_by_room:
-            deposit_by_room[room_id] = {}
-        deposit_by_room[room_id][row['status']] = row['count']
+        try:
+            rid = row['room_id']
+            status = row['status']
+            cnt = row['count']
+        except Exception:
+            rid = row[0]
+            status = row[1]
+            cnt = row[2]
+        if rid not in deposit_by_room:
+            deposit_by_room[rid] = {}
+        deposit_by_room[rid][status] = cnt
     # Fetch all rooms to ensure rooms with no bookings are included
     room_list = conn.execute(
         "SELECT id, room_number FROM rooms ORDER BY room_number"
     ).fetchall()
     conn.close()
     for r in room_list:
-        rid = r['id']
-        room_number = r['room_number']
+        try:
+            rid = r['id']
+            room_number = r['room_number']
+        except Exception:
+            rid = r[0]
+            room_number = r[1]
         agg = agg_by_room.get(rid)
-        nights_sold_r = agg['nights_sold'] if agg and agg['nights_sold'] is not None else 0
-        revenue_r = float(agg['revenue']) if agg and agg['revenue'] is not None else 0.0
+        nights_sold_r = agg['nights_sold'] if agg else 0
+        revenue_r = float(agg['revenue']) if agg else 0.0
         booking_count_r = agg['booking_count'] if agg else 0
         nights_available_r = period_days  # each room available each day
         empty_nights_r = nights_available_r - nights_sold_r
