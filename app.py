@@ -881,41 +881,11 @@ def get_db_connection():
                     self.close()
 
             return SQLiteCompatConnection(pg_conn)
-    # Fallback: use SQLite
-    db_file = os.environ.get("APARTHOTEL_DB_FILE", DB_DEFAULT_FILE)
-    conn = sqlite3.connect(db_file)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON;")
-    # Ensure the rooms table has the necessary columns. If they don't exist, add them.
-    try:
-        cur = conn.cursor()
-        # Ensure extra columns on rooms table
-        cur.execute("PRAGMA table_info(rooms)")
-        cols = [row[1] for row in cur.fetchall()]
-        if 'listing_url' not in cols:
-            cur.execute("ALTER TABLE rooms ADD COLUMN listing_url TEXT")
-            conn.commit()
-        if 'residential_complex' not in cols:
-            cur.execute("ALTER TABLE rooms ADD COLUMN residential_complex TEXT")
-            conn.commit()
-        # Ensure additional columns on guests table: birth_date and photo
-        cur.execute("PRAGMA table_info(guests)")
-        guest_cols = [row[1] for row in cur.fetchall()]
-        if 'birth_date' not in guest_cols:
-            cur.execute("ALTER TABLE guests ADD COLUMN birth_date DATE")
-            conn.commit()
-        if 'photo' not in guest_cols:
-            cur.execute("ALTER TABLE guests ADD COLUMN photo TEXT")
-            conn.commit()
-        # Ensure guest_comments table exists
-        ensure_guest_comments_table(conn)
-        # Ensure bookings table has a created_by column
-        ensure_booking_creator_column(conn)
-    except Exception:
-        # If any error occurs (e.g. table does not exist yet), ignore –
-        # the columns will be created when the table is created via create_database.py
-        pass
-    return conn
+    # No PostgreSQL connection could be established, and fallback to SQLite is disabled.
+    # Raise an explicit error so that missing configuration is detected early.
+    raise RuntimeError(
+        "DATABASE_URL is not configured or the PostgreSQL driver is unavailable; unable to establish a database connection."
+    )
 
 
 # Simple login_required decorator. If a route requires the user to be
@@ -1213,10 +1183,18 @@ def register():
             conn.close()
             flash('Пользователь с таким e‑mail уже существует или ожидает подтверждения.')
             return redirect(url_for('register'))
-        # Determine if an owner already exists in the system
-        owner_exists = conn.execute(
+        # Determine if an owner already exists in the system.  When using
+        # psycopg2 with RealDictCursor the row is a dict, but with sqlite3
+        # it is a tuple.  Extract the first value safely.
+        row_owner = conn.execute(
             "SELECT COUNT(*) FROM users WHERE role = 'owner'"
-        ).fetchone()[0] > 0
+        ).fetchone()
+        if row_owner is None:
+            owner_exists = False
+        elif isinstance(row_owner, dict):
+            owner_exists = list(row_owner.values())[0] > 0
+        else:
+            owner_exists = row_owner[0] > 0
         # Decide the final role based on account type and whether an owner exists
         final_role = None
         if account_type == 'owner':
@@ -4846,10 +4824,16 @@ def delete_chat(room_id: int):
         conn.close()
         abort(403)
     # Count how many members remain in this room
-    member_count = conn.execute(
+    row_member_count = conn.execute(
         'SELECT COUNT(*) FROM chat_room_members WHERE room_id = ?',
         (room_id,)
-    ).fetchone()[0]
+    ).fetchone()
+    if row_member_count is None:
+        member_count = 0
+    elif isinstance(row_member_count, dict):
+        member_count = list(row_member_count.values())[0]
+    else:
+        member_count = row_member_count[0]
     with conn:
         # Remove the current user from the membership table
         conn.execute(
