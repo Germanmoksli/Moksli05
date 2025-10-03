@@ -2801,11 +2801,26 @@ def calendar_view(year=None, month=None):
 
     # Map bookings to each date per room_id
     booking_map = {}
+    # Helper to coerce values returned from the database into ``datetime.date`` objects.
+    # PostgreSQL returns ``datetime.date`` while SQLite returns strings; psycopg2 might
+    # return ``datetime.datetime`` when using timestamp columns.  This helper normalises
+    # those types into a plain date.  It assumes the value is either a date, datetime or
+    # ISO‑formatted string; otherwise ``date.fromisoformat`` will raise.
+    def _to_date(val: object) -> date:
+        if isinstance(val, date) and not isinstance(val, datetime):
+            return val
+        if isinstance(val, datetime):
+            return val.date()
+        return date.fromisoformat(str(val))
     for b in bookings:
         # Convert sqlite Row to a mutable dict so we can compute per‑day rate
         b_dict = dict(b)
-        check_in = date.fromisoformat(b_dict["check_in_date"])
-        check_out = date.fromisoformat(b_dict["check_out_date"])
+        try:
+            check_in = _to_date(b_dict.get("check_in_date"))
+            check_out = _to_date(b_dict.get("check_out_date"))
+        except Exception:
+            # Skip bookings with invalid date values rather than causing a 500 error
+            continue
         # Number of nights: difference in days (exclusive of check‑out date). Use 1 as fallback to avoid division by zero.
         nights = (check_out - check_in).days or 1
         # Compute price per day based on total_amount, if provided
