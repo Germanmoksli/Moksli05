@@ -649,6 +649,18 @@ def get_db_connection():
                     self.lastrowid = None
 
                 def _translate_query(self, query: str) -> str:
+                    """
+                    Translate SQLite-specific query syntax into PostgreSQL-compatible SQL.
+
+                    This helper normalizes PRAGMA statements, rewrites ``INSERT OR IGNORE``
+                    into ``ON CONFLICT DO NOTHING`` and determines whether to append a
+                    ``RETURNING id`` clause. The ``RETURNING id`` clause is only added
+                    for tables that have an integer primary key column named ``id``. Tables
+                    with composite or non-integer primary keys (e.g., ``user_room_last_seen``)
+                    should not receive ``RETURNING id`` because such a column does not
+                    exist, and doing so causes "UndefinedColumn" errors on PostgreSQL.
+                    """
+                    import re
                     # Normalize whitespace for easier matching
                     q = query.strip()
                     # Handle PRAGMA table_info(table_name)
@@ -659,18 +671,38 @@ def get_db_connection():
                     if lower_q.startswith("insert or ignore into"):
                         # replace the first occurrence of "insert or ignore" with "insert"
                         # and append ON CONFLICT DO NOTHING just before any RETURNING clause
-                        # Split by "into" to preserve table name and columns
-                        parts = query.split(None, 3)  # should split into ['INSERT', 'OR', 'IGNORE', 'INTO ...']
-                        # Reconstruct query without 'OR IGNORE'
+                        # Split by spaces to preserve table name and columns
+                        parts = query.split(None, 3)  # e.g. ['INSERT', 'OR', 'IGNORE', 'INTO ...']
                         new_query = "INSERT " + parts[-1]
-                        # Prepare conflict clause
                         conflict_clause = " ON CONFLICT DO NOTHING"
-                        # If the query already contains "RETURNING", insert conflict clause before it
+                        # Insert conflict clause before any RETURNING keyword
                         if "RETURNING" in new_query or "returning" in new_query:
                             idx = new_query.lower().rfind("returning")
                             return new_query[:idx] + conflict_clause + " " + new_query[idx:]
                         else:
                             return new_query + conflict_clause
+                    # If this is an INSERT without an explicit RETURNING clause, decide if we
+                    # should add ``RETURNING id``. Only append for tables with an integer
+                    # primary key named "id". Use a whitelist of such tables based on the
+                    # schema defined in this application.
+                    low = q.lower()
+                    if low.startswith("insert") and "returning" not in low:
+                        # Extract the table name following "insert into"
+                        m = re.match(r"insert\s+(?:or\s+ignore\s+)?into\s+([\w\"\.]+)", q, re.IGNORECASE)
+                        if m:
+                            table_name = m.group(1).strip('"')
+                            # Only append RETURNING id for tables that define an integer primary key "id".
+                            id_tables = {
+                                'guests', 'rooms', 'bookings', 'payments', 'expenses',
+                                'cleaning_tasks', 'users', 'registration_requests',
+                                'messages', 'chat_rooms', 'guest_comments', 'subscriptions'
+                            }
+                            # The table name might include schema qualification (e.g., public.chat_rooms)
+                            simple_name = table_name.split('.')[-1]
+                            if simple_name in id_tables:
+                                return query + " RETURNING id"
+                        # Otherwise return the query unchanged
+                        return query
                     return query
 
                 def _convert_placeholders(self, query: str) -> str:
