@@ -1611,8 +1611,25 @@ def ensure_photo_column(conn: sqlite3.Connection) -> None:
     if not cols:
         # Table does not exist; nothing to do
         return
-    # Each row tuple/dict contains column name at index 1
-    has_photo = any((row[1] == 'photo' if isinstance(row, tuple) else row.get('name') == 'photo') for row in cols)
+    # Each row returned by PRAGMA is either a tuple (from raw sqlite) or a mapping
+    # object (e.g. sqlite3.Row or RealDictRow).  sqlite3.Row acts like a mapping
+    # but does not implement ``get``; instead, column values can be accessed via
+    # indexing with the column name.  Determine the column name accordingly.
+    has_photo = False
+    for row in cols:
+        if isinstance(row, tuple):
+            # For tuple rows, the column name is at index 1
+            col_name = row[1]
+        else:
+            try:
+                # sqlite3.Row and RealDictRow support dict-style access using []
+                col_name = row['name']
+            except Exception:
+                # Fallback to None if name cannot be determined
+                col_name = None
+        if col_name == 'photo':
+            has_photo = True
+            break
     if not has_photo:
         try:
             conn.execute("ALTER TABLE users ADD COLUMN photo TEXT;")
@@ -1719,12 +1736,28 @@ def ensure_message_file_columns(conn: sqlite3.Connection) -> None:
     cur = conn.cursor()
     cur.execute("PRAGMA table_info(messages)")
     cols = [row[1] for row in cur.fetchall()]
-    # Add file_name column if missing
+    # Add file_name column if missing.  Wrap in try/except and rollback on
+    # error.  Without the rollback, a failed ALTER TABLE would put the
+    # connection into an aborted transaction state, preventing further
+    # statements from executing until a rollback is issued.  See
+    # psycopg2.errors.InFailedSqlTransaction.
     if 'file_name' not in cols:
-        conn.execute("ALTER TABLE messages ADD COLUMN file_name TEXT")
+        try:
+            conn.execute("ALTER TABLE messages ADD COLUMN file_name TEXT")
+        except Exception:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
     # Add file_type column if missing
     if 'file_type' not in cols:
-        conn.execute("ALTER TABLE messages ADD COLUMN file_type TEXT")
+        try:
+            conn.execute("ALTER TABLE messages ADD COLUMN file_type TEXT")
+        except Exception:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
 
 
 # A helper to ensure the table tracking the last seen chat message for each user
@@ -2695,8 +2728,13 @@ def calendar_view(year=None, month=None):
     first_day = f"{year}-{month:02d}-01"
     last_day = f"{year}-{month:02d}-{calendar.monthrange(year, month)[1]}"
     ensure_status_table(conn)
+    # Query custom statuses between the first and last day.  Avoid the
+    # ``date(?)`` syntax which causes a type mismatch on PostgreSQL when
+    # comparing a text column with a date literal.  Since dates are stored in
+    # ISO format (YYYY-MM-DD), simple string comparison works for range
+    # filtering across both SQLite and PostgreSQL.
     statuses = conn.execute(
-        "SELECT room_id, date, status FROM room_statuses WHERE date BETWEEN date(?) AND date(?)",
+        "SELECT room_id, date, status FROM room_statuses WHERE date >= ? AND date <= ?",
         (first_day, last_day),
     ).fetchall()
     # Map statuses to dates per room
