@@ -417,6 +417,136 @@ def get_db_connection():
             )
             pg_conn = None
         if pg_conn is not None:
+            # Automatically initialize the PostgreSQL schema if the core
+            # ``users`` table does not exist.  This mirrors the behaviour of
+            # ``create_database.py`` and allows first‑run deployments on
+            # platforms like Render where there is no opportunity to run a
+            # separate migration command.  The helper will create all core
+            # tables if they are absent.  For subsequent connections the
+            # initialization is skipped.
+            def _initialize_pg_schema_if_needed(conn):
+                try:
+                    cur0 = conn.cursor()
+                    cur0.execute(
+                        "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users');"
+                    )
+                    exists = cur0.fetchone()
+                    cur0.close()
+                    if exists and (exists[0] if isinstance(exists, tuple) else list(exists.values())[0]):
+                        return
+                    # Create tables.  These statements mirror create_database.py but omit SQLite‑specific PRAGMA calls.
+                    statements = [
+                        """
+                        CREATE TABLE IF NOT EXISTS guests (
+                            id SERIAL PRIMARY KEY,
+                            name TEXT NOT NULL,
+                            phone TEXT,
+                            email TEXT,
+                            notes TEXT
+                        );
+                        """,
+                        """
+                        CREATE TABLE IF NOT EXISTS rooms (
+                            id SERIAL PRIMARY KEY,
+                            room_number TEXT NOT NULL UNIQUE,
+                            capacity INTEGER,
+                            notes TEXT,
+                            listing_url TEXT,
+                            residential_complex TEXT
+                        );
+                        """,
+                        """
+                        CREATE TABLE IF NOT EXISTS bookings (
+                            id SERIAL PRIMARY KEY,
+                            guest_id INTEGER NOT NULL,
+                            room_id INTEGER NOT NULL,
+                            check_in_date DATE NOT NULL,
+                            check_out_date DATE NOT NULL,
+                            status TEXT NOT NULL DEFAULT 'booked',
+                            total_amount REAL,
+                            paid_amount REAL,
+                            notes TEXT,
+                            FOREIGN KEY (guest_id) REFERENCES guests(id) ON DELETE CASCADE,
+                            FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
+                        );
+                        """,
+                        """
+                        CREATE TABLE IF NOT EXISTS payments (
+                            id SERIAL PRIMARY KEY,
+                            booking_id INTEGER NOT NULL,
+                            amount REAL NOT NULL,
+                            date DATE NOT NULL,
+                            method TEXT,
+                            status TEXT,
+                            notes TEXT,
+                            FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE
+                        );
+                        """,
+                        """
+                        CREATE TABLE IF NOT EXISTS expenses (
+                            id SERIAL PRIMARY KEY,
+                            category TEXT NOT NULL,
+                            amount REAL NOT NULL,
+                            date DATE NOT NULL,
+                            description TEXT
+                        );
+                        """,
+                        """
+                        CREATE TABLE IF NOT EXISTS cleaning_tasks (
+                            id SERIAL PRIMARY KEY,
+                            room_id INTEGER NOT NULL,
+                            scheduled_date TIMESTAMP NOT NULL,
+                            status TEXT NOT NULL DEFAULT 'scheduled',
+                            notes TEXT,
+                            FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
+                        );
+                        """,
+                        """
+                        CREATE TABLE IF NOT EXISTS users (
+                            id SERIAL PRIMARY KEY,
+                            username TEXT NOT NULL UNIQUE,
+                            password_hash TEXT NOT NULL,
+                            role TEXT NOT NULL,
+                            name TEXT,
+                            contact_info TEXT,
+                            photo TEXT
+                        );
+                        """,
+                        """
+                        CREATE TABLE IF NOT EXISTS registration_requests (
+                            id SERIAL PRIMARY KEY,
+                            username TEXT NOT NULL UNIQUE,
+                            password_hash TEXT NOT NULL,
+                            status TEXT NOT NULL DEFAULT 'pending',
+                            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                        );
+                        """,
+                        """
+                        CREATE TABLE IF NOT EXISTS blacklist (
+                            phone TEXT PRIMARY KEY
+                        );
+                        """,
+                        """
+                        CREATE TABLE IF NOT EXISTS messages (
+                            id SERIAL PRIMARY KEY,
+                            user_id INTEGER NOT NULL,
+                            message TEXT NOT NULL,
+                            timestamp TEXT NOT NULL,
+                            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                        );
+                        """,
+                    ]
+                    cur = conn.cursor()
+                    for stmt in statements:
+                        cur.execute(stmt)
+                    conn.commit()
+                    cur.close()
+                except Exception as e:
+                    # Log and continue; schema may be partially created
+                    print(f"Error initializing PostgreSQL schema: {e}")
+            # Run initialization once per connection
+            _initialize_pg_schema_if_needed(pg_conn)
+
             # Define a wrapper class for PostgreSQL to emulate SQLite API
             class SQLiteCompatCursor:
                 """
@@ -1318,11 +1448,32 @@ def ensure_registration_requests_table(conn: sqlite3.Connection) -> None:
 # ALTER TABLE. This function can be called before accessing or
 # updating user photo data to lazily migrate the schema.
 def ensure_photo_column(conn: sqlite3.Connection) -> None:
-    # Check existing columns in users table
+    """
+    Ensure that the ``users`` table has a ``photo`` column.  This helper
+    first checks if the table exists (via PRAGMA table_info) and only
+    attempts to add the column if the table is present and the column is
+    missing.  When using PostgreSQL, attempting to alter a non‑existent
+    table would raise an error, so we skip the ALTER if no columns are
+    returned.  Any exceptions during the ALTER are suppressed to
+    accommodate concurrent deployments.
+    """
+    # Query the table info; when using PostgreSQL the compatibility layer
+    # emulates PRAGMA via information_schema.  If the table does not
+    # exist, the result will be an empty list.  Only proceed if there
+    # are existing columns.
     cols = conn.execute("PRAGMA table_info(users)").fetchall()
-    # The result rows have fields (cid, name, type,...). We use index 1 for name.
-    if not any(col[1] == 'photo' for col in cols):
-        conn.execute("ALTER TABLE users ADD COLUMN photo TEXT;")
+    if not cols:
+        # Table does not exist; nothing to do
+        return
+    # Each row tuple/dict contains column name at index 1
+    has_photo = any((row[1] == 'photo' if isinstance(row, tuple) else row.get('name') == 'photo') for row in cols)
+    if not has_photo:
+        try:
+            conn.execute("ALTER TABLE users ADD COLUMN photo TEXT;")
+        except Exception:
+            # Ignore errors if another process has already added the column or if
+            # the underlying database does not support ALTER TABLE in this way
+            pass
 
 # ---------------------------------------------------------------------------
 # Chat rooms and memberships
