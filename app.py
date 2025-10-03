@@ -394,6 +394,17 @@ def get_db_connection():
     querying PostgreSQL's information_schema.
     """
     db_url = os.environ.get("DATABASE_URL")
+
+    # Require PostgreSQL: abort if DATABASE_URL is missing or psycopg2 is not installed.
+    # SQLite support has been removed to prevent cross‑database conflicts.
+    if not db_url:
+        raise RuntimeError(
+            "DATABASE_URL environment variable must be set; SQLite support has been removed."
+        )
+    if psycopg2 is None:
+        raise RuntimeError(
+            "psycopg2 package is required for PostgreSQL connections but is not installed."
+        )
     # Normalize 'postgres://' scheme to 'postgresql://' for psycopg2.  Some
     # providers (including Render) still return a URL beginning with
     # 'postgres://'.  psycopg2 accepts 'postgresql://' and Render's
@@ -421,11 +432,8 @@ def get_db_connection():
             except Exception:
                 pass
         except Exception as exc:
-            # Fall back to SQLite on connection failure
-            print(
-                f"Warning: could not connect to PostgreSQL ({exc}); falling back to SQLite."
-            )
-            pg_conn = None
+            # Remove SQLite fallback: raise a runtime error on PostgreSQL connection failure
+            raise RuntimeError(f"Failed to connect to PostgreSQL: {exc}")
         if pg_conn is not None:
             # Automatically initialize the PostgreSQL schema if the core
             # ``users`` table does not exist.  This mirrors the behaviour of

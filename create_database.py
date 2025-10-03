@@ -32,17 +32,16 @@ Each table is created with columns appropriate to manage an apart‑hotel.
 
 import argparse
 import os
-import sqlite3
 from datetime import datetime
 
-# Optional PostgreSQL support.  psycopg2 is only imported if available.
+# PostgreSQL support only. SQLite has been removed.
 try:
     import psycopg2  # type: ignore
 except Exception:
     psycopg2 = None  # type: ignore
 
 
-def create_tables(connection: sqlite3.Connection) -> None:
+def create_tables(connection) -> None:
     """Create all tables needed for the apart‑hotel management system.
 
     Args:
@@ -51,9 +50,7 @@ def create_tables(connection: sqlite3.Connection) -> None:
             recreate them.
     """
     cursor = connection.cursor()
-
-    # Enable foreign key support (disabled by default in SQLite)
-    cursor.execute("PRAGMA foreign_keys = ON;")
+    # Foreign keys are enforced by default in PostgreSQL.  SQLite support has been removed.
 
     # Table: guests
     cursor.execute(
@@ -213,51 +210,41 @@ def main() -> None:
             "created on the remote server."
         )
     )
-    parser.add_argument(
-        "--db-file",
-        type=str,
-        default="aparthotel.db",
-        help="Filename for the SQLite database (default: aparthotel.db)",
-    )
+    # Remove --db-file option; only --db-url or DATABASE_URL may be used.  SQLite support has been removed.
     parser.add_argument(
         "--db-url",
         type=str,
         help=(
-            "PostgreSQL database URL.  Overrides --db-file when provided.  "
-            "If omitted, the DATABASE_URL environment variable will be used if set."
+            "PostgreSQL database URL.  If omitted, the DATABASE_URL environment variable will be used if set."
         ),
     )
     args = parser.parse_args()
 
-    # Determine whether to use PostgreSQL based on command-line option or environment
+    # Determine PostgreSQL URL from command-line option or environment.  SQLite fallback has been removed.
     db_url = args.db_url or os.environ.get("DATABASE_URL")
-    connection = None
+    if not db_url:
+        raise SystemExit(
+            "Error: a PostgreSQL database URL must be provided via --db-url or the DATABASE_URL environment variable; SQLite support has been removed."
+        )
     # Normalize URL scheme if necessary
-    if db_url and db_url.startswith("postgres://"):
+    if db_url.startswith("postgres://"):
         db_url = db_url.replace("postgres://", "postgresql://", 1)
-    if db_url and psycopg2 is not None:
-        try:
-            # Default to requiring SSL unless PGSSLMODE is set differently
-            connection = psycopg2.connect(db_url, sslmode=os.environ.get("PGSSLMODE", "require"))
-        except Exception as exc:
-            raise SystemExit(f"Failed to connect to PostgreSQL database: {exc}")
-    else:
-        # Fallback to local SQLite
-        db_file_path = os.path.abspath(args.db_file)
-        connection = sqlite3.connect(db_file_path)
+    if psycopg2 is None:
+        raise SystemExit(
+            "Error: psycopg2 package is required to connect to PostgreSQL but is not installed."
+        )
+    try:
+        # Default to requiring SSL unless PGSSLMODE is set differently
+        connection = psycopg2.connect(db_url, sslmode=os.environ.get("PGSSLMODE", "require"))
+    except Exception as exc:
+        raise SystemExit(f"Failed to connect to PostgreSQL database: {exc}")
     try:
         create_tables(connection)
+        # Ensure DDL changes are committed
+        connection.commit()
     finally:
-        # psycopg2 connections require explicit commit to persist DDL changes
-        try:
-            connection.commit()
-        except Exception:
-            pass
         connection.close()
-    if db_url and psycopg2 is not None:
-        print(f"Database schema created successfully on PostgreSQL: {db_url}")
-    else:
-        print(f"Database created successfully at: {os.path.abspath(args.db_file)}")
+    print(f"Database schema created successfully on PostgreSQL: {db_url}")
 
 
 if __name__ == "__main__":

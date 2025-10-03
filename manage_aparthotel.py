@@ -30,33 +30,29 @@ initialize it by creating the necessary tables.
 
 import argparse
 import os
-import sqlite3
+# SQLite support has been removed.  Use the Flask application's
+# PostgreSQL connection helper instead.
+try:
+    import psycopg2  # type: ignore
+except Exception:
+    psycopg2 = None  # type: ignore
+from app import get_db_connection
 from datetime import datetime
 
 
-DB_DEFAULT_FILE = "aparthotel.db"
+# SQLite database filename constant removed.  DATABASE_URL should be used instead.
 
 
-def ensure_db_exists(db_path: str) -> sqlite3.Connection:
-    """Ensure the SQLite database exists and has the required tables.
 
-    If the database file does not exist, it will be created and tables
-    will be initialized using the same schema as in ``create_database.py``.
-
-    Args:
-        db_path: Path to the SQLite database file.
-
-    Returns:
-        An open SQLite connection.
+def ensure_db_exists(_unused: str = ""):
     """
-    needs_init = not os.path.exists(db_path)
-    conn = sqlite3.connect(db_path)
-    # Always enable foreign keys
-    conn.execute("PRAGMA foreign_keys = ON;")
+    Return a PostgreSQL connection using the Flask application's helper.
 
-    if needs_init:
-        from create_database import create_tables  # reuse table creation
-        create_tables(conn)
+    The DATABASE_URL environment variable must be set.  Schema creation is
+    handled automatically by the application; SQLite support has been removed.
+    """
+    # Delegate connection handling to the Flask app's get_db_connection.
+    conn = get_db_connection()
     return conn
 
 
@@ -65,7 +61,7 @@ def prompt(prompt_text: str) -> str:
     return input(prompt_text).strip()
 
 
-def add_guest(conn: sqlite3.Connection) -> None:
+def add_guest(conn) -> None:
     name = prompt("Введите имя гостя: ")
     phone = prompt("Введите телефон (можно оставить пустым): ")
     email = prompt("Введите email (можно оставить пустым): ")
@@ -78,7 +74,7 @@ def add_guest(conn: sqlite3.Connection) -> None:
     print("Гость добавлен успешно!\n")
 
 
-def add_room(conn: sqlite3.Connection) -> None:
+def add_room(conn) -> None:
     room_number = prompt("Введите номер комнаты: ")
     capacity_str = prompt("Введите вместимость комнаты (число, можно оставить пустым): ")
     notes = prompt("Примечания (можно оставить пустым): ")
@@ -90,11 +86,12 @@ def add_room(conn: sqlite3.Connection) -> None:
                 (room_number, capacity, notes or None),
             )
         print("Комната добавлена успешно!\n")
-    except sqlite3.IntegrityError:
+    except Exception:
+        # Unique constraint violations raise different exceptions in psycopg2; catch generic
         print("Ошибка: номер комнаты уже существует!\n")
 
 
-def choose_guest(conn: sqlite3.Connection) -> int:
+def choose_guest(conn) -> int:
     """Prompt the user to select a guest and return the guest ID."""
     guests = conn.execute("SELECT id, name, phone FROM guests ORDER BY id").fetchall()
     if not guests:
@@ -115,7 +112,7 @@ def choose_guest(conn: sqlite3.Connection) -> int:
     return -1
 
 
-def choose_room(conn: sqlite3.Connection) -> int:
+def choose_room(conn) -> int:
     """Prompt the user to select a room and return the room ID."""
     rooms = conn.execute("SELECT id, room_number FROM rooms ORDER BY id").fetchall()
     if not rooms:
@@ -135,7 +132,7 @@ def choose_room(conn: sqlite3.Connection) -> int:
     return -1
 
 
-def add_booking(conn: sqlite3.Connection) -> None:
+def add_booking(conn) -> None:
     print("\nСоздание бронирования")  # Display heading
     guest_id = choose_guest(conn)
     if guest_id == -1:
@@ -172,7 +169,7 @@ def add_booking(conn: sqlite3.Connection) -> None:
     print("Бронирование добавлено успешно!\n")
 
 
-def add_payment(conn: sqlite3.Connection) -> None:
+def add_payment(conn) -> None:
     print("\nЗапись платежа")
     bookings = conn.execute(
         "SELECT id, guest_id, room_id, check_in_date, check_out_date FROM bookings ORDER BY id"
@@ -216,7 +213,7 @@ def add_payment(conn: sqlite3.Connection) -> None:
     print("Платеж записан!\n")
 
 
-def add_expense(conn: sqlite3.Connection) -> None:
+def add_expense(conn) -> None:
     print("\nЗапись расхода")
     category = prompt("Категория расхода (например, уборка, ремонт): ")
     amount_str = prompt("Сумма: ")
@@ -237,7 +234,7 @@ def add_expense(conn: sqlite3.Connection) -> None:
     print("Расход добавлен!\n")
 
 
-def schedule_cleaning(conn: sqlite3.Connection) -> None:
+def schedule_cleaning(conn) -> None:
     print("\nПланирование уборки")
     room_id = choose_room(conn)
     if room_id == -1:
@@ -254,7 +251,7 @@ def schedule_cleaning(conn: sqlite3.Connection) -> None:
     print("Уборка запланирована!\n")
 
 
-def view_bookings(conn: sqlite3.Connection) -> None:
+def view_bookings(conn) -> None:
     print("\nСписок бронирований:")
     bookings = conn.execute(
         """
@@ -288,7 +285,7 @@ def view_bookings(conn: sqlite3.Connection) -> None:
     print()
 
 
-def view_expenses(conn: sqlite3.Connection) -> None:
+def view_expenses(conn) -> None:
     print("\nСписок расходов:")
     expenses = conn.execute(
         "SELECT id, category, amount, date, description FROM expenses ORDER BY date DESC"
@@ -305,18 +302,25 @@ def view_expenses(conn: sqlite3.Connection) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Command‑line interface for managing an apart‑hotel database."
+        description="Command‑line interface for managing an apart‑hotel database (PostgreSQL only)."
     )
     parser.add_argument(
-        "--db-file",
+        "--db-url",
         type=str,
-        default=DB_DEFAULT_FILE,
-        help=f"SQLite database filename (default: {DB_DEFAULT_FILE})",
+        help="PostgreSQL database URL.  If omitted, the DATABASE_URL environment variable will be used."
     )
     args = parser.parse_args()
 
-    # Ensure the database exists
-    conn = ensure_db_exists(os.path.abspath(args.db_file))
+    # Determine the database URL
+    db_url = args.db_url or os.environ.get("DATABASE_URL")
+    if not db_url:
+        raise SystemExit(
+            "DATABASE_URL must be provided via --db-url or environment; SQLite support has been removed."
+        )
+    # Set the environment variable so app.get_db_connection picks it up
+    os.environ["DATABASE_URL"] = db_url
+    # Ensure the database exists / connect
+    conn = ensure_db_exists(db_url)
 
     # Main menu loop
     while True:
