@@ -1,63 +1,75 @@
 """
 Interactive command‑line tool for managing an apart‑hotel database.
 
-This script builds upon the SQLite database schema created by ``create_database.py``.
-It provides a simple text‑based menu to perform common operations:
+This script connects directly to a PostgreSQL database and uses the same
+schema as the Flask web application.  Support for SQLite has been
+removed in order to avoid conflicts between differing SQL dialects.
+All operations such as adding guests, rooms, bookings, payments,
+expenses and cleaning tasks are performed through psycopg2.  The
+database connection URL must be provided via the ``--db-url`` option
+or through the ``DATABASE_URL`` environment variable.  If the target
+database does not contain the required tables, they will be created
+automatically by importing and calling ``create_tables`` from
+``create_database.py``.
 
-    1. Add a guest
-    2. Add a room
-    3. Make a booking
-    4. Record a payment
-    5. Log an expense
-    6. Schedule a cleaning task
-    7. View bookings
-    8. View expenses
-    9. Exit
+To run the script:
 
-The script is designed for users with no programming background. Follow the
-prompts to enter data. Each action updates the underlying SQLite database
-(``aparthotel.db`` by default). You can run the script via:
+    python manage_aparthotel.py --db-url postgresql://user:pass@host:port/dbname
 
-    python manage_aparthotel.py
-
-Optionally, specify a custom database file with ``--db-file``:
-
-    python manage_aparthotel.py --db-file my_database.db
-
-If the specified database file does not exist, the script will attempt to
-initialize it by creating the necessary tables.
+If you omit ``--db-url``, the script will attempt to use
+``DATABASE_URL`` from the environment.  Should the connection or
+initialisation fail an error will be displayed.
 """
 
 import argparse
 import os
-import sqlite3
 from datetime import datetime
 
+# psycopg2 is required for PostgreSQL connectivity.  We import it here
+# so that a clear error is raised if the dependency is missing.
+try:
+    import psycopg2  # type: ignore
+except Exception:
+    psycopg2 = None  # type: ignore
 
-DB_DEFAULT_FILE = "aparthotel.db"
+from create_database import create_tables
 
 
-def ensure_db_exists(db_path: str) -> sqlite3.Connection:
-    """Ensure the SQLite database exists and has the required tables.
-
-    If the database file does not exist, it will be created and tables
-    will be initialized using the same schema as in ``create_database.py``.
+def ensure_db_exists(db_url: str):
+    """
+    Connect to the specified PostgreSQL database and ensure the schema exists.
 
     Args:
-        db_path: Path to the SQLite database file.
+        db_url: PostgreSQL connection URL.  If the URL uses the
+            deprecated ``postgres://`` scheme it will be normalised
+            to ``postgresql://``.  SSL mode is configured via the
+            ``PGSSLMODE`` environment variable (default: ``require``).
 
     Returns:
-        An open SQLite connection.
+        An open psycopg2 connection with autocommit enabled.
     """
-    needs_init = not os.path.exists(db_path)
-    conn = sqlite3.connect(db_path)
-    # Always enable foreign keys
-    conn.execute("PRAGMA foreign_keys = ON;")
-
-    if needs_init:
-        from create_database import create_tables  # reuse table creation
+    if not db_url:
+        raise SystemExit(
+            "A database URL must be provided via --db-url or the DATABASE_URL environment variable."
+        )
+    # Normalise the scheme for psycopg2
+    if db_url.startswith("postgres://"):
+        db_url = db_url.replace("postgres://", "postgresql://", 1)
+    if psycopg2 is None:
+        raise SystemExit(
+            "psycopg2 is required to run this script but is not installed. Install psycopg2 or psycopg2-binary."
+        )
+    try:
+        conn = psycopg2.connect(db_url, sslmode=os.environ.get("PGSSLMODE", "require"))
+        try:
+            conn.autocommit = True
+        except Exception:
+            pass
+        # Create tables if they do not exist
         create_tables(conn)
-    return conn
+        return conn
+    except Exception as e:
+        raise SystemExit(f"Failed to connect to database: {e}")
 
 
 def prompt(prompt_text: str) -> str:
@@ -65,38 +77,40 @@ def prompt(prompt_text: str) -> str:
     return input(prompt_text).strip()
 
 
-def add_guest(conn: sqlite3.Connection) -> None:
+def add_guest(conn) -> None:
     name = prompt("Введите имя гостя: ")
     phone = prompt("Введите телефон (можно оставить пустым): ")
     email = prompt("Введите email (можно оставить пустым): ")
     notes = prompt("Примечания (можно оставить пустым): ")
-    with conn:
-        conn.execute(
-            "INSERT INTO guests (name, phone, email, notes) VALUES (?, ?, ?, ?)",
+    with conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO guests (name, phone, email, notes) VALUES (%s, %s, %s, %s)",
             (name, phone or None, email or None, notes or None),
         )
     print("Гость добавлен успешно!\n")
 
 
-def add_room(conn: sqlite3.Connection) -> None:
+def add_room(conn) -> None:
     room_number = prompt("Введите номер комнаты: ")
     capacity_str = prompt("Введите вместимость комнаты (число, можно оставить пустым): ")
     notes = prompt("Примечания (можно оставить пустым): ")
     capacity = int(capacity_str) if capacity_str else None
     try:
-        with conn:
-            conn.execute(
-                "INSERT INTO rooms (room_number, capacity, notes) VALUES (?, ?, ?)",
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO rooms (room_number, capacity, notes) VALUES (%s, %s, %s)",
                 (room_number, capacity, notes or None),
             )
         print("Комната добавлена успешно!\n")
-    except sqlite3.IntegrityError:
-        print("Ошибка: номер комнаты уже существует!\n")
+    except Exception:
+        print("Ошибка: номер комнаты уже существует или другая ошибка при добавлении!\n")
 
 
-def choose_guest(conn: sqlite3.Connection) -> int:
+def choose_guest(conn) -> int:
     """Prompt the user to select a guest and return the guest ID."""
-    guests = conn.execute("SELECT id, name, phone FROM guests ORDER BY id").fetchall()
+    with conn.cursor() as cur:
+        cur.execute("SELECT id, name, phone FROM guests ORDER BY id")
+        guests = cur.fetchall()
     if not guests:
         print("Нет доступных гостей. Сначала добавьте гостя.\n")
         return -1
@@ -115,9 +129,11 @@ def choose_guest(conn: sqlite3.Connection) -> int:
     return -1
 
 
-def choose_room(conn: sqlite3.Connection) -> int:
+def choose_room(conn) -> int:
     """Prompt the user to select a room and return the room ID."""
-    rooms = conn.execute("SELECT id, room_number FROM rooms ORDER BY id").fetchall()
+    with conn.cursor() as cur:
+        cur.execute("SELECT id, room_number FROM rooms ORDER BY id")
+        rooms = cur.fetchall()
     if not rooms:
         print("Нет доступных комнат. Сначала добавьте комнату.\n")
         return -1
@@ -135,7 +151,7 @@ def choose_room(conn: sqlite3.Connection) -> int:
     return -1
 
 
-def add_booking(conn: sqlite3.Connection) -> None:
+def add_booking(conn) -> None:
     print("\nСоздание бронирования")  # Display heading
     guest_id = choose_guest(conn)
     if guest_id == -1:
@@ -151,12 +167,14 @@ def add_booking(conn: sqlite3.Connection) -> None:
     notes = prompt("Примечания (можно оставить пустым): ")
     total_amount = float(total_amount_str) if total_amount_str else None
     paid_amount = float(paid_amount_str) if paid_amount_str else None
-    with conn:
-        conn.execute(
+    with conn.cursor() as cur:
+        cur.execute(
             """
-            INSERT INTO bookings (guest_id, room_id, check_in_date, check_out_date,
-                                  status, total_amount, paid_amount, notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO bookings (
+                guest_id, room_id, check_in_date, check_out_date,
+                status, total_amount, paid_amount, notes
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             """,
             (
                 guest_id,
@@ -172,11 +190,13 @@ def add_booking(conn: sqlite3.Connection) -> None:
     print("Бронирование добавлено успешно!\n")
 
 
-def add_payment(conn: sqlite3.Connection) -> None:
+def add_payment(conn) -> None:
     print("\nЗапись платежа")
-    bookings = conn.execute(
-        "SELECT id, guest_id, room_id, check_in_date, check_out_date FROM bookings ORDER BY id"
-    ).fetchall()
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT id, guest_id, room_id, check_in_date, check_out_date FROM bookings ORDER BY id"
+        )
+        bookings = cur.fetchall()
     if not bookings:
         print("Нет существующих бронирований. Сначала создайте бронирование.\n")
         return
@@ -205,18 +225,18 @@ def add_payment(conn: sqlite3.Connection) -> None:
     method = prompt("Метод оплаты (наличные, карта и т.д., можно пусто): ")
     status = prompt("Статус платежа (можно пусто): ")
     notes = prompt("Примечания (можно пусто): ")
-    with conn:
-        conn.execute(
+    with conn.cursor() as cur:
+        cur.execute(
             """
             INSERT INTO payments (booking_id, amount, date, method, status, notes)
-            VALUES (?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s)
             """,
             (booking_id, amount, date, method or None, status or None, notes or None),
         )
     print("Платеж записан!\n")
 
 
-def add_expense(conn: sqlite3.Connection) -> None:
+def add_expense(conn) -> None:
     print("\nЗапись расхода")
     category = prompt("Категория расхода (например, уборка, ремонт): ")
     amount_str = prompt("Сумма: ")
@@ -229,15 +249,15 @@ def add_expense(conn: sqlite3.Connection) -> None:
     if not date:
         date = datetime.now().strftime("%Y-%m-%d")
     description = prompt("Описание (можно пусто): ")
-    with conn:
-        conn.execute(
-            "INSERT INTO expenses (category, amount, date, description) VALUES (?, ?, ?, ?)",
+    with conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO expenses (category, amount, date, description) VALUES (%s, %s, %s, %s)",
             (category, amount, date, description or None),
         )
     print("Расход добавлен!\n")
 
 
-def schedule_cleaning(conn: sqlite3.Connection) -> None:
+def schedule_cleaning(conn) -> None:
     print("\nПланирование уборки")
     room_id = choose_room(conn)
     if room_id == -1:
@@ -246,26 +266,28 @@ def schedule_cleaning(conn: sqlite3.Connection) -> None:
     # We accept the string as is; SQLite will store it as text/datetime.
     status = prompt("Статус (по умолчанию 'scheduled'): ") or "scheduled"
     notes = prompt("Примечания (можно пусто): ")
-    with conn:
-        conn.execute(
-            "INSERT INTO cleaning_tasks (room_id, scheduled_date, status, notes) VALUES (?, ?, ?, ?)",
+    with conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO cleaning_tasks (room_id, scheduled_date, status, notes) VALUES (%s, %s, %s, %s)",
             (room_id, date_str, status, notes or None),
         )
     print("Уборка запланирована!\n")
 
 
-def view_bookings(conn: sqlite3.Connection) -> None:
+def view_bookings(conn) -> None:
     print("\nСписок бронирований:")
-    bookings = conn.execute(
-        """
-        SELECT b.id, g.name, r.room_number, b.check_in_date, b.check_out_date,
-               b.status, b.total_amount, b.paid_amount
-        FROM bookings AS b
-        JOIN guests AS g ON b.guest_id = g.id
-        JOIN rooms AS r ON b.room_id = r.id
-        ORDER BY b.check_in_date DESC
-        """
-    ).fetchall()
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT b.id, g.name, r.room_number, b.check_in_date, b.check_out_date,
+                   b.status, b.total_amount, b.paid_amount
+            FROM bookings AS b
+            JOIN guests AS g ON b.guest_id = g.id
+            JOIN rooms AS r ON b.room_id = r.id
+            ORDER BY b.check_in_date DESC
+            """
+        )
+        bookings = cur.fetchall()
     if not bookings:
         print("Пока нет бронирований.\n")
         return
@@ -288,11 +310,13 @@ def view_bookings(conn: sqlite3.Connection) -> None:
     print()
 
 
-def view_expenses(conn: sqlite3.Connection) -> None:
+def view_expenses(conn) -> None:
     print("\nСписок расходов:")
-    expenses = conn.execute(
-        "SELECT id, category, amount, date, description FROM expenses ORDER BY date DESC"
-    ).fetchall()
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT id, category, amount, date, description FROM expenses ORDER BY date DESC"
+        )
+        expenses = cur.fetchall()
     if not expenses:
         print("Пока нет расходов.\n")
         return
@@ -305,18 +329,18 @@ def view_expenses(conn: sqlite3.Connection) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Command‑line interface for managing an apart‑hotel database."
+        description="Command‑line interface for managing an apart‑hotel database via PostgreSQL."
     )
     parser.add_argument(
-        "--db-file",
+        "--db-url",
         type=str,
-        default=DB_DEFAULT_FILE,
-        help=f"SQLite database filename (default: {DB_DEFAULT_FILE})",
+        default=os.environ.get("DATABASE_URL"),
+        help="PostgreSQL connection URL (can also be provided via the DATABASE_URL environment variable)",
     )
     args = parser.parse_args()
 
-    # Ensure the database exists
-    conn = ensure_db_exists(os.path.abspath(args.db_file))
+    # Establish a database connection and ensure tables exist
+    conn = ensure_db_exists(args.db_url)
 
     # Main menu loop
     while True:
