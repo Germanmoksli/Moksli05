@@ -59,8 +59,11 @@ def create_tables(connection) -> None:
             id SERIAL PRIMARY KEY,
             name TEXT NOT NULL,
             phone TEXT,
+            extra_phone TEXT,
             email TEXT,
-            notes TEXT
+            notes TEXT,
+            birth_date DATE,
+            photo TEXT
         );
         """
     )

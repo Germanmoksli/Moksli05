@@ -2108,7 +2108,13 @@ def edit_guest(guest_id: int):
         birth_date = request.form.get("birth_date", "").strip() or None
         # Handle file upload for photo
         file = request.files.get("photo")
-        photo_filename = guest["photo"]  # default to existing
+        # Default to existing photo filename if present.  When using PostgreSQL,
+        # the guests table may not yet include a ``photo`` column; use getattr
+        # style access and default to None if the key is missing.
+        try:
+            photo_filename = guest["photo"]
+        except Exception:
+            photo_filename = None
         if file and file.filename:
             # Save uploaded file to static/uploads
             filename = secure_filename(file.filename)
