@@ -459,8 +459,15 @@ def get_db_connection():
                             id SERIAL PRIMARY KEY,
                             name TEXT NOT NULL,
                             phone TEXT,
+                            -- Additional phone number for the guest (optional).  Allows storing a
+                            -- secondary contact number without adding a separate table.
+                            extra_phone TEXT,
                             email TEXT,
-                            notes TEXT
+                            notes TEXT,
+                            -- Date of birth for the guest.  Stored as DATE.  Optional.
+                            birth_date DATE,
+                            -- Filename of the uploaded guest photo stored in static/uploads.  Optional.
+                            photo TEXT
                         );
                         """,
                         """
@@ -905,11 +912,42 @@ def get_db_connection():
                     return self
 
                 def __exit__(self, exc_type, exc_val, exc_tb):
-                    if exc_type:
-                        self.rollback()
-                    else:
-                        self.commit()
-                    self.close()
+                    """
+                    Context manager exit handler that gracefully commits or
+                    rolls back the transaction and closes the connection.
+
+                    When an exception has occurred inside the ``with`` block
+                    (``exc_type`` is not ``None``), attempt to roll back the
+                    transaction.  Otherwise attempt to commit.  All operations
+                    are wrapped in ``try/except`` blocks to suppress
+                    ``psycopg2.InterfaceError`` exceptions that may arise if
+                    the underlying PostgreSQL connection has already been
+                    closed.  Finally, close the connection in a safe manner
+                    regardless of whether commit/rollback succeeded.
+                    """
+                    try:
+                        if exc_type:
+                            # Roll back the transaction if an error occurred.  Ignore
+                            # errors if the connection is already closed or
+                            # autocommit is enabled.
+                            try:
+                                self.rollback()
+                            except Exception:
+                                pass
+                        else:
+                            # Commit the transaction on normal exit.  Ignore
+                            # errors if the connection is already closed.
+                            try:
+                                self.commit()
+                            except Exception:
+                                pass
+                    finally:
+                        # Always attempt to close the connection.  Ignore any
+                        # exceptions if the connection has already been closed.
+                        try:
+                            self.close()
+                        except Exception:
+                            pass
 
             # Wrap the raw psycopg2 connection in a SQLiteCompatConnection that
             # provides a subset of the sqlite3 API (execute/cursor/commit/rollback).
@@ -918,12 +956,26 @@ def get_db_connection():
             # operating on PostgreSQL, our PRAGMA implementation uses
             # information_schema to introspect the schema.  If the column is
             # missing it will be added.  This helper is idempotent so it is
-            # safe to call on every connection.
+            # safe to call on every connection.  Suppress any error so the
+            # application continues to run even if the schema update fails.
             try:
                 ensure_booking_creator_column(wrapper_conn)
             except Exception:
-                # Do not abort if schema introspection fails; the rest of the
-                # application will operate without a created_by column.
+                pass
+            # Ensure that optional columns exist on the guests table.  Older
+            # deployments may lack the extra_phone, birth_date or photo columns.
+            # These helpers attempt to add the columns if they are missing.
+            try:
+                ensure_extra_phone_column(wrapper_conn)
+            except Exception:
+                pass
+            try:
+                ensure_birth_date_column(wrapper_conn)
+            except Exception:
+                pass
+            try:
+                ensure_guest_photo_column(wrapper_conn)
+            except Exception:
                 pass
             return wrapper_conn
     # No PostgreSQL connection could be established, and fallback to SQLite is disabled.
@@ -1601,6 +1653,44 @@ def ensure_extra_phone_column(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE guests ADD COLUMN extra_phone TEXT")
     except Exception:
         # The column likely already exists; ignore any error.
+        pass
+
+# Ensure that the guests table has a birth_date column.
+def ensure_birth_date_column(conn: sqlite3.Connection) -> None:
+    """
+    Add a ``birth_date`` column to the ``guests`` table if it does not exist.
+
+    The application stores the guest's birth date in a dedicated column.  On
+    older deployments this column may be missing, causing ``UndefinedColumn``
+    errors when reading or writing guest data.  This helper attempts to
+    alter the ``guests`` table to add a ``birth_date DATE`` column.  If the
+    column already exists or the table does not exist yet, any resulting
+    exception is silently ignored.  Because ``ALTER TABLE`` statements are
+    automatically committed on PostgreSQL when autocommit is enabled,
+    explicit commits are not required.
+    """
+    try:
+        conn.execute("ALTER TABLE guests ADD COLUMN birth_date DATE")
+    except Exception:
+        # Ignore failures if the column already exists or cannot be added
+        pass
+
+# Ensure that the guests table has a photo column.
+def ensure_guest_photo_column(conn: sqlite3.Connection) -> None:
+    """
+    Add a ``photo`` column to the ``guests`` table if it does not exist.
+
+    Guest photos are stored as filenames in the ``photo`` column.  In
+    deployments where this column is absent, attempts to access guest
+    photos will raise ``KeyError`` or ``UndefinedColumn`` errors.  This
+    helper calls ``ALTER TABLE`` to add a ``photo TEXT`` column to the
+    ``guests`` table.  Any error (for example if the column already
+    exists) is suppressed so that the caller can proceed without
+    disruption.
+    """
+    try:
+        conn.execute("ALTER TABLE guests ADD COLUMN photo TEXT")
+    except Exception:
         pass
 
 # Ensure that the registration_requests table exists for pending user sign‑ups

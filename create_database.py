@@ -138,7 +138,8 @@ def create_tables(connection) -> None:
         CREATE TABLE IF NOT EXISTS cleaning_tasks (
             id SERIAL PRIMARY KEY,
             room_id INTEGER NOT NULL,
-            scheduled_date DATETIME NOT NULL,
+            -- Scheduled date/time of the cleaning task.  Use TIMESTAMP for PostgreSQL.
+            scheduled_date TIMESTAMP NOT NULL,
             status TEXT NOT NULL DEFAULT 'scheduled',
             notes TEXT,
             FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
