@@ -1688,6 +1688,23 @@ def ensure_user_room_last_seen_table(conn: sqlite3.Connection) -> None:
     a composite primary key (user_id, room_id) so there is at most one record
     per user per room. If the table already exists, this function has no effect.
     """
+    """Ensure the user_room_last_seen table exists.
+
+    This helper creates the user_room_last_seen table if it does not already
+    exist.  The table references chat_rooms(id), so it attempts to create
+    the chat_rooms table first.  By explicitly ensuring chat_rooms exists
+    before creating user_room_last_seen, we avoid errors on databases
+    (notably PostgreSQL) that reject a CREATE TABLE referencing a missing
+    foreign key table. If chat_rooms already exists this call is a no-op.
+    """
+    # Ensure chat_rooms table exists to satisfy foreign key constraint.  If
+    # ensure_chat_rooms_table fails for any reason, we still proceed to
+    # attempt creating user_room_last_seen; this may raise an error if
+    # chat_rooms truly doesn't exist.
+    try:
+        ensure_chat_rooms_table(conn)
+    except Exception:
+        pass
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS user_room_last_seen (
