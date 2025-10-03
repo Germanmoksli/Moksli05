@@ -757,29 +757,31 @@ def get_db_connection():
                         return self
                     # Otherwise translate query
                     translated = self._translate_query(query)
-                    # Add RETURNING id automatically for INSERT statements
-                    # Determine if it's an INSERT into a table with an integer PK named id
-                    # Only append RETURNING if no returning clause exists already
+                    # Do not unconditionally append RETURNING id here. The decision to
+                    # add a RETURNING clause (for tables with an integer primary key named
+                    # "id") is handled in _translate_query(). Unconditionally appending
+                    # RETURNING id would break inserts into tables without an id column.
                     low = translated.strip().lower()
-                    if low.startswith("insert") and "returning" not in low:
-                        translated += " RETURNING id"
+                    # We intentionally avoid auto-appending RETURNING here.
                     # Convert placeholders
                     converted = self._convert_placeholders(translated)
                     try:
                         self._cur.execute(converted, params)
                     except Exception as exc:
                         raise
-                    # Capture lastrowid if we added RETURNING
-                    if converted.strip().lower().startswith("insert"):
+                    # Capture lastrowid only if a RETURNING clause is present in the SQL.
+                    # Without a RETURNING, fetchone() should not be called as it would
+                    # consume the next result set or block.
+                    if "returning" in converted.lower():
                         try:
                             returned = self._cur.fetchone()
-                            # returned may be tuple or dict depending on cursor factory
                             if returned is not None:
                                 if isinstance(returned, dict):
                                     self.lastrowid = returned.get('id')
                                 else:
                                     self.lastrowid = returned[0]
                         except Exception:
+                            # If fetching fails, do not set lastrowid
                             self.lastrowid = None
                     return self
 
