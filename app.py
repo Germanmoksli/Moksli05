@@ -1056,6 +1056,22 @@ def inject_notification_counts():
     if session.get('user_id'):
         user_id = session['user_id']
         conn = get_db_connection()
+        # Validate that the session user_id actually exists in the users table.  If the
+        # user record has been deleted or the session is stale, skip unread/notification
+        # calculation to avoid foreign key violations when inserting into
+        # user_room_last_seen.  Without this check, attempting to insert a row for a
+        # nonexistent user triggers a ForeignKeyViolation in PostgreSQL.
+        try:
+            user_exists_row = conn.execute(
+                "SELECT 1 FROM users WHERE id = ?",
+                (user_id,)
+            ).fetchone()
+        except Exception:
+            user_exists_row = None
+        if not user_exists_row:
+            # User does not exist. Return zero counts and close connection.
+            conn.close()
+            return dict(unread_message_count=0, pending_request_count=pending_request_count)
         # Ensure necessary tables exist for chat and registration logic
         ensure_messages_table(conn)
         ensure_user_room_last_seen_table(conn)
