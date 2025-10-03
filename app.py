@@ -394,13 +394,27 @@ def get_db_connection():
     querying PostgreSQL's information_schema.
     """
     db_url = os.environ.get("DATABASE_URL")
+    # Normalize 'postgres://' scheme to 'postgresql://' for psycopg2.  Some
+    # providers (including Render) still return a URL beginning with
+    # 'postgres://'.  psycopg2 accepts 'postgresql://' and Render's
+    # documentation recommends this scheme.  Without normalization, the
+    # connection may fail on newer psycopg2 versions.
+    if db_url and db_url.startswith("postgres://"):
+        db_url = db_url.replace("postgres://", "postgresql://", 1)
     # Use PostgreSQL if DATABASE_URL is set and psycopg2 is available
     if db_url and psycopg2 is not None:
         try:
-            pg_conn = psycopg2.connect(db_url)
+            # When connecting over the public internet, Render requires SSL.
+            # If the URL does not include an sslmode parameter, supply one
+            # explicitly using PGSSLMODE environment variable with a default
+            # of 'require'.  Internal connections will silently ignore this
+            # parameter if SSL isn't needed.
+            pg_conn = psycopg2.connect(db_url, sslmode=os.environ.get("PGSSLMODE", "require"))
         except Exception as exc:
             # Fall back to SQLite on connection failure
-            print(f"Warning: could not connect to PostgreSQL ({exc}); falling back to SQLite.")
+            print(
+                f"Warning: could not connect to PostgreSQL ({exc}); falling back to SQLite."
+            )
             pg_conn = None
         if pg_conn is not None:
             # Define a wrapper class for PostgreSQL to emulate SQLite API

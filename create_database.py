@@ -35,6 +35,12 @@ import os
 import sqlite3
 from datetime import datetime
 
+# Optional PostgreSQL support.  psycopg2 is only imported if available.
+try:
+    import psycopg2  # type: ignore
+except Exception:
+    psycopg2 = None  # type: ignore
+
 
 def create_tables(connection: sqlite3.Connection) -> None:
     """Create all tables needed for the apart‑hotel management system.
@@ -198,25 +204,60 @@ def create_tables(connection: sqlite3.Connection) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Create an aparthotel management database (SQLite).")
+    parser = argparse.ArgumentParser(
+        description=(
+            "Create an aparthotel management database.  By default this script "
+            "initializes a local SQLite database, but you can specify a "
+            "PostgreSQL database URL via --db-url or the DATABASE_URL "
+            "environment variable.  When using PostgreSQL, the tables are "
+            "created on the remote server."
+        )
+    )
     parser.add_argument(
         "--db-file",
         type=str,
         default="aparthotel.db",
         help="Filename for the SQLite database (default: aparthotel.db)",
     )
+    parser.add_argument(
+        "--db-url",
+        type=str,
+        help=(
+            "PostgreSQL database URL.  Overrides --db-file when provided.  "
+            "If omitted, the DATABASE_URL environment variable will be used if set."
+        ),
+    )
     args = parser.parse_args()
 
-    db_file_path = os.path.abspath(args.db_file)
-
-    # Connect to the SQLite database (this will create the file if it doesn't exist)
-    connection = sqlite3.connect(db_file_path)
+    # Determine whether to use PostgreSQL based on command-line option or environment
+    db_url = args.db_url or os.environ.get("DATABASE_URL")
+    connection = None
+    # Normalize URL scheme if necessary
+    if db_url and db_url.startswith("postgres://"):
+        db_url = db_url.replace("postgres://", "postgresql://", 1)
+    if db_url and psycopg2 is not None:
+        try:
+            # Default to requiring SSL unless PGSSLMODE is set differently
+            connection = psycopg2.connect(db_url, sslmode=os.environ.get("PGSSLMODE", "require"))
+        except Exception as exc:
+            raise SystemExit(f"Failed to connect to PostgreSQL database: {exc}")
+    else:
+        # Fallback to local SQLite
+        db_file_path = os.path.abspath(args.db_file)
+        connection = sqlite3.connect(db_file_path)
     try:
         create_tables(connection)
     finally:
+        # psycopg2 connections require explicit commit to persist DDL changes
+        try:
+            connection.commit()
+        except Exception:
+            pass
         connection.close()
-
-    print(f"Database created successfully at: {db_file_path}")
+    if db_url and psycopg2 is not None:
+        print(f"Database schema created successfully on PostgreSQL: {db_url}")
+    else:
+        print(f"Database created successfully at: {os.path.abspath(args.db_file)}")
 
 
 if __name__ == "__main__":
