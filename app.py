@@ -917,10 +917,7 @@ def register():
         # Use the correct SQLite placeholder.  The psycopg2 wrapper will
         # translate '?' into '%s' on PostgreSQL.  The previous version
         # mistakenly used "%?" which caused a syntax error in Postgres.
-        
-        cur = conn.cursor()
-        cur.execute('SELECT id FROM users WHERE username = %s', (email,))
-        existing_user = cur.fetchone()
+        existing_user = conn.execute('SELECT id FROM users WHERE username = ?', (email,)).fetchone()
         existing_req = conn.execute('SELECT id FROM registration_requests WHERE username = ?', (email,)).fetchone()
         if existing_user or existing_req:
             conn.close()
@@ -1051,9 +1048,7 @@ def login():
         ensure_registration_requests_table(conn)
         # Correct placeholder usage for user lookup.  See comments in
         # register() above for details.
-        cur = conn.cursor()
-        cur.execute('SELECT * FROM users WHERE username = %s', (email,))
-        user = cur.fetchone()
+        user = conn.execute('SELECT * FROM users WHERE username = ?', (email,)).fetchone()
         if user and check_password_hash(user['password_hash'], password):
             # Store user id and role in the session
             session['user_id'] = user['id']
