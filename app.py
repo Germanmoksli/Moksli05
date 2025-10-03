@@ -2753,7 +2753,18 @@ def calendar_view(year=None, month=None):
         "SELECT DISTINCT residential_complex FROM rooms WHERE residential_complex IS NOT NULL ORDER BY residential_complex"
     ).fetchall()
     # Build a simple list of complexes (strings). We'll pass this to the template.
-    complexes = [row[0] for row in complexes_rows if row[0]]
+    # When using SQLite, each row is tuple-like and supports index access.  When using
+    # PostgreSQL via psycopg2's RealDictCursor, each row is a mapping.  Use the column
+    # name when available and fall back to positional index otherwise.
+    complexes: list[str] = []
+    for row in complexes_rows:
+        try:
+            val = row["residential_complex"]
+        except Exception:
+            # sqlite3.Row supports integer indexing; RealDictRow does not
+            val = row[0] if row else None
+        if val:
+            complexes.append(val)
 
     # Include listing_url and residential_complex so templates can link and filter; optionally filter by complex
     if complex_filter:
