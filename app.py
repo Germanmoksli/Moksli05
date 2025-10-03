@@ -1029,9 +1029,22 @@ def inject_notification_counts():
         ensure_chat_room_members_table(conn)
         ensure_registration_requests_table(conn)
         # Fetch pending registration requests count for owners
-        pending_request_count = conn.execute(
+        # Fetch pending registration requests count for owners.
+        # When using psycopg2 with RealDictCursor the returned row is a mapping,
+        # whereas sqlite3 returns a tuple.  To support both, extract the first
+        # value regardless of type.
+        row = conn.execute(
             "SELECT COUNT(*) FROM registration_requests WHERE status = 'pending'"
-        ).fetchone()[0]
+        ).fetchone()
+        if row is None:
+            pending_request_count = 0
+        elif isinstance(row, dict):
+            # RealDictCursor returns {'count': ...} or {'count(*)': ...}
+            # Use the first value in the mapping.
+            pending_request_count = list(row.values())[0]
+        else:
+            # Assume row is a sequence (tuple or list)
+            pending_request_count = row[0]
         # Determine the rooms in which the user participates. Include the global room (id=1).
         rooms = conn.execute(
             """
