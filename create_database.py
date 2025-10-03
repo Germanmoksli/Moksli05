@@ -1,57 +1,59 @@
 """
-Database schema initialisation for the aparthotel management system.
+This script sets up a simple SQLite database for an apartment‑hotel (apart‑hotel)
+management system. It defines several tables to handle reservations,
+guests, rooms, payments, expenses, cleaning tasks, and users with different
+roles (owner, manager, maid). Running this script will create a SQLite
+database file named ``aparthotel.db`` in the current directory (unless a
+different file name is supplied via the `--db-file` command line argument).
 
-This script connects to a PostgreSQL database and creates all of the
-tables required by the application.  Unlike earlier versions of this
-project, support for SQLite has been removed.  A PostgreSQL connection
-URL must be provided via the ``--db-url`` command‑line option or the
-``DATABASE_URL`` environment variable.  The tables created by this
-script mirror those used by the Flask application (``app.py``).
+You do not need any external packages to run this script; it relies solely
+on Python's standard library.
 
 Usage:
 
-    python create_database.py --db-url postgresql://user:password@host:port/dbname
+    python create_database.py
 
-If the ``--db-url`` flag is omitted the script will look for a
-``DATABASE_URL`` environment variable.  The schema includes tables
-for guests, rooms, bookings, payments, expenses, cleaning tasks,
-users, registration requests, and supporting metadata like a
-blacklist.  All DDL statements are executed with autocommit enabled
-so that they run outside of explicit transactions.  If the database
-already contains these tables the ``CREATE TABLE IF NOT EXISTS``
-clauses will ensure nothing is dropped or overwritten.
+You can also specify a custom database file name:
+
+    python create_database.py --db-file my_database.db
+
+The database schema includes the following tables:
+
+    - guests
+    - rooms
+    - bookings
+    - payments
+    - expenses
+    - cleaning_tasks
+    - users
+
+Each table is created with columns appropriate to manage an apart‑hotel.
 """
 
 import argparse
 import os
+import sqlite3
 from datetime import datetime
 
-# psycopg2 is required for PostgreSQL support.  Fail fast if it is not
-# available so that users immediately know why their database cannot be
-# initialised.  We import within a try/except to provide a clearer
-# message when the package is missing.
+# Optional PostgreSQL support.  psycopg2 is only imported if available.
 try:
     import psycopg2  # type: ignore
-except Exception as e:  # pragma: no cover - import error handling
+except Exception:
     psycopg2 = None  # type: ignore
 
 
-def create_tables(connection) -> None:
-    """
-    Create all tables needed for the apart‑hotel management system on
-    PostgreSQL.  This function assumes that the supplied ``connection``
-    object is a ``psycopg2`` connection.  ``PRAGMA`` directives and
-    other SQLite‑specific operations have been removed.  Each table is
-    created with ``CREATE TABLE IF NOT EXISTS`` to allow repeated
-    execution without errors.  ``SERIAL`` columns are used for
-    auto‑incrementing primary keys.
+def create_tables(connection: sqlite3.Connection) -> None:
+    """Create all tables needed for the apart‑hotel management system.
 
     Args:
-        connection: An open PostgreSQL connection.  Tables will be
-            created within this database.  If tables already exist,
-            this function will not recreate them.
+        connection: An open SQLite connection. Tables will be created within
+            this database. If tables already exist, this function will not
+            recreate them.
     """
     cursor = connection.cursor()
+
+    # Enable foreign key support (disabled by default in SQLite)
+    cursor.execute("PRAGMA foreign_keys = ON;")
 
     # Table: guests
     cursor.execute(
@@ -74,7 +76,9 @@ def create_tables(connection) -> None:
             room_number TEXT NOT NULL UNIQUE,
             capacity INTEGER,
             notes TEXT,
+            -- URL of the external listing/advertisement for this object (optional)
             listing_url TEXT,
+            -- Residential complex (ЖК) identifier or name for filtering
             residential_complex TEXT
         );
         """
@@ -134,7 +138,7 @@ def create_tables(connection) -> None:
         CREATE TABLE IF NOT EXISTS cleaning_tasks (
             id SERIAL PRIMARY KEY,
             room_id INTEGER NOT NULL,
-            scheduled_date TIMESTAMP NOT NULL,
+            scheduled_date DATETIME NOT NULL,
             status TEXT NOT NULL DEFAULT 'scheduled',
             notes TEXT,
             FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
@@ -157,7 +161,7 @@ def create_tables(connection) -> None:
         """
     )
 
-    # Table: registration requests
+    # Table: registration requests (pending user signups awaiting owner approval)
     cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS registration_requests (
@@ -165,23 +169,27 @@ def create_tables(connection) -> None:
             username TEXT NOT NULL UNIQUE,
             password_hash TEXT NOT NULL,
             status TEXT NOT NULL DEFAULT 'pending',
-            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
         """
     )
 
-    # Table: blacklist
+    # Commit changes
+    connection.commit()
+
+    # Table: blacklist for storing sanitized phone numbers of guests in a blacklist
     cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS blacklist (
-            phone TEXT PRIMARY KEY,
-            reason TEXT,
-            added_at TIMESTAMP
-        );
+            phone TEXT PRIMARY KEY
+        )
         """
     )
 
-    # Table: messages (simple message log used by other scripts)
+    # Table: messages for employee chat. Stores a simple log of chat
+    # messages with the user_id of the author, the message text and
+    # a timestamp as an ISO string.  Messages are deleted when the
+    # corresponding user is removed (ON DELETE CASCADE).
     cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS messages (
@@ -194,64 +202,62 @@ def create_tables(connection) -> None:
         """
     )
 
-    connection.commit()
 
 def main() -> None:
-    """
-    Parse command‑line arguments and create the database schema.  Only
-    PostgreSQL is supported; if the connection URL is missing or
-    psycopg2 is unavailable the function will terminate with a
-    descriptive error message.  Autocommit mode is enabled so that
-    table creation happens immediately without needing an explicit
-    commit.
-    """
     parser = argparse.ArgumentParser(
         description=(
-            "Initialise the aparthotel management schema on PostgreSQL. "
-            "SQLite is no longer supported.  Provide the PostgreSQL connection "
-            "URL via --db-url or the DATABASE_URL environment variable."
+            "Create an aparthotel management database.  By default this script "
+            "initializes a local SQLite database, but you can specify a "
+            "PostgreSQL database URL via --db-url or the DATABASE_URL "
+            "environment variable.  When using PostgreSQL, the tables are "
+            "created on the remote server."
         )
+    )
+    parser.add_argument(
+        "--db-file",
+        type=str,
+        default="aparthotel.db",
+        help="Filename for the SQLite database (default: aparthotel.db)",
     )
     parser.add_argument(
         "--db-url",
         type=str,
         help=(
-            "PostgreSQL database URL.  Overrides the DATABASE_URL environment variable when provided."
+            "PostgreSQL database URL.  Overrides --db-file when provided.  "
+            "If omitted, the DATABASE_URL environment variable will be used if set."
         ),
     )
     args = parser.parse_args()
-    # Determine PostgreSQL URL from argument or environment
+
+    # Determine whether to use PostgreSQL based on command-line option or environment
     db_url = args.db_url or os.environ.get("DATABASE_URL")
-    if not db_url:
-        raise SystemExit(
-            "A PostgreSQL connection URL must be provided via --db-url or the DATABASE_URL environment variable."
-        )
-    # Normalise legacy scheme used by some providers (postgres:// → postgresql://)
-    if db_url.startswith("postgres://"):
+    connection = None
+    # Normalize URL scheme if necessary
+    if db_url and db_url.startswith("postgres://"):
         db_url = db_url.replace("postgres://", "postgresql://", 1)
-    # Ensure psycopg2 is installed
-    if psycopg2 is None:
-        raise SystemExit(
-            "psycopg2 is required to initialise the schema but is not installed.  "
-            "Install psycopg2 or psycopg2-binary and try again."
-        )
+    if db_url and psycopg2 is not None:
+        try:
+            # Default to requiring SSL unless PGSSLMODE is set differently
+            connection = psycopg2.connect(db_url, sslmode=os.environ.get("PGSSLMODE", "require"))
+        except Exception as exc:
+            raise SystemExit(f"Failed to connect to PostgreSQL database: {exc}")
+    else:
+        # Fallback to local SQLite
+        db_file_path = os.path.abspath(args.db_file)
+        connection = sqlite3.connect(db_file_path)
     try:
-        # Connect using SSL by default; PGSSLMODE can override.  Autocommit
-        # ensures each statement commits automatically, similar to SQLite's default.
-        connection = psycopg2.connect(db_url, sslmode=os.environ.get("PGSSLMODE", "require"))
-        try:
-            connection.autocommit = True
-        except Exception:
-            pass
         create_tables(connection)
-        print(f"Database schema created successfully on PostgreSQL: {db_url}")
-    except Exception as exc:
-        raise SystemExit(f"Failed to connect or create schema on PostgreSQL: {exc}")
     finally:
+        # psycopg2 connections require explicit commit to persist DDL changes
         try:
-            connection.close()
+            connection.commit()
         except Exception:
             pass
+        connection.close()
+    if db_url and psycopg2 is not None:
+        print(f"Database schema created successfully on PostgreSQL: {db_url}")
+    else:
+        print(f"Database created successfully at: {os.path.abspath(args.db_file)}")
 
 
 if __name__ == "__main__":

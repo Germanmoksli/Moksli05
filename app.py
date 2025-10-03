@@ -2,29 +2,27 @@
 Flask web application for managing an apart‑hotel with a Bootstrap‑styled
 interface.
 
-This application uses Jinja templates stored in the ``templates``
-directory and Bootstrap via CDN to provide a polished user interface.  It
-allows users to list and add guests, rooms, bookings and more.  The
-underlying storage is a PostgreSQL database; support for SQLite has
-been removed to avoid conflicts between SQL dialects.  You must set
-``DATABASE_URL`` in your environment (or configure Render/Heroku
-appropriately) before running the application.  Use
-``create_database.py`` to initialise the schema on your PostgreSQL
-server if it does not yet exist.
+This version uses Jinja templates stored in the ``templates`` directory
+and Bootstrap via CDN to provide a more polished look. It allows users
+to list and add guests, rooms, and bookings. Additional functionality can
+be added following this pattern.
 
 To run the app:
-    1. Install dependencies: ``pip install -r requirements.txt``
-    2. Ensure ``DATABASE_URL`` is set and the database exists (run ``create_database.py`` if needed)
+    1. Install Flask if not already installed: ``pip3 install flask``
+    2. Ensure the database ``aparthotel.db`` exists (run ``create_database.py`` if needed)
     3. Execute this script: ``python3 app.py``
     4. Visit http://127.0.0.1:5000/ in your browser.
 """
 
 import os
-import sqlite3  # Imported only for type annotations; the application no longer uses SQLite for data storage
+import sqlite3
 
-# Try to import psycopg2 for PostgreSQL support.  The application
-# requires a PostgreSQL database and will raise an error if psycopg2
-# is unavailable or ``DATABASE_URL`` is not defined.
+# Try to import psycopg2 for optional PostgreSQL support.  If the
+# import fails (e.g. the package is not installed), the application
+# will silently fall back to SQLite.  psycopg2 is used when the
+# DATABASE_URL environment variable is provided.  psycopg2-binary
+# should be added to your requirements file if you plan to run the
+# application against PostgreSQL.
 try:
     import psycopg2  # type: ignore
     import psycopg2.extras  # type: ignore
@@ -46,9 +44,7 @@ import uuid  # For generating unique payment identifiers
 
 
 # Configurations
-# There is no default SQLite database file; all data is stored in
-# PostgreSQL.  ``DATABASE_URL`` should specify your connection string.
-DB_DEFAULT_FILE = None
+DB_DEFAULT_FILE = "aparthotel.db"
 
 app = Flask(__name__)
 app.secret_key = "change_this_secret_key"  # Needed for flashing messages
@@ -382,20 +378,20 @@ def role_ru(role: str) -> str:
 
 def get_db_connection():
     """
-    Return a new database connection backed by PostgreSQL.
+    Return a new database connection.  By default the application
+    operates against a local SQLite database.  If the environment
+    variable ``DATABASE_URL`` is defined and the psycopg2 package is
+    available, a PostgreSQL connection will be created instead.  The
+    returned object implements the same subset of the SQLite API used
+    throughout this application so that the rest of the code can
+    remain unchanged when switching between database backends.
 
-    This helper reads the ``DATABASE_URL`` environment variable and
-    establishes a connection using psycopg2.  Only PostgreSQL is
-    supported; if the variable is unset or psycopg2 cannot be
-    imported, a ``RuntimeError`` is raised.  A thin compatibility
-    wrapper is returned which emulates a subset of the SQLite API
-    expected by the rest of the application.  Specifically, it
-    translates SQLite‑style ``?`` placeholders to ``%s``, implements
-    ``lastrowid`` via ``RETURNING id`` and emulates ``PRAGMA
-    table_info`` queries using the PostgreSQL ``information_schema``.
-    Autocommit is enabled on the underlying connection to mirror
-    SQLite's default behaviour and to prevent aborted transaction
-    states from persisting after an exception.
+    For SQLite, the existing behaviour (row_factory, PRAGMA foreign keys
+    and automatic schema migrations) is preserved.  For PostgreSQL, a
+    thin compatibility wrapper translates SQLite-style ``?`` parameter
+    markers into ``%s``, implements ``lastrowid`` support via
+    ``RETURNING id`` and emulates the ``PRAGMA table_info`` calls by
+    querying PostgreSQL's information_schema.
     """
     db_url = os.environ.get("DATABASE_URL")
     # Normalize 'postgres://' scheme to 'postgresql://' for psycopg2.  Some
@@ -408,60 +404,239 @@ def get_db_connection():
     # Use PostgreSQL if DATABASE_URL is set and psycopg2 is available
     if db_url and psycopg2 is not None:
         try:
-            # Connect to PostgreSQL.  When connecting over the public internet, many providers
-            # require SSL.  Use the PGSSLMODE environment variable to override the default
-            # 'require'.  Autocommit is enabled to avoid leaving the connection in an
-            # aborted transaction state after an exception.
+            # When connecting over the public internet, Render requires SSL.
+            # If the URL does not include an sslmode parameter, supply one
+            # explicitly using PGSSLMODE environment variable with a default
+            # of 'require'.  Internal connections will silently ignore this
+            # parameter if SSL isn't needed.
             pg_conn = psycopg2.connect(db_url, sslmode=os.environ.get("PGSSLMODE", "require"))
+            # Enable autocommit so each statement runs in its own transaction.  Without
+            # autocommit, a failed SQL statement would leave the connection in an
+            # aborted transaction state (InFailedSqlTransaction) until an explicit
+            # rollback, causing subsequent statements to fail.  Autocommit mirrors
+            # SQLite's autocommit behaviour and improves resiliency when running
+            # arbitrary queries from view functions.
             try:
                 pg_conn.autocommit = True
             except Exception:
                 pass
         except Exception as exc:
-            # Do not attempt to fall back to SQLite; raise a clear error instead.
-            raise RuntimeError(f"Unable to connect to PostgreSQL: {exc}")
-        # Automatically initialize the PostgreSQL schema if the core
-        # ``users`` table does not exist.  This mirrors the behaviour of
-        # ``create_database.py`` and allows first‑run deployments on
-        # platforms like Render where there is no opportunity to run a
-        # separate migration command.  The helper will create all core
-        # tables if they are absent.  For subsequent connections the
-        # initialization is skipped.
-        def _initialize_pg_schema_if_needed(conn):
-            """
-            Ensure that the PostgreSQL schema exists.  If the 'users' table
-            is missing, ``create_tables`` from ``create_database`` is
-            invoked to build the full schema.  A default chat room with
-            id=1 is also inserted if absent.
-            """
-            try:
-                # Check whether the users table exists
-                with conn.cursor() as cur0:
+            # Fall back to SQLite on connection failure
+            print(
+                f"Warning: could not connect to PostgreSQL ({exc}); falling back to SQLite."
+            )
+            pg_conn = None
+        if pg_conn is not None:
+            # Automatically initialize the PostgreSQL schema if the core
+            # ``users`` table does not exist.  This mirrors the behaviour of
+            # ``create_database.py`` and allows first‑run deployments on
+            # platforms like Render where there is no opportunity to run a
+            # separate migration command.  The helper will create all core
+            # tables if they are absent.  For subsequent connections the
+            # initialization is skipped.
+            def _initialize_pg_schema_if_needed(conn):
+                try:
+                    cur0 = conn.cursor()
                     cur0.execute(
-                        """
-                        SELECT EXISTS (
-                            SELECT 1 FROM information_schema.tables
-                            WHERE table_schema = 'public' AND table_name = 'users'
-                        );
-                        """
+                        "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users');"
                     )
                     exists = cur0.fetchone()
-                # If the users table exists, assume the schema is present
-                if exists and (exists[0] if isinstance(exists, tuple) else list(exists.values())[0]):
-                    return
-                # Otherwise create all tables using our schema helper
-                from create_database import create_tables
-                create_tables(conn)
-                # Insert a default global chat room (id=1)
-                with conn.cursor() as cur:
-                    cur.execute("SELECT id FROM chat_rooms WHERE id = 1")
-                    row = cur.fetchone()
-                    if not row:
-                        cur.execute("INSERT INTO chat_rooms (id, name) VALUES (%s, %s)", (1, 'Общий чат'))
-                conn.commit()
-            except Exception as e:
-                # Log and continue; the schema may be partially created
-                print(f"Error initializing PostgreSQL schema: {e}")
+                    cur0.close()
+                    if exists and (exists[0] if isinstance(exists, tuple) else list(exists.values())[0]):
+                        return
+                    # Create tables.  These statements mirror create_database.py but omit SQLite‑specific PRAGMA calls.
+                    statements = [
+                        """
+                        CREATE TABLE IF NOT EXISTS guests (
+                            id SERIAL PRIMARY KEY,
+                            name TEXT NOT NULL,
+                            phone TEXT,
+                            email TEXT,
+                            notes TEXT
+                        );
+                        """,
+                        """
+                        CREATE TABLE IF NOT EXISTS rooms (
+                            id SERIAL PRIMARY KEY,
+                            room_number TEXT NOT NULL UNIQUE,
+                            capacity INTEGER,
+                            notes TEXT,
+                            listing_url TEXT,
+                            residential_complex TEXT
+                        );
+                        """,
+                        """
+                        CREATE TABLE IF NOT EXISTS bookings (
+                            id SERIAL PRIMARY KEY,
+                            guest_id INTEGER NOT NULL,
+                            room_id INTEGER NOT NULL,
+                            check_in_date DATE NOT NULL,
+                            check_out_date DATE NOT NULL,
+                            status TEXT NOT NULL DEFAULT 'booked',
+                            total_amount REAL,
+                            paid_amount REAL,
+                            notes TEXT,
+                            FOREIGN KEY (guest_id) REFERENCES guests(id) ON DELETE CASCADE,
+                            FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
+                        );
+                        """,
+                        """
+                        CREATE TABLE IF NOT EXISTS payments (
+                            id SERIAL PRIMARY KEY,
+                            booking_id INTEGER NOT NULL,
+                            amount REAL NOT NULL,
+                            date DATE NOT NULL,
+                            method TEXT,
+                            status TEXT,
+                            notes TEXT,
+                            FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE
+                        );
+                        """,
+                        """
+                        CREATE TABLE IF NOT EXISTS expenses (
+                            id SERIAL PRIMARY KEY,
+                            category TEXT NOT NULL,
+                            amount REAL NOT NULL,
+                            date DATE NOT NULL,
+                            description TEXT
+                        );
+                        """,
+                        """
+                        CREATE TABLE IF NOT EXISTS cleaning_tasks (
+                            id SERIAL PRIMARY KEY,
+                            room_id INTEGER NOT NULL,
+                            scheduled_date TIMESTAMP NOT NULL,
+                            status TEXT NOT NULL DEFAULT 'scheduled',
+                            notes TEXT,
+                            FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
+                        );
+                        """,
+                        """
+                        CREATE TABLE IF NOT EXISTS users (
+                            id SERIAL PRIMARY KEY,
+                            username TEXT NOT NULL UNIQUE,
+                            password_hash TEXT NOT NULL,
+                            role TEXT NOT NULL,
+                            name TEXT,
+                            contact_info TEXT,
+                            photo TEXT
+                        );
+                        """,
+                        """
+                        CREATE TABLE IF NOT EXISTS registration_requests (
+                            id SERIAL PRIMARY KEY,
+                            username TEXT NOT NULL UNIQUE,
+                            password_hash TEXT NOT NULL,
+                            status TEXT NOT NULL DEFAULT 'pending',
+                            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                        );
+                        """,
+                        """
+                        CREATE TABLE IF NOT EXISTS blacklist (
+                            phone TEXT PRIMARY KEY,
+                            reason TEXT,
+                            added_at TEXT
+                        );
+                        """,
+                        # Chat rooms and related tables
+                        """
+                        CREATE TABLE IF NOT EXISTS chat_rooms (
+                            id SERIAL PRIMARY KEY,
+                            name TEXT NOT NULL,
+                            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                        );
+                        """,
+                        """
+                        CREATE TABLE IF NOT EXISTS chat_room_members (
+                            room_id INTEGER NOT NULL,
+                            user_id INTEGER NOT NULL,
+                            PRIMARY KEY (room_id, user_id),
+                            FOREIGN KEY (room_id) REFERENCES chat_rooms(id) ON DELETE CASCADE,
+                            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                        );
+                        """,
+                        """
+                        CREATE TABLE IF NOT EXISTS messages (
+                            id SERIAL PRIMARY KEY,
+                            room_id INTEGER NOT NULL DEFAULT 1,
+                            user_id INTEGER NOT NULL,
+                            message TEXT NOT NULL,
+                            timestamp TEXT NOT NULL,
+                            file_name TEXT,
+                            file_type TEXT,
+                            FOREIGN KEY (room_id) REFERENCES chat_rooms(id) ON DELETE CASCADE,
+                            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                        );
+                        """,
+                        """
+                        CREATE TABLE IF NOT EXISTS user_last_seen (
+                            user_id INTEGER PRIMARY KEY,
+                            last_seen_message_id INTEGER,
+                            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                        );
+                        """,
+                        """
+                        CREATE TABLE IF NOT EXISTS user_room_last_seen (
+                            user_id INTEGER NOT NULL,
+                            room_id INTEGER NOT NULL,
+                            last_seen_message_id INTEGER NOT NULL,
+                            PRIMARY KEY (user_id, room_id),
+                            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                            FOREIGN KEY (room_id) REFERENCES chat_rooms(id) ON DELETE CASCADE
+                        );
+                        """,
+                        # Guest comments and room status
+                        """
+                        CREATE TABLE IF NOT EXISTS guest_comments (
+                            id SERIAL PRIMARY KEY,
+                            guest_id INTEGER NOT NULL,
+                            comment TEXT,
+                            created_at TEXT,
+                            FOREIGN KEY (guest_id) REFERENCES guests(id) ON DELETE CASCADE
+                        );
+                        """,
+                        """
+                        CREATE TABLE IF NOT EXISTS room_statuses (
+                            room_id INTEGER NOT NULL,
+                            date TEXT NOT NULL,
+                            status TEXT NOT NULL,
+                            PRIMARY KEY (room_id, date),
+                            FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
+                        );
+                        """,
+                        # Subscriptions table with payment details
+                        """
+                        CREATE TABLE IF NOT EXISTS subscriptions (
+                            id SERIAL PRIMARY KEY,
+                            user_id INTEGER NOT NULL,
+                            plan_name TEXT NOT NULL,
+                            status TEXT NOT NULL,
+                            price REAL,
+                            created_at TEXT,
+                            next_billing_date TEXT,
+                            payment_id TEXT,
+                            payment_url TEXT,
+                            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                        );
+                        """,
+                    ]
+                    cur = conn.cursor()
+                    for stmt in statements:
+                        cur.execute(stmt)
+                    # Insert a default global chat room if none exists (id=1)
+                    try:
+                        cur.execute("SELECT id FROM chat_rooms WHERE id = 1")
+                        row = cur.fetchone()
+                        if not row:
+                            cur.execute("INSERT INTO chat_rooms (id, name) VALUES (%s, %s)", (1, 'Общий чат'))
+                    except Exception:
+                        # If the table does not yet exist, ignore; it will be created
+                        pass
+                    conn.commit()
+                    cur.close()
+                except Exception as e:
+                    # Log and continue; schema may be partially created
+                    print(f"Error initializing PostgreSQL schema: {e}")
             # Run initialization once per connection
             _initialize_pg_schema_if_needed(pg_conn)
 
@@ -743,11 +918,10 @@ def get_db_connection():
                 # application will operate without a created_by column.
                 pass
             return wrapper_conn
-    # If we reach this point it means either DATABASE_URL is unset or psycopg2
-    # could not be imported.  Raise an explicit error so that the user
-    # understands why the connection cannot be established.
+    # No PostgreSQL connection could be established, and fallback to SQLite is disabled.
+    # Raise an explicit error so that missing configuration is detected early.
     raise RuntimeError(
-        "DATABASE_URL is not configured or the psycopg2 driver is unavailable; unable to establish a PostgreSQL connection."
+        "DATABASE_URL is not configured or the PostgreSQL driver is unavailable; unable to establish a database connection."
     )
 
 
@@ -2299,7 +2473,7 @@ def add_room():
                     "INSERT INTO rooms (room_number, listing_url, residential_complex) VALUES (?, ?, ?)",
                     (room_number, listing_url, residential_complex),
                 )
-        except Exception:
+        except sqlite3.IntegrityError:
             # Name must be unique
             conn.close()
             flash("Ошибка: квартира с таким названием уже существует.")
@@ -2344,7 +2518,7 @@ def edit_room(room_id: int):
                     "UPDATE rooms SET room_number = ?, listing_url = ?, residential_complex = ? WHERE id = ?",
                     (new_name, new_link, new_complex, room_id),
                 )
-        except Exception:
+        except sqlite3.IntegrityError:
             conn.close()
             flash("Ошибка: квартира с таким названием уже существует.")
             return redirect(url_for("edit_room", room_id=room_id))
