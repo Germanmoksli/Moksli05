@@ -1438,6 +1438,11 @@ def ensure_status_table(conn: sqlite3.Connection) -> None:
         )
         """
     )
+    # Commit DDL on PostgreSQL so subsequent selects see the table
+    try:
+        conn.commit()
+    except Exception:
+        pass
 
 # Ensure blacklist table exists for storing sanitized phone numbers that are blacklisted
 def ensure_blacklist_table(conn: sqlite3.Connection) -> None:
@@ -1514,6 +1519,11 @@ def ensure_subscriptions_table(conn: sqlite3.Connection) -> None:
         pass
     try:
         conn.execute("ALTER TABLE subscriptions ADD COLUMN payment_url TEXT")
+    except Exception:
+        pass
+    # Commit DDL changes so the new table/columns are visible immediately on PostgreSQL
+    try:
+        conn.commit()
     except Exception:
         pass
 
@@ -1753,6 +1763,15 @@ def ensure_last_seen_table(conn: sqlite3.Connection) -> None:
         )
         """
     )
+    # Explicitly commit DDL changes.  On PostgreSQL, DDL is transactional and
+    # will not be visible to subsequent queries until committed.  Without
+    # committing here, a following SELECT could fail with "relation does not
+    # exist" even though the CREATE TABLE has been executed.  Wrapping in
+    # try/except guards against errors on SQLite (where commit may be a no‑op).
+    try:
+        conn.commit()
+    except Exception:
+        pass
 
 
 def ensure_user_room_last_seen_table(conn: sqlite3.Connection) -> None:
@@ -3034,29 +3053,53 @@ def dashboard():
     # Number of rooms (units) currently in the system
     rooms_count_row = conn.execute("SELECT COUNT(*) as cnt FROM rooms").fetchone()
     rooms_count = rooms_count_row['cnt'] if rooms_count_row else 0
-    # Compute sold nights: sum of overlapping nights for each booking in the period
-    # We clamp each booking's start and end to the selected period boundaries and
-    # sum the length in days.  Bookings that do not overlap are ignored.
-    sold_nights_row = conn.execute(
-        """
-        SELECT COALESCE(SUM(
-            CAST(
-                (JULIANDAY(
-                    CASE WHEN b.check_out_date < :end_plus THEN b.check_out_date ELSE :end_plus END
-                ) - JULIANDAY(
-                    CASE WHEN b.check_in_date > :start_date THEN b.check_in_date ELSE :start_date END
-                )) AS INTEGER)
-        ), 0) AS sold_nights
-        FROM bookings AS b
-        WHERE b.check_out_date > :start_date
-          AND b.check_in_date < :end_plus
-        """,
-        {
-            'start_date': start_date.isoformat(),
-            'end_plus': (end_date + timedelta(days=1)).isoformat(),
-        }
-    ).fetchone()
-    sold_nights = sold_nights_row['sold_nights'] if sold_nights_row and sold_nights_row['sold_nights'] else 0
+    # Compute sold nights: sum of overlapping nights for each booking in the period.  To
+    # maintain compatibility across SQLite and PostgreSQL, perform the overlap
+    # calculation in Python rather than relying on database‑specific date
+    # functions.  For each booking whose date range intersects the selected
+    # period, clamp the booking's check‑in and check‑out to the period
+    # boundaries and sum the resulting day counts.
+    sold_nights = 0
+    try:
+        # Determine the end boundary as end_date + 1 day.  We treat the end
+        # boundary as exclusive when computing nights.
+        period_end_excl = end_date + timedelta(days=1)
+        # Fetch all bookings that overlap the period.  Use simple range
+        # comparison without named parameters so that the placeholder syntax is
+        # translated correctly for PostgreSQL.  On SQLite the '?' markers are
+        # accepted directly.  The compatibility layer will convert them to
+        # '%s' when running on psycopg2.
+        overlapping = conn.execute(
+            "SELECT check_in_date, check_out_date FROM bookings WHERE check_out_date > ? AND check_in_date < ?",
+            (start_date.isoformat(), period_end_excl.isoformat()),
+        ).fetchall()
+        for row in overlapping:
+            # Support both dict‑like rows (from psycopg2 RealDictRow) and
+            # tuple‑like rows (from sqlite3).  Retrieve by key if possible,
+            # otherwise by position.
+            try:
+                check_in_str = row['check_in_date']  # type: ignore[index]
+                check_out_str = row['check_out_date']  # type: ignore[index]
+            except Exception:
+                check_in_str = row[0]  # type: ignore[index]
+                check_out_str = row[1]  # type: ignore[index]
+            try:
+                chk_in = date.fromisoformat(check_in_str)
+                chk_out = date.fromisoformat(check_out_str)
+            except Exception:
+                # Skip rows with invalid dates
+                continue
+            # Compute the overlap interval [overlap_start, overlap_end_excl)
+            # The booking occupies nights from chk_in up to but not including
+            # chk_out.  Clamp the start and end to the selected period.
+            overlap_start = max(chk_in, start_date)
+            overlap_end_excl = min(chk_out, period_end_excl)
+            nights = (overlap_end_excl - overlap_start).days
+            if nights > 0:
+                sold_nights += nights
+    except Exception:
+        # If any error occurs (e.g. missing table), leave sold_nights as 0.
+        sold_nights = 0
     # Available nights: rooms_count * number of days in the period
     nights_available = rooms_count * period_days
     occupancy = (sold_nights / nights_available * 100) if nights_available > 0 else 0
