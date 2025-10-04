@@ -3268,9 +3268,17 @@ def dashboard():
     period_days = (end_date - start_date).days + 1
     # Connect to DB
     conn = get_db_connection()
-    # Number of rooms (units) currently in the system
+    # Number of rooms (units) currently in the system.  psycopg2 returns rows
+    # as tuples by default, whereas sqlite3 can return sqlite3.Row objects.  To
+    # support both, extract the count defensively.
     rooms_count_row = conn.execute("SELECT COUNT(*) as cnt FROM rooms").fetchone()
-    rooms_count = rooms_count_row['cnt'] if rooms_count_row else 0
+    if rooms_count_row:
+        try:
+            rooms_count = rooms_count_row['cnt']  # type: ignore[index]
+        except Exception:
+            rooms_count = rooms_count_row[0]  # type: ignore[index]
+    else:
+        rooms_count = 0
     # Compute sold nights: sum of overlapping nights for each booking in the period.  To
     # maintain compatibility across SQLite and PostgreSQL, perform the overlap
     # calculation in Python rather than relying on database‑specific date
@@ -3334,20 +3342,43 @@ def dashboard():
             'end_plus': (end_date + timedelta(days=1)).isoformat(),
         }
     ).fetchone()
-    total_revenue = total_revenue_row['total_rev'] if total_revenue_row else 0.0
+    # Extract total revenue from the row.  Handle both dict‑like and tuple rows.
+    if total_revenue_row:
+        try:
+            total_revenue = total_revenue_row['total_rev']  # type: ignore[index]
+        except Exception:
+            total_revenue = total_revenue_row[0]  # type: ignore[index]
+    else:
+        total_revenue = 0.0
     # ADR: average revenue per sold night
     adr = (total_revenue / sold_nights) if sold_nights > 0 else 0
     # RevPAR: revenue per available room
     revpar = (total_revenue / nights_available) if nights_available > 0 else 0
     # Check‑ins and check‑outs for start_date; these metrics are useful for today
-    check_in_count = conn.execute(
+    # Count check‑ins and check‑outs for start_date.  psycopg2 returns tuples by
+    # default, so unpack the result defensively.
+    row_ci = conn.execute(
         "SELECT COUNT(*) as cnt FROM bookings WHERE check_in_date = :date",
         {'date': start_date.isoformat()}
-    ).fetchone()['cnt']
-    check_out_count = conn.execute(
+    ).fetchone()
+    if row_ci:
+        try:
+            check_in_count = row_ci['cnt']  # type: ignore[index]
+        except Exception:
+            check_in_count = row_ci[0]  # type: ignore[index]
+    else:
+        check_in_count = 0
+    row_co = conn.execute(
         "SELECT COUNT(*) as cnt FROM bookings WHERE check_out_date = :date",
         {'date': start_date.isoformat()}
-    ).fetchone()['cnt']
+    ).fetchone()
+    if row_co:
+        try:
+            check_out_count = row_co['cnt']  # type: ignore[index]
+        except Exception:
+            check_out_count = row_co[0]  # type: ignore[index]
+    else:
+        check_out_count = 0
     # Deposit statuses within period (counts)
     deposit_rows = conn.execute(
         """
@@ -3362,7 +3393,16 @@ def dashboard():
             'end_plus': (end_date + timedelta(days=1)).isoformat(),
         }
     ).fetchall()
-    deposit_counts = {row['status']: row['count'] for row in deposit_rows}
+    # Build a mapping of deposit status to count.  Support both tuple and dict rows.
+    deposit_counts: dict[str, int] = {}
+    for row in deposit_rows:
+        try:
+            status = row['status']  # type: ignore[index]
+            count = row['count']  # type: ignore[index]
+        except Exception:
+            status = row[0]  # type: ignore[index]
+            count = row[1]  # type: ignore[index]
+        deposit_counts[status] = count
     # Build pick‑up data for the next 14 days (starting from start_date)
     pickup_dates = []
     pickup_occ = []
