@@ -3192,8 +3192,14 @@ def dashboard():
     selected date range.  Owners and managers can use this view to quickly
     assess occupancy, revenue and other indicators, and drill down into
     underlying bookings.  The dashboard supports a simple date range filter
-    (start and end dates) via query parameters; if omitted, it defaults to
-    today.
+    (start and end dates) via query parameters and a set of quick‑select
+    shortcuts (1 day, week, month, year).
+
+    By default, when no period or explicit dates are supplied, the dashboard
+    now displays metrics for the last seven days (today plus the previous six
+    days).  This differs from earlier versions that only showed a single day
+    when no filter was provided and ensures that recent historical data is
+    visible without user intervention.
 
     Metrics shown:
       * Occupancy: percentage of sold nights over available nights.
@@ -3208,13 +3214,17 @@ def dashboard():
     and revenue for the next two weeks starting from the selected start date.
     """
     from datetime import datetime, timedelta, date
-    # Parse date range from query parameters; default to today
-    # Read optional quick‑select period (1d, week, month, year) from query
+    # Parse date range from query parameters.  A quick‑select period (1d, week,
+    # month, year) takes precedence over explicit start/end values.  If no
+    # period is specified and neither start nor end is provided, default to
+    # showing the last 7 days (today and six previous days).  This change
+    # addresses user feedback that the dashboard should include recent history
+    # by default rather than only displaying today's metrics.
     period_sel = request.args.get('period')
-    start_date = None
-    end_date = None
-    # If a quick‑select period is specified, compute start_date and end_date accordingly
+    start_date: date | None = None
+    end_date: date | None = None
     if period_sel in {"1d", "week", "month", "year"}:
+        # Quick‑select periods always end on the current date
         end_date = date.today()
         if period_sel == "1d":
             start_date = end_date
@@ -3225,22 +3235,32 @@ def dashboard():
         elif period_sel == "year":
             start_date = end_date - timedelta(days=364)
     else:
-        # Otherwise, fall back to explicit start/end query parameters
+        # Try to parse explicit start/end date parameters.  If either
+        # parameter is missing, use the other as a boundary.  If both are
+        # missing, default to a 7‑day window ending today.
         start_str = request.args.get('start')
         end_str = request.args.get('end')
         try:
             if start_str:
                 start_date = date.fromisoformat(start_str)
-            else:
-                start_date = date.today()
             if end_str:
                 end_date = date.fromisoformat(end_str)
-            else:
-                end_date = date.today()
         except Exception:
-            # Fallback to today if parsing fails
-            start_date = date.today()
+            # Invalid date strings fallback to None; we handle below
+            start_date = None
+            end_date = None
+        # If both start and end are provided and parsed successfully, use them.
+        if start_date and end_date:
+            pass
+        # If only one boundary is provided, use today for the other.
+        elif start_date and not end_date:
             end_date = date.today()
+        elif end_date and not start_date:
+            start_date = date.today()
+        else:
+            # Neither parameter provided; show last 7 days by default
+            end_date = date.today()
+            start_date = end_date - timedelta(days=6)
     # Ensure start_date <= end_date
     if start_date and end_date and start_date > end_date:
         start_date, end_date = end_date, start_date
