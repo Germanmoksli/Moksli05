@@ -2983,16 +2983,16 @@ def calendar_view(year=None, month=None):
                 # managers to change the occupancy status (e.g. from "booked" to "occupied") for a date with an
                 # existing booking via the dropdown in the calendar, without being overridden by the booking's
                 # deposit status (paid/withheld/returned).
+                # If a custom occupancy status is set for this room/date, use it. Otherwise default to 'booked'.
+                # We no longer fall back to the booking's own ``status`` field here because that column is used
+                # to track deposit statuses (paid, withheld, returned).  Relying on it caused the occupancy status
+                # to reset to 'booked' even after selecting 'occupied' or another state.  Instead, the calendar
+                # treats all booked nights as 'booked' unless an override exists in ``room_statuses``.  This
+                # makes the status selector in the calendar fully authoritative.
                 if (room["id"], d) in status_map:
-                    # Custom status overrides everything
                     status_for_calendar = status_map[(room["id"], d)]
                 else:
-                    # Use the booking's status only if it represents a room occupancy state; otherwise default to booked
-                    st = b.get("status") or "booked"
-                    if st in ["occupied", "vacant", "booked", "ready", "cleaning", "hourly"]:
-                        status_for_calendar = st
-                    else:
-                        status_for_calendar = "booked"
+                    status_for_calendar = "booked"
                 row["days"].append({"date": d, "status": status_for_calendar, "booking": b})
             else:
                 # For dates without a booking, use the custom status if present; otherwise mark past dates as vacant
@@ -3988,27 +3988,10 @@ def set_room_status(room_id, date_str):
                 # Ignore individual errors to prevent a partial failure from aborting all updates
                 pass
 
-        # If the chosen status represents an occupancy state (e.g., 'occupied', 'vacant', etc.),
-        # also update the booking's own status for any bookings that overlap the selected date.
-        # Without this, bookings retain the value 'booked', 'paid', etc., which causes the
-        # calendar to continue displaying the old status.  Updating the booking ensures that
-        # the occupancy state persists across page reloads.  Deposit-related statuses (paid,
-        # withheld, returned) can still be managed separately via the booking edit form.
-        occupancy_states = {"occupied", "vacant", "booked", "ready", "cleaning", "hourly"}
-        if status in occupancy_states:
-            try:
-                conn.execute(
-                    """
-                    UPDATE bookings
-                    SET status = ?
-                    WHERE room_id = ?
-                      AND date(check_in_date) <= date(?)
-                      AND date(check_out_date) >= date(?)
-                    """,
-                    (status, room_id, date_str, date_str),
-                )
-            except Exception:
-                pass
+        # Do not update the booking's own status when changing occupancy via the calendar.
+        # The booking.status column tracks deposit statuses such as 'paid', 'withheld' and 'returned'.
+        # Updating it here would overwrite those deposit values and still wouldn't change the calendar,
+        # because the calendar now relies solely on the room_statuses table for occupancy state.
         # Explicitly commit the transaction.  On PostgreSQL this is a no‑op when
         # autocommit is enabled, but on SQLite it ensures persistence.
         try:
