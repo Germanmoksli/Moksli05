@@ -3909,9 +3909,15 @@ def add_booking():
 # undefined variables in templates. This stub has been removed.
 
 # Set or update a custom status for a room on a specific date
+# Allow any authenticated user to change the occupancy status of a room on the calendar.
+# Previously this endpoint required the user to have either the 'owner' or 'manager' role,
+# which prevented other staff (e.g. receptionists or maids) from updating the room's status.
+# Removing the roles_required decorator leaves only @login_required, so anyone who is logged
+# in can freely update statuses.  If you need more granular control, adjust the
+# ``roles_required`` arguments accordingly (e.g., include 'maid' or 'employee').
 @app.route("/calendar/status/<int:room_id>/<date_str>", methods=["GET", "POST"])
 @login_required
-@roles_required('owner', 'manager')
+# @roles_required('owner', 'manager')  # removed to allow all authenticated users
 def set_room_status(room_id, date_str):
     """Display or update status for a room on a particular date."""
     conn = get_db_connection()
