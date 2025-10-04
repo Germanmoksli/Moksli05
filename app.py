@@ -3770,44 +3770,14 @@ def add_booking():
                 session.get('user_id')  # record which user created this booking
             ),
         )
-        # Automatically update the room_statuses table to mark the room as
-        # booked for every date spanned by this booking (inclusive). This
-        # prevents stale statuses (e.g. "ready" or "vacant") from
-        # overriding the booking on the calendar.
-        # Ensure the status table exists before updating
-        ensure_status_table(conn)
-        try:
-            start_dt = date.fromisoformat(check_in)
-            end_dt = date.fromisoformat(check_out)
-        except Exception:
-            start_dt = None
-            end_dt = None
-        if start_dt and end_dt:
-            # Mark each date of the booking range as booked, excluding the check‑out day.
-            # If check_in and check_out are the same day (zero nights), mark that single date.
-            if start_dt >= end_dt:
-                conn.execute(
-                    """
-                    INSERT INTO room_statuses (room_id, date, status)
-                    VALUES (?, ?, 'booked')
-                    ON CONFLICT(room_id, date) DO UPDATE SET status = 'booked'
-                    """,
-                    (room_id, start_dt.isoformat()),
-                )
-            else:
-                current_dt = start_dt
-                while current_dt < end_dt:
-                    conn.execute(
-                        """
-                        INSERT INTO room_statuses (room_id, date, status)
-                        VALUES (?, ?, 'booked')
-                        ON CONFLICT(room_id, date) DO UPDATE SET status = 'booked'
-                        """,
-                        (room_id, current_dt.isoformat()),
-                    )
-                    current_dt += timedelta(days=1)
-        # Commit the transaction explicitly.  This is a no‑op when autocommit
-        # is enabled on PostgreSQL but ensures persistence on SQLite.
+        # Previously the system automatically marked each day in the booking range as
+        # "booked" in the room_statuses table.  This tightly coupled the room
+        # occupancy status to the existence of a booking and prevented managers
+        # from changing the status independently.  As of this update, we no longer
+        # modify room_statuses when creating a booking.  The room status can be
+        # freely adjusted on any date via the calendar interface, even if there is
+        # a reservation.  We still commit the new booking record explicitly to
+        # ensure the data is persisted (especially on SQLite).
         try:
             conn.commit()
         except Exception:
@@ -3932,69 +3902,28 @@ def set_room_status(room_id, date_str):
     if request.method == "POST":
         # Retrieve the desired status from the form. Default to "ready" if none provided.
         status = request.form.get("status", "ready").strip()
-        # Determine which dates should be updated.  If the selected date belongs to a booking,
-        # update the entire booking range (nights), otherwise only the selected date.
-        dates_to_update: set[str] = set()
+        # When updating the status, do not tie it to bookings.  Always update
+        # only the selected date, regardless of whether a booking exists.  This
+        # allows managers to freely set the occupancy state on any day without
+        # affecting other days in the reservation.
         try:
-            # Fetch bookings overlapping the specified date.  Use plain comparisons on
-            # text columns (ISO formatted dates) to remain portable across SQLite and
-            # PostgreSQL.
-            bookings = conn.execute(
+            conn.execute(
                 """
-                SELECT check_in_date, check_out_date
-                FROM bookings
-                WHERE room_id = ?
-                  AND date(check_in_date) <= date(?)
-                  AND date(check_out_date) >= date(?)
+                INSERT INTO room_statuses (room_id, date, status)
+                VALUES (?, ?, ?)
+                ON CONFLICT(room_id, date) DO UPDATE SET status = excluded.status
                 """,
-                (room_id, date_str, date_str),
-            ).fetchall()
-        except Exception:
-            bookings = []
-        # If the date overlaps one or more bookings, collect all occupied nights
-        if bookings:
-            for b in bookings:
-                try:
-                    start = date.fromisoformat(b["check_in_date"])
-                    end = date.fromisoformat(b["check_out_date"])
-                except Exception:
-                    continue
-                # A zero‑night stay (check_in >= check_out) occupies the single day; otherwise
-                # mark each night from start inclusive up to (but excluding) end.
-                if start and end:
-                    if start >= end:
-                        dates_to_update.add(start.isoformat())
-                    else:
-                        current = start
-                        while current < end:
-                            dates_to_update.add(current.isoformat())
-                            current += timedelta(days=1)
-        else:
-            # No overlapping booking: update just the selected date
-            dates_to_update.add(date_str)
-        # Upsert the status for each target date.  Avoid using a context manager on the
-        # connection to prevent the wrapper from closing the connection prematurely.
-        for dstr in dates_to_update:
+                (room_id, date_str, status),
+            )
+            # Explicitly commit so that SQLite persists the change.  On PostgreSQL
+            # this is a no‑op when autocommit is enabled.
             try:
-                conn.execute(
-                    """
-                    INSERT INTO room_statuses (room_id, date, status)
-                    VALUES (?, ?, ?)
-                    ON CONFLICT(room_id, date) DO UPDATE SET status = excluded.status
-                    """,
-                    (room_id, dstr, status),
-                )
+                conn.commit()
             except Exception:
-                # Ignore individual errors to prevent a partial failure from aborting all updates
                 pass
-        # Explicitly commit the transaction.  On PostgreSQL this is a no‑op when
-        # autocommit is enabled, but on SQLite it ensures persistence.
-        try:
-            conn.commit()
-        except Exception:
-            pass
-        # Close the connection now that we are finished
-        conn.close()
+        finally:
+            # Close the connection once the update has been attempted.
+            conn.close()
         flash("Статус обновлён.")
         # Redirect back to the calendar for the month/year of the selected date
         return redirect(url_for(
@@ -4241,38 +4170,12 @@ def edit_booking(booking_id):
                     )
                 except Exception:
                     pass
-            # After updating the booking, ensure the room statuses reflect the
-            # updated reservation range.  We only mark dates as "booked" when there
-            # is no existing custom status for the date.  This prevents overriding
-            # statuses that managers have manually set (e.g. "occupied").
-            ensure_status_table(conn)
-            try:
-                new_start_dt = date.fromisoformat(check_in)
-                new_end_dt = date.fromisoformat(check_out)
-            except Exception:
-                new_start_dt = None
-                new_end_dt = None
-            if new_start_dt and new_end_dt:
-                def _mark_booked(d: date):
-                    try:
-                        # Attempt to insert a row only if it does not already exist.
-                        conn.execute(
-                            """
-                            INSERT INTO room_statuses (room_id, date, status)
-                            VALUES (?, ?, 'booked')
-                            ON CONFLICT(room_id, date) DO NOTHING
-                            """,
-                            (room_id, d.isoformat()),
-                        )
-                    except Exception:
-                        pass
-                if new_start_dt >= new_end_dt:
-                    _mark_booked(new_start_dt)
-                else:
-                    current_dt = new_start_dt
-                    while current_dt < new_end_dt:
-                        _mark_booked(current_dt)
-                        current_dt += timedelta(days=1)
+            # Previously the system marked each date in the updated booking range as
+            # "booked" in the room_statuses table.  This behaviour coupled room
+            # statuses tightly to bookings and prevented managers from setting
+            # occupancy states independently.  We now deliberately avoid altering
+            # room_statuses when a booking is edited.  Any per‑day status can be
+            # modified via the calendar interface regardless of reservations.
         conn.close()
         flash("Бронирование обновлено успешно!")
         # Redirect back to calendar if scroll_date provided
@@ -4321,50 +4224,25 @@ def delete_booking(booking_id):
     # Determine scroll_date from query or form for redirecting back to calendar
     scroll_date = request.args.get("scroll_date") or request.form.get("scroll_date")
     conn = get_db_connection()
-    # Before deletion, fetch booking details to reset room statuses after removal.
+    # Before deletion, fetch booking details for redirect calculations.
+    # We used to also reset any associated room statuses to "ready" when a booking
+    # was removed.  That behaviour coupled statuses to bookings and prevented
+    # independent status control.  As part of decoupling, we now simply gather
+    # the booking's dates for navigation and do not alter room_statuses.
     booking_row = conn.execute(
         "SELECT room_id, check_in_date, check_out_date FROM bookings WHERE id = ?",
         (booking_id,),
     ).fetchone()
-    # Perform deletion and update statuses within one transaction.
+    # Compute the booking's check‑in date (start_dt) here so it is available for
+    # redirect logic after deletion.  If the date format is invalid, fall back to None.
+    start_dt = None
+    if booking_row:
+        try:
+            start_dt = date.fromisoformat(booking_row["check_in_date"])
+        except Exception:
+            start_dt = None
+    # Perform deletion in a transaction.  We no longer modify room_statuses here.
     with conn:
-        # If the booking exists, update the room statuses to "ready" for the occupied dates
-        if booking_row:
-            ensure_status_table(conn)
-            try:
-                # Convert stored strings to date objects. These values are used both for
-                # clearing room statuses and for redirecting the user back to the
-                # appropriate month in the calendar.
-                start_dt = date.fromisoformat(booking_row["check_in_date"])
-                end_dt = date.fromisoformat(booking_row["check_out_date"])
-            except Exception:
-                start_dt = None
-                end_dt = None
-            if start_dt and end_dt:
-                if start_dt >= end_dt:
-                    # Single‑day booking: mark just the start date as ready
-                    conn.execute(
-                        """
-                        INSERT INTO room_statuses (room_id, date, status)
-                        VALUES (?, ?, 'ready')
-                        ON CONFLICT(room_id, date) DO UPDATE SET status = 'ready'
-                        """,
-                        (booking_row["room_id"], start_dt.isoformat()),
-                    )
-                else:
-                    current_dt = start_dt
-                    # Mark each date except the check‑out day as ready
-                    while current_dt < end_dt:
-                        conn.execute(
-                            """
-                            INSERT INTO room_statuses (room_id, date, status)
-                            VALUES (?, ?, 'ready')
-                            ON CONFLICT(room_id, date) DO UPDATE SET status = 'ready'
-                            """,
-                            (booking_row["room_id"], current_dt.isoformat()),
-                        )
-                        current_dt += timedelta(days=1)
-        # Delete booking; cascade rules ensure related records like payments are removed
         conn.execute("DELETE FROM bookings WHERE id = ?", (booking_id,))
     conn.close()
     flash("Бронирование удалено успешно!")
