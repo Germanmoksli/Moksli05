@@ -56,15 +56,16 @@
         <div class="row g-2 align-items-end">
           <div class="col-auto clickable-field" onclick="this.querySelector('select').focus();">
             <select id="country_code" name="country_code" class="form-select">
-              <option value="+7" data-mask="(XXX) XXX XX XX" data-length="10" data-flag="🇰🇿" selected>🇰🇿 +7</option>
-              <option value="+1" data-mask="(XXX) XXX-XXXX" data-length="10" data-flag="🇺🇸">🇺🇸 +1</option>
-              <option value="+44" data-mask="(XXXX) XXX XXXX" data-length="10" data-flag="🇬🇧">🇬🇧 +44</option>
-              <option value="+49" data-mask="(XXXX) XXX XXXX" data-length="10" data-flag="🇩🇪">🇩🇪 +49</option>
-              <option value="+81" data-mask="(XXXX) XXX XXX" data-length="9" data-flag="🇯🇵">🇯🇵 +81</option>
+              <option value="+7" data-mask="(XXX) XXX XX XX" data-length="10" data-flag="🇰🇿" {% if phone_country_code == '+7' %}selected{% endif %}>🇰🇿 +7</option>
+              <option value="+1" data-mask="(XXX) XXX-XXXX" data-length="10" data-flag="🇺🇸" {% if phone_country_code == '+1' %}selected{% endif %}>🇺🇸 +1</option>
+              <option value="+44" data-mask="(XXXX) XXX XXXX" data-length="10" data-flag="🇬🇧" {% if phone_country_code == '+44' %}selected{% endif %}>🇬🇧 +44</option>
+              <option value="+49" data-mask="(XXXX) XXX XXXX" data-length="10" data-flag="🇩🇪" {% if phone_country_code == '+49' %}selected{% endif %}>🇩🇪 +49</option>
+              <option value="+81" data-mask="(XXXX) XXX XXX" data-length="9" data-flag="🇯🇵" {% if phone_country_code == '+81' %}selected{% endif %}>🇯🇵 +81</option>
             </select>
           </div>
           <div class="col clickable-field" onclick="this.querySelector('input').focus();">
-            <input type="tel" class="form-control" id="phone" name="phone" placeholder="" list="guest-phones">
+            <!-- Prepopulate the subscriber number (without country code) using the provided phone_digits variable. -->
+            <input type="tel" class="form-control" id="phone" name="phone" placeholder="" list="guest-phones" value="{{ phone_digits or '' }}">
           </div>
         </div>
       </div>
@@ -109,7 +110,15 @@
           currentMask = selected.getAttribute('data-mask');
           currentLength = parseInt(selected.getAttribute('data-length'), 10) || 10;
           phoneInput.placeholder = currentMask;
-          phoneInput.value = '';
+          // Preserve any existing digits when switching country codes or on initial load.
+          var existingDigits = phoneInput.value.replace(/\D/g, '');
+          if (existingDigits) {
+            // Trim existing digits to the maximum length allowed for the selected country
+            existingDigits = existingDigits.slice(0, currentLength);
+            phoneInput.value = formatNumber(existingDigits);
+          } else {
+            phoneInput.value = '';
+          }
         }
         function formatNumber(digits) {
           var result = '';
@@ -152,6 +161,7 @@
           var len = phoneInput.value.length;
           phoneInput.setSelectionRange(len, len);
         });
+        // Initialize placeholder and format existing phone number on first load
         updatePlaceholder();
       });
     </script>

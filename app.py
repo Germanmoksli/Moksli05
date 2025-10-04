@@ -5251,25 +5251,34 @@ def account():
     conn = get_db_connection()
     # Ensure the photo column exists on the users table before any updates
     ensure_photo_column(conn)
+    # Always fetch the current user record up front so that both GET and POST
+    # branches have access to the existing contact_info and photo.  Avoid
+    # closing the connection here since it will be reused further down.
+    try:
+        user_row = conn.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
+    except Exception:
+        user_row = None
     if request.method == 'POST':
         # Extract profile fields
         name = (request.form.get('name') or '').strip() or None
-        # Compose contact info from phone fields (country code + digits).  If no new
-        # phone is provided, fall back to the existing contact_info field.
+        # Pull country code and phone digits from the form; remove all non‑digit characters
         country_code = (request.form.get('country_code') or '').strip()
         raw_phone = (request.form.get('phone') or '').strip()
         phone_digits = re.sub(r'\D', '', raw_phone)
-        contact: str | None = None
-        if country_code or phone_digits:
-            # Only set contact if at least digits are present; ignore country code alone
-            if phone_digits:
-                contact = f"{country_code}{phone_digits}"
+        # Determine the new contact_info value.  If digits were provided, always
+        # compose a contact string combining the selected country code and digits.
+        # Otherwise, fall back to the existing contact_info so that omitting the
+        # phone field does not wipe out the existing number.
+        contact: str | None
+        if phone_digits:
+            contact = f"{country_code}{phone_digits}"
         else:
-            # Use explicit contact_info field if provided
-            contact = (request.form.get('contact_info') or '').strip() or None
-        # Handle uploaded photo.  Save the file into ``static/uploads`` and build a relative
-        # path for storage in the database.  When saving, ensure the directory exists and
-        # optionally prefix the filename with a timestamp to avoid collisions.
+            # Preserve existing contact_info if available
+            contact = user_row['contact_info'] if user_row else None
+        # Handle uploaded photo.  Save the file into ``static/uploads`` and build a
+        # relative path for storage in the database.  When saving, ensure the
+        # directory exists and optionally prefix the filename with a timestamp to
+        # avoid collisions.
         photo_file = request.files.get('photo')
         photo_path: str | None = None
         if photo_file and photo_file.filename:
@@ -5307,18 +5316,103 @@ def account():
         except Exception:
             # Ignore update errors but log if necessary
             pass
-        finally:
-            conn.close()
+        # Close connection after update
+        conn.close()
         flash('Профиль обновлён.')
         return redirect(url_for('account'))
-    # GET: display current profile
+    # GET: display current profile.  Compute phone_country_code and phone_digits
+    user = user_row
+    # Close connection now that we no longer need it for GET
+    conn.close()
+    # Determine the default phone code and digits for edit form.  If the user
+    # already has a contact_info value, parse it to extract the country code
+    # and subscriber number.  Otherwise, fall back to Kazakhstan code (+7)
+    # with an empty subscriber number.  Use the same grouping logic as
+    # format_phone but omit the leading plus sign from the returned number.
+    phone_country_code = '+7'
+    phone_digits_display = ''
     try:
-        user = conn.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
+        import re as _re
+        if user and user['contact_info']:
+            digits_only = _re.sub(r'\D', '', user['contact_info'])
+            if digits_only:
+                code_digits = ''
+                number_digits = ''
+                # Determine code based on common prefixes
+                if digits_only.startswith('7') and len(digits_only) > 1:
+                    code_digits = '7'
+                    number_digits = digits_only[1:]
+                elif digits_only.startswith('1') and len(digits_only) > 1:
+                    code_digits = '1'
+                    number_digits = digits_only[1:]
+                elif digits_only.startswith('44') and len(digits_only) > 2:
+                    code_digits = '44'
+                    number_digits = digits_only[2:]
+                elif digits_only.startswith('49') and len(digits_only) > 2:
+                    code_digits = '49'
+                    number_digits = digits_only[2:]
+                elif digits_only.startswith('81') and len(digits_only) > 2:
+                    code_digits = '81'
+                    number_digits = digits_only[2:]
+                else:
+                    # Fallback: treat up to first three digits as code
+                    if len(digits_only) > 3:
+                        code_digits = digits_only[:3]
+                        number_digits = digits_only[3:]
+                    elif len(digits_only) > 2:
+                        code_digits = digits_only[:2]
+                        number_digits = digits_only[2:]
+                    elif len(digits_only) > 1:
+                        code_digits = digits_only[:1]
+                        number_digits = digits_only[1:]
+                    else:
+                        code_digits = digits_only
+                        number_digits = ''
+                if code_digits:
+                    phone_country_code = '+' + code_digits
+                # Format the subscriber number according to common groupings for display
+                def _format_subscriber(code: str, number: str) -> str:
+                    groups: list[int] = []
+                    if code == '7':
+                        groups = [3, 3, 2, 2]
+                    elif code == '1':
+                        groups = [3, 3, 4]
+                    elif code in ('44', '49'):
+                        groups = [4, 3, 4]
+                    elif code == '81':
+                        groups = [4, 3, 3]
+                    else:
+                        # Fallback: group remaining digits in chunks of up to 3
+                        rem = len(number)
+                        while rem > 0:
+                            g = 3 if rem >= 3 else rem
+                            groups.append(g)
+                            rem -= g
+                    parts: list[str] = []
+                    idx = 0
+                    for g in groups:
+                        part = number[idx: idx + g]
+                        if not part:
+                            break
+                        parts.append(part)
+                        idx += g
+                    if not parts:
+                        return ''
+                    first = parts[0]
+                    formatted = f"({first})"
+                    rest = parts[1:]
+                    if rest:
+                        if code == '1' and len(rest) == 2:
+                            formatted += f" {rest[0]}-{rest[1]}"
+                        else:
+                            formatted += ' ' + ' '.join(rest)
+                    return formatted
+                phone_digits_display = _format_subscriber(code_digits, number_digits)
     except Exception:
-        user = None
-    finally:
-        conn.close()
-    return render_template('account.html', user=user)
+        # On any error while parsing the phone, retain defaults
+        phone_country_code = '+7'
+        phone_digits_display = ''
+    return render_template('account.html', user=user, phone_country_code=phone_country_code, phone_digits=phone_digits_display)
 
 
 # ---------------------------------------------------------------------------
