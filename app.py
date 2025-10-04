@@ -3924,34 +3924,37 @@ def set_room_status(room_id, date_str):
         flash("Неверная дата.")
         return redirect(url_for("calendar_view"))
     if request.method == "POST":
+        # Retrieve the desired status from the form. Default to "ready" if none provided.
         status = request.form.get("status", "ready").strip()
-        # Build a set of dates that should be updated. If the selected date is part of a booking, update
-        # the entire booking range. Otherwise, update only the single date.
-        dates_to_update = set()
-        # Fetch bookings overlapping the given date for this room
-        bookings = conn.execute(
-            """
-            SELECT check_in_date, check_out_date
-            FROM bookings
-            WHERE room_id = ?
-              AND date(check_in_date) <= date(?)
-              AND date(check_out_date) >= date(?)
-            """,
-            (room_id, date_str, date_str),
-        ).fetchall()
+        # Determine which dates should be updated.  If the selected date belongs to a booking,
+        # update the entire booking range (nights), otherwise only the selected date.
+        dates_to_update: set[str] = set()
+        try:
+            # Fetch bookings overlapping the specified date.  Use plain comparisons on
+            # text columns (ISO formatted dates) to remain portable across SQLite and
+            # PostgreSQL.
+            bookings = conn.execute(
+                """
+                SELECT check_in_date, check_out_date
+                FROM bookings
+                WHERE room_id = ?
+                  AND date(check_in_date) <= date(?)
+                  AND date(check_out_date) >= date(?)
+                """,
+                (room_id, date_str, date_str),
+            ).fetchall()
+        except Exception:
+            bookings = []
+        # If the date overlaps one or more bookings, collect all occupied nights
         if bookings:
-            # For each overlapping booking, add every date in its range to the update set.
             for b in bookings:
                 try:
                     start = date.fromisoformat(b["check_in_date"])
                     end = date.fromisoformat(b["check_out_date"])
                 except Exception:
                     continue
-                # For each booking, update statuses for the occupied nights only. A booking
-                # from check_in to check_out means the guest stays through the night
-                # before check_out and departs on the morning of check_out. If
-                # check_in == check_out, treat as a single day stay; otherwise update
-                # from start inclusive to end exclusive.
+                # A zero‑night stay (check_in >= check_out) occupies the single day; otherwise
+                # mark each night from start inclusive up to (but excluding) end.
                 if start and end:
                     if start >= end:
                         dates_to_update.add(start.isoformat())
@@ -3963,9 +3966,10 @@ def set_room_status(room_id, date_str):
         else:
             # No overlapping booking: update just the selected date
             dates_to_update.add(date_str)
-        # Upsert the status for each date in the set
-        with conn:
-            for dstr in dates_to_update:
+        # Upsert the status for each target date.  Avoid using a context manager on the
+        # connection to prevent the wrapper from closing the connection prematurely.
+        for dstr in dates_to_update:
+            try:
                 conn.execute(
                     """
                     INSERT INTO room_statuses (room_id, date, status)
@@ -3974,9 +3978,19 @@ def set_room_status(room_id, date_str):
                     """,
                     (room_id, dstr, status),
                 )
+            except Exception:
+                # Ignore individual errors to prevent a partial failure from aborting all updates
+                pass
+        # Explicitly commit the transaction.  On PostgreSQL this is a no‑op when
+        # autocommit is enabled, but on SQLite it ensures persistence.
+        try:
+            conn.commit()
+        except Exception:
+            pass
+        # Close the connection now that we are finished
         conn.close()
         flash("Статус обновлён.")
-        # After updating, redirect back to the calendar for the month/year of the originally selected date
+        # Redirect back to the calendar for the month/year of the selected date
         return redirect(url_for(
             "calendar_view",
             year=date_obj.year,
@@ -4222,9 +4236,9 @@ def edit_booking(booking_id):
                 except Exception:
                     pass
             # After updating the booking, ensure the room statuses reflect the
-            # updated reservation range. We mark each date spanned by the
-            # booking as "booked" to override any stale custom statuses. This
-            # mirrors the logic used when creating a new booking.
+            # updated reservation range.  We only mark dates as "booked" when there
+            # is no existing custom status for the date.  This prevents overriding
+            # statuses that managers have manually set (e.g. "occupied").
             ensure_status_table(conn)
             try:
                 new_start_dt = date.fromisoformat(check_in)
@@ -4233,28 +4247,25 @@ def edit_booking(booking_id):
                 new_start_dt = None
                 new_end_dt = None
             if new_start_dt and new_end_dt:
-                # Mark dates in the updated booking range as booked, excluding the check‑out day.
-                # For zero‑night bookings (check_in == check_out), mark that single date.
-                if new_start_dt >= new_end_dt:
-                    conn.execute(
-                        """
-                        INSERT INTO room_statuses (room_id, date, status)
-                        VALUES (?, ?, 'booked')
-                        ON CONFLICT(room_id, date) DO UPDATE SET status = 'booked'
-                        """,
-                        (room_id, new_start_dt.isoformat()),
-                    )
-                else:
-                    current_dt = new_start_dt
-                    while current_dt < new_end_dt:
+                def _mark_booked(d: date):
+                    try:
+                        # Attempt to insert a row only if it does not already exist.
                         conn.execute(
                             """
                             INSERT INTO room_statuses (room_id, date, status)
                             VALUES (?, ?, 'booked')
-                            ON CONFLICT(room_id, date) DO UPDATE SET status = 'booked'
+                            ON CONFLICT(room_id, date) DO NOTHING
                             """,
-                            (room_id, current_dt.isoformat()),
+                            (room_id, d.isoformat()),
                         )
+                    except Exception:
+                        pass
+                if new_start_dt >= new_end_dt:
+                    _mark_booked(new_start_dt)
+                else:
+                    current_dt = new_start_dt
+                    while current_dt < new_end_dt:
+                        _mark_booked(current_dt)
                         current_dt += timedelta(days=1)
         conn.close()
         flash("Бронирование обновлено успешно!")
@@ -5225,56 +5236,88 @@ def mark_chat_seen(room_id: int):
 # the filename is stored in the database.
 @app.route("/account", methods=["GET", "POST"])
 def account():
+    """
+    Display and update the profile for the currently logged‑in user.  When a POST request
+    is received, update the user's name, contact information and optional avatar image.
+    When handling avatar uploads, save the file into the ``static/uploads`` directory
+    relative to the application root and store a path relative to the ``static`` folder
+    (e.g. ``uploads/filename.jpg``) in the database.  Avoid using a context manager on
+    the connection so the wrapper does not close the connection prematurely.
+    """
     # Ensure the user is authenticated; if not, redirect to login
     if not session.get('user_id'):
         return redirect(url_for('login'))
     user_id = session['user_id']
     conn = get_db_connection()
+    # Ensure the photo column exists on the users table before any updates
     ensure_photo_column(conn)
     if request.method == 'POST':
-        # Update profile information
+        # Extract profile fields
         name = (request.form.get('name') or '').strip() or None
-        # Compose contact info from phone fields if provided; if not, fall back to contact_info
+        # Compose contact info from phone fields (country code + digits).  If no new
+        # phone is provided, fall back to the existing contact_info field.
         country_code = (request.form.get('country_code') or '').strip()
         raw_phone = (request.form.get('phone') or '').strip()
         phone_digits = re.sub(r'\D', '', raw_phone)
-        contact = None
+        contact: str | None = None
         if country_code or phone_digits:
+            # Only set contact if at least digits are present; ignore country code alone
             if phone_digits:
                 contact = f"{country_code}{phone_digits}"
         else:
+            # Use explicit contact_info field if provided
             contact = (request.form.get('contact_info') or '').strip() or None
-        # Handle uploaded photo
+        # Handle uploaded photo.  Save the file into ``static/uploads`` and build a relative
+        # path for storage in the database.  When saving, ensure the directory exists and
+        # optionally prefix the filename with a timestamp to avoid collisions.
         photo_file = request.files.get('photo')
-        photo_path = None
+        photo_path: str | None = None
         if photo_file and photo_file.filename:
             filename = secure_filename(photo_file.filename)
-            # Save uploads to a static/uploads directory
+            # Prefix the filename with a timestamp to avoid name clashes
+            timestamp = datetime.utcnow().strftime('%Y%m%d%H%M%S')
+            unique_name = f"{timestamp}_{filename}"
             upload_dir = os.path.join(app.root_path, 'static', 'uploads')
             os.makedirs(upload_dir, exist_ok=True)
-            file_path = os.path.join(upload_dir, filename)
-            photo_file.save(file_path)
-            # Store relative path under static
-            photo_path = f'uploads/{filename}'
-        with conn:
-            # Only update the photo column if a new photo was uploaded
+            file_path = os.path.join(upload_dir, unique_name)
+            try:
+                photo_file.save(file_path)
+                # Store the relative path (under static) in the DB
+                photo_path = f'uploads/{unique_name}'
+            except Exception:
+                # If saving fails, ignore the upload and continue without updating the photo
+                photo_path = None
+        # Perform the update.  Do not use a context manager on ``conn`` so that
+        # the wrapper does not close the connection before we are done.  Commit
+        # explicitly so changes persist on SQLite and remain harmless on PostgreSQL.
+        try:
             if photo_path:
                 conn.execute(
                     'UPDATE users SET name=?, contact_info=?, photo=? WHERE id=?',
                     (name, contact, photo_path, user_id)
                 )
+                # Update the session variable so the navigation bar updates immediately
+                session['user_photo'] = photo_path
             else:
                 conn.execute(
                     'UPDATE users SET name=?, contact_info=? WHERE id=?',
                     (name, contact, user_id)
                 )
-        conn.close()
+            conn.commit()
+        except Exception:
+            # Ignore update errors but log if necessary
+            pass
+        finally:
+            conn.close()
         flash('Профиль обновлён.')
         return redirect(url_for('account'))
-    # GET: show profile data
-    # Use correct placeholder for id lookup; see comments above.
-    user = conn.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
-    conn.close()
+    # GET: display current profile
+    try:
+        user = conn.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
+    except Exception:
+        user = None
+    finally:
+        conn.close()
     return render_template('account.html', user=user)
 
 

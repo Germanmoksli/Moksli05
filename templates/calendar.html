@@ -504,7 +504,7 @@
                 <td class="status-{{ cell.status }} p-0 position-relative">
                   <div class="d-flex flex-column h-100">
                     <!-- Верх: выбор статуса -->
-                    <form method="post" action="{{ url_for('set_room_status', room_id=row.room['id'], date_str=cell.date) }}"
+                    <form method="post" action="{{ url_for('set_room_status', room_id=row.room['id'], date_str=cell.date.isoformat()) }}"
                           class="flex-grow-1 border-bottom">
                       <select name="status" class="form-select form-select-sm py-0" onchange="this.form.submit()">
                         <option value="occupied" {% if cell.status == 'occupied' %}selected{% endif %}>Заселено</option>
