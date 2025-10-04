@@ -3987,6 +3987,28 @@ def set_room_status(room_id, date_str):
             except Exception:
                 # Ignore individual errors to prevent a partial failure from aborting all updates
                 pass
+
+        # If the chosen status represents an occupancy state (e.g., 'occupied', 'vacant', etc.),
+        # also update the booking's own status for any bookings that overlap the selected date.
+        # Without this, bookings retain the value 'booked', 'paid', etc., which causes the
+        # calendar to continue displaying the old status.  Updating the booking ensures that
+        # the occupancy state persists across page reloads.  Deposit-related statuses (paid,
+        # withheld, returned) can still be managed separately via the booking edit form.
+        occupancy_states = {"occupied", "vacant", "booked", "ready", "cleaning", "hourly"}
+        if status in occupancy_states:
+            try:
+                conn.execute(
+                    """
+                    UPDATE bookings
+                    SET status = ?
+                    WHERE room_id = ?
+                      AND date(check_in_date) <= date(?)
+                      AND date(check_out_date) >= date(?)
+                    """,
+                    (status, room_id, date_str, date_str),
+                )
+            except Exception:
+                pass
         # Explicitly commit the transaction.  On PostgreSQL this is a no‑op when
         # autocommit is enabled, but on SQLite it ensures persistence.
         try:
