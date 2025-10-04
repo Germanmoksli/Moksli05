@@ -2577,8 +2577,12 @@ def add_room():
                     "INSERT INTO rooms (room_number, listing_url, residential_complex) VALUES (?, ?, ?)",
                     (room_number, listing_url, residential_complex),
                 )
-        except sqlite3.IntegrityError:
-            # Name must be unique
+        except Exception:
+            # On any insertion error (e.g. duplicate room number), roll back the
+            # transaction if necessary and inform the user.  When using
+            # PostgreSQL the unique constraint violation is a different
+            # exception type than sqlite3.IntegrityError, so catch all
+            # exceptions here.
             conn.close()
             flash("Ошибка: квартира с таким названием уже существует.")
             return redirect(url_for("add_room"))
@@ -2622,7 +2626,8 @@ def edit_room(room_id: int):
                     "UPDATE rooms SET room_number = ?, listing_url = ?, residential_complex = ? WHERE id = ?",
                     (new_name, new_link, new_complex, room_id),
                 )
-        except sqlite3.IntegrityError:
+        except Exception:
+            # Catch any update error, including unique constraint violations in PostgreSQL.
             conn.close()
             flash("Ошибка: квартира с таким названием уже существует.")
             return redirect(url_for("edit_room", room_id=room_id))
@@ -3668,15 +3673,35 @@ def add_booking():
                     except Exception:
                         pass
             else:
-                # No existing guest found; create a new one
+                # No existing guest found; create a new one.  Do **not** use
+                # a context manager on the existing connection here because
+                # ``with conn`` will close the connection upon exit via
+                # SQLiteCompatConnection.__exit__.  Closing the connection at
+                # this point would render it unusable for subsequent booking
+                # insertion operations later in this function.  Instead,
+                # insert the guest using the existing open connection and
+                # rely on autocommit (enabled on PostgreSQL) or call commit
+                # explicitly if supported.  See issue where using ``with
+                # conn`` here caused a "connection already closed" error when
+                # saving a booking.
                 new_guest_name = guest_name_input if guest_name_input else phone_clean
                 extra_phone_input = (request.form.get("extra_phone") or "").strip()
-                with conn:
-                    cur = conn.execute(
-                        "INSERT INTO guests (name, phone, extra_phone, email, notes) VALUES (?, ?, ?, ?, ?)",
-                        (new_guest_name, phone_clean, extra_phone_input or None, None, None),
-                    )
-                    guest_id = cur.lastrowid
+                cur = conn.execute(
+                    "INSERT INTO guests (name, phone, extra_phone, email, notes) VALUES (?, ?, ?, ?, ?)",
+                    (new_guest_name, phone_clean, extra_phone_input or None, None, None),
+                )
+                # Capture the new guest ID from the cursor.  When using
+                # PostgreSQL, our SQLiteCompatCursor will extract the value
+                # from the RETURNING clause automatically.  On SQLite,
+                # lastrowid provides the inserted row's ID.
+                guest_id = cur.lastrowid
+                # Explicitly commit if supported.  On PostgreSQL this is a
+                # no‑op when autocommit is enabled, but on SQLite it
+                # persists the change.
+                try:
+                    conn.commit()
+                except Exception:
+                    pass
         # If booking is for an existing guest, update extra_phone if provided
         if guest_id is not None and provided_guest_id:
             extra_phone_input = (request.form.get("extra_phone") or "").strip()
@@ -3717,73 +3742,77 @@ def add_booking():
         # Calculate total amount
         total_amount = (rate * nights) if (rate is not None) else None
         # Insert booking into database. After insertion, automatically mark the room
-        # as booked for each date in the reservation range. This ensures the
-        # calendar shows a "booked" status immediately, regardless of the
-        # deposit status saved in the bookings table. We use ON CONFLICT to
-        # overwrite any existing status for those dates, which is desirable
-        # when a new booking is created.
-        with conn:
-            # Insert booking record
-            # When creating a booking, also record the user who created it.  The
-            # created_by column stores the ID of the currently logged in user
-            # (manager/owner).  Older rows without this column will have NULL
-            # created_by values.
-            conn.execute(
-                """
-                INSERT INTO bookings (
-                    guest_id, room_id, check_in_date, check_out_date,
-                    status, total_amount, paid_amount, notes, created_by
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    guest_id,
-                    room_id,
-                    check_in,
-                    check_out,
-                    deposit_status,
-                    total_amount,
-                    deposit_amount,
-                    notes,
-                    session.get('user_id')  # record which user created this booking
-                ),
+        # as booked for each date in the reservation range.  Avoid using
+        # ``with conn`` on the existing connection because that will close
+        # the connection and cause subsequent operations to fail.  Instead,
+        # execute the insert and status updates directly and commit at the
+        # end.  Autocommit is enabled on PostgreSQL, but an explicit commit
+        # call is harmless and ensures SQLite persists the changes.
+        # Insert booking record.  Record the ID of the user who created it via
+        # session['user_id'] in the created_by column.
+        conn.execute(
+            """
+            INSERT INTO bookings (
+                guest_id, room_id, check_in_date, check_out_date,
+                status, total_amount, paid_amount, notes, created_by
             )
-            # Automatically update the room_statuses table to mark the room as
-            # booked for every date spanned by this booking (inclusive). This
-            # prevents stale statuses (e.g. "ready" or "vacant") from
-            # overriding the booking on the calendar.
-            # Ensure the status table exists before updating
-            ensure_status_table(conn)
-            try:
-                start_dt = date.fromisoformat(check_in)
-                end_dt = date.fromisoformat(check_out)
-            except Exception:
-                start_dt = None
-                end_dt = None
-            if start_dt and end_dt:
-                # Mark each date of the booking range as booked, excluding the check‑out day.
-                # If check_in and check_out are the same day (zero nights), mark that single date.
-                if start_dt >= end_dt:
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                guest_id,
+                room_id,
+                check_in,
+                check_out,
+                deposit_status,
+                total_amount,
+                deposit_amount,
+                notes,
+                session.get('user_id')  # record which user created this booking
+            ),
+        )
+        # Automatically update the room_statuses table to mark the room as
+        # booked for every date spanned by this booking (inclusive). This
+        # prevents stale statuses (e.g. "ready" or "vacant") from
+        # overriding the booking on the calendar.
+        # Ensure the status table exists before updating
+        ensure_status_table(conn)
+        try:
+            start_dt = date.fromisoformat(check_in)
+            end_dt = date.fromisoformat(check_out)
+        except Exception:
+            start_dt = None
+            end_dt = None
+        if start_dt and end_dt:
+            # Mark each date of the booking range as booked, excluding the check‑out day.
+            # If check_in and check_out are the same day (zero nights), mark that single date.
+            if start_dt >= end_dt:
+                conn.execute(
+                    """
+                    INSERT INTO room_statuses (room_id, date, status)
+                    VALUES (?, ?, 'booked')
+                    ON CONFLICT(room_id, date) DO UPDATE SET status = 'booked'
+                    """,
+                    (room_id, start_dt.isoformat()),
+                )
+            else:
+                current_dt = start_dt
+                while current_dt < end_dt:
                     conn.execute(
                         """
                         INSERT INTO room_statuses (room_id, date, status)
                         VALUES (?, ?, 'booked')
                         ON CONFLICT(room_id, date) DO UPDATE SET status = 'booked'
                         """,
-                        (room_id, start_dt.isoformat()),
+                        (room_id, current_dt.isoformat()),
                     )
-                else:
-                    current_dt = start_dt
-                    while current_dt < end_dt:
-                        conn.execute(
-                            """
-                            INSERT INTO room_statuses (room_id, date, status)
-                            VALUES (?, ?, 'booked')
-                            ON CONFLICT(room_id, date) DO UPDATE SET status = 'booked'
-                            """,
-                            (room_id, current_dt.isoformat()),
-                        )
-                        current_dt += timedelta(days=1)
+                    current_dt += timedelta(days=1)
+        # Commit the transaction explicitly.  This is a no‑op when autocommit
+        # is enabled on PostgreSQL but ensures persistence on SQLite.
+        try:
+            conn.commit()
+        except Exception:
+            pass
+        # Close the connection now that all operations on it are complete
         conn.close()
         flash("Бронирование создано успешно!")
         # After creating the booking, redirect back to the calendar if scroll_date
