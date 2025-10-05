@@ -4194,12 +4194,34 @@ def edit_booking(booking_id):
         total_amount_str = request.form.get("total_amount", "").strip()
         paid_amount_str = request.form.get("paid_amount", "").strip()
         notes = request.form.get("notes", "").strip() or None
-        total_amount = float(total_amount_str) if total_amount_str else None
+
+        # Convert the rate input (which represents price per night) to a float if provided.
+        rate = float(total_amount_str) if total_amount_str else None
         paid_amount = float(paid_amount_str) if paid_amount_str else None
+
+        # Compute the number of nights between the new check‑in and check‑out dates.
+        nights = 0
+        if check_in and check_out:
+            try:
+                ci = date.fromisoformat(check_in)
+                co = date.fromisoformat(check_out)
+                nights = (co - ci).days
+            except Exception:
+                nights = 0
+        # If nights is zero or negative (same day or invalid range), treat as one night to avoid zero total.
+        if nights <= 0:
+            nights = 1
+
+        # Compute the total booking amount.  The form field total_amount stores the price per night, so
+        # multiply by the number of nights to derive the total for database storage.  If rate is None,
+        # leave total_amount as None (allows null in DB).
+        total_amount = (rate * nights) if (rate is not None) else None
+
         if not check_in or not check_out:
             flash("Заполните даты заезда и выезда.")
             conn.close()
             return redirect(url_for("edit_booking", booking_id=booking_id, scroll_date=scroll_date))
+
         with conn:
             conn.execute(
                 """
