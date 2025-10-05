@@ -3281,11 +3281,13 @@ def dashboard():
             except Exception:
                 check_in_str = row[0]  # type: ignore[index]
                 check_out_str = row[1]  # type: ignore[index]
-            try:
-                chk_in = date.fromisoformat(check_in_str)
-                chk_out = date.fromisoformat(check_out_str)
-            except Exception:
-                # Skip rows with invalid dates
+            # Coerce database values to ``datetime.date``.  Skip bookings with
+            # invalid dates.  ``_parse_date`` handles both native date objects
+            # (returned by psycopg2) and ISO strings (returned by sqlite3).
+            chk_in = _parse_date(check_in_str)
+            chk_out = _parse_date(check_out_str)
+            if not chk_in or not chk_out:
+                # Skip rows with invalid or unparsable dates
                 continue
             # Compute the overlap interval [overlap_start, overlap_end_excl)
             # The booking occupies nights from chk_in up to but not including
@@ -3343,6 +3345,36 @@ def dashboard():
         }
     ).fetchall()
     deposit_counts = {row['status']: row['count'] for row in deposit_rows}
+    # -------------------------------------------------------------------------
+    # Define a helper to coerce various date/datetime/string values to a date.
+    # This helper accepts Python ``date`` or ``datetime`` objects directly and
+    # attempts to parse ISO formatted strings, returning ``None`` on failure.
+    def _parse_date(val: object):
+        """Convert a value to a ``datetime.date``.
+
+        Accepts ``datetime.date``, ``datetime.datetime`` or ISO‑formatted
+        ``str`` values.  If the input is ``None`` or parsing fails, returns
+        ``None``.  This helper normalises values coming from both SQLite and
+        PostgreSQL, where date columns may be returned as strings or native
+        ``date`` objects.
+        """
+        from datetime import date as _dt_date, datetime as _dt_datetime
+        # Already a ``date`` (but not a ``datetime``): return as‑is
+        if isinstance(val, _dt_date) and not isinstance(val, _dt_datetime):
+            return val
+        # A ``datetime``: extract the date component
+        if isinstance(val, _dt_datetime):
+            return val.date()
+        if val is None:
+            return None
+        # Attempt to parse from ISO string
+        try:
+            s = val.split(' ')[0] if isinstance(val, str) else str(val)
+            return _dt_date.fromisoformat(s)
+        except Exception:
+            return None
+
+    # -------------------------------------------------------------------------
     # Build pick‑up data for the next 14 days (starting from start_date)
     pickup_dates = []
     pickup_occ = []
@@ -3373,10 +3405,10 @@ def dashboard():
                 ci = row[0]
                 co = row[1]
                 total_amt = row[2]
-            try:
-                ci_date = date.fromisoformat(ci)
-                co_date = date.fromisoformat(co)
-            except Exception:
+            # Convert values to ``date``.  Skip records with invalid dates.
+            ci_date = _parse_date(ci)
+            co_date = _parse_date(co)
+            if not ci_date or not co_date:
                 continue
             if ci_date <= day < co_date:
                 sold_for_day += 1
@@ -3389,94 +3421,79 @@ def dashboard():
         pickup_revenue.append(round(revenue_for_day, 2))
     
 # -------------------------------------------------------------------------
-    # Per-room aggregated statistics: compute nights sold, revenue and booking count
-    # across all bookings (not limited to the selected period).  This ensures
-    # that statistics for existing rooms are always displayed even when the
-    # current date range contains no bookings.  For each room we also
-    # calculate a simple occupancy metric based on the span of time between
-    # the earliest check-in and latest check-out in that room's history.
-    room_stats: list[dict] = []
-    # Load all bookings once.  When running against PostgreSQL the custom
-    # SQLiteCompatCursor will translate parameter markers and return rows as
-    # dictionaries.  If any error occurs, fall back to an empty list.
+
+    # -------------------------------------------------------------------------
+    # Per-room statistics: compute nights sold, revenue and booking count in Python.
+    # Use the ``_parse_date`` helper defined above to normalise date values.
+    room_stats = []
+    # Fetch bookings overlapping the selected period
     try:
-        bookings_all = conn.execute(
-            "SELECT room_id, check_in_date, check_out_date, total_amount, status, paid_amount FROM bookings"
+        all_bookings = conn.execute(
+            "SELECT room_id, check_in_date, check_out_date, total_amount FROM bookings WHERE check_out_date > ? AND check_in_date < ?",
+            (start_date.isoformat(), (end_date + timedelta(days=1)).isoformat())
         ).fetchall()
     except Exception:
-        bookings_all = []
-    # Aggregate sold nights, revenue and booking counts per room.  Track the
-    # earliest check-in and latest check-out per room to estimate the total
-    # available nights window for occupancy and empty nights calculations.
-    agg_by_room_total: dict[int, dict] = {}
-    date_range_by_room: dict[int, dict] = {}
-    for row in bookings_all:
-        # Extract fields supporting both dict-like (RealDictRow) and tuple rows
+        all_bookings = []
+    # Initialize aggregates by room
+    agg_by_room: dict = {}
+    for row in all_bookings:
+        # Extract fields from either dict-like or tuple rows
         try:
-            room_id = row['room_id']  # type: ignore[index]
-            ci_str = row['check_in_date']  # type: ignore[index]
-            co_str = row['check_out_date']  # type: ignore[index]
-            total_amt = row['total_amount']  # type: ignore[index]
+            room_id = row['room_id']
+            ci_val = row['check_in_date']
+            co_val = row['check_out_date']
+            total_amt = row['total_amount']
         except Exception:
             room_id = row[0]
-            ci_str = row[1]
-            co_str = row[2]
+            ci_val = row[1]
+            co_val = row[2]
             total_amt = row[3]
-        try:
-            ci_date = date.fromisoformat(ci_str)
-            co_date = date.fromisoformat(co_str)
-        except Exception:
-            # Skip rows with invalid dates
+        ci_date = _parse_date(ci_val)
+        co_date = _parse_date(co_val)
+        if not ci_date or not co_date:
             continue
-        # Compute number of nights in this booking
-        nights_total = (co_date - ci_date).days
-        if nights_total <= 0:
+        # Compute overlap with selected period [start_date, end_date + 1)
+        overlap_start = max(ci_date, start_date)
+        overlap_end = min(co_date, end_date + timedelta(days=1))
+        nights_overlap = (overlap_end - overlap_start).days
+        if nights_overlap <= 0:
             continue
-        # Initialize per-room aggregates on first encounter
-        if room_id not in agg_by_room_total:
-            agg_by_room_total[room_id] = {
+        if room_id not in agg_by_room:
+            agg_by_room[room_id] = {
                 'nights_sold': 0,
                 'revenue': 0.0,
                 'booking_count': 0,
             }
-            date_range_by_room[room_id] = {
-                'earliest': ci_date,
-                'latest': co_date,
-            }
-        agg = agg_by_room_total[room_id]
-        agg['nights_sold'] += nights_total
+        agg = agg_by_room[room_id]
+        agg['nights_sold'] += nights_overlap
         agg['booking_count'] += 1
-        # Distribute revenue evenly across nights when total_amount is present
-        if total_amt is not None:
+        nights_total = (co_date - ci_date).days
+        if nights_total > 0 and total_amt is not None:
             try:
                 amt = float(total_amt)
             except Exception:
                 amt = 0.0
-            agg['revenue'] += amt
-        # Update earliest and latest dates per room
-        dr = date_range_by_room[room_id]
-        if ci_date < dr['earliest']:
-            dr['earliest'] = ci_date
-        if co_date > dr['latest']:
-            dr['latest'] = co_date
-    # Deposit counts by room across all bookings (paid_amount > 0)
+            agg['revenue'] += amt / nights_total * nights_overlap
+    # Deposit counts by room and status within selected period
     try:
         deposit_by_room_rows = conn.execute(
             """
             SELECT room_id, status, COUNT(*) AS count
             FROM bookings
             WHERE paid_amount IS NOT NULL AND paid_amount > 0
+              AND check_out_date > ? AND check_in_date < ?
             GROUP BY room_id, status
-            """
+            """,
+            (start_date.isoformat(), (end_date + timedelta(days=1)).isoformat())
         ).fetchall()
     except Exception:
         deposit_by_room_rows = []
-    deposit_by_room: dict[int, dict] = {}
+    deposit_by_room: dict = {}
     for row in deposit_by_room_rows:
         try:
-            rid = row['room_id']  # type: ignore[index]
-            status = row['status']  # type: ignore[index]
-            cnt = row['count']  # type: ignore[index]
+            rid = row['room_id']
+            status = row['status']
+            cnt = row['count']
         except Exception:
             rid = row[0]
             status = row[1]
@@ -3484,46 +3501,35 @@ def dashboard():
         if rid not in deposit_by_room:
             deposit_by_room[rid] = {}
         deposit_by_room[rid][status] = cnt
-    # Fetch all rooms so that we include rooms with no bookings
+    # Fetch all rooms to ensure rooms with no bookings are included
     room_list = conn.execute(
         "SELECT id, room_number FROM rooms ORDER BY room_number"
     ).fetchall()
     conn.close()
     for r in room_list:
         try:
-            rid = r['id']  # type: ignore[index]
-            room_number = r['room_number']  # type: ignore[index]
+            rid = r['id']
+            room_number = r['room_number']
         except Exception:
             rid = r[0]
             room_number = r[1]
-        agg = agg_by_room_total.get(rid)
-        # Sold nights, revenue and booking counts across all bookings; default to zero
-        nights_sold_total = agg['nights_sold'] if agg else 0
-        revenue_total = float(agg['revenue']) if agg else 0.0
-        booking_count_total = agg['booking_count'] if agg else 0
-        # Estimate available nights based on the date span of the room's bookings
-        if rid in date_range_by_room:
-            dr = date_range_by_room[rid]
-            try:
-                nights_available_total = (dr['latest'] - dr['earliest']).days
-            except Exception:
-                nights_available_total = 0
-        else:
-            nights_available_total = 0
-        empty_nights_total = (nights_available_total - nights_sold_total) if nights_available_total > 0 else 0
-        occupancy_total = (
-            (nights_sold_total / nights_available_total * 100) if nights_available_total > 0 else 0
-        )
-        adr_total = (revenue_total / nights_sold_total) if nights_sold_total > 0 else 0
+        agg = agg_by_room.get(rid)
+        nights_sold_r = agg['nights_sold'] if agg else 0
+        revenue_r = float(agg['revenue']) if agg else 0.0
+        booking_count_r = agg['booking_count'] if agg else 0
+        nights_available_r = period_days  # each room available each day
+        empty_nights_r = nights_available_r - nights_sold_r
+        occupancy_r = (nights_sold_r / nights_available_r * 100) if nights_available_r > 0 else 0
+        adr_r = (revenue_r / nights_sold_r) if nights_sold_r > 0 else 0
         deposit_counts_r = deposit_by_room.get(rid, {})
         room_stats.append({
             'room_number': room_number,
-            'nights_sold': nights_sold_total,
-            'empty_nights': empty_nights_total,
-            'occupancy': occupancy_total,
-            'revenue': revenue_total,
-            'adr': adr_total,
-            'booking_count': booking_count_total,
+            'nights_sold': nights_sold_r,
+            'empty_nights': empty_nights_r,
+            'occupancy': occupancy_r,
+            'revenue': revenue_r,
+            'adr': adr_r,
+            'booking_count': booking_count_r,
             'deposit_counts': deposit_counts_r,
         })
     # Render dashboard with both overall metrics and per‑room stats
