@@ -3192,14 +3192,8 @@ def dashboard():
     selected date range.  Owners and managers can use this view to quickly
     assess occupancy, revenue and other indicators, and drill down into
     underlying bookings.  The dashboard supports a simple date range filter
-    (start and end dates) via query parameters and a set of quick‑select
-    shortcuts (1 day, week, month, year).
-
-    By default, when no period or explicit dates are supplied, the dashboard
-    now displays metrics for the last seven days (today plus the previous six
-    days).  This differs from earlier versions that only showed a single day
-    when no filter was provided and ensures that recent historical data is
-    visible without user intervention.
+    (start and end dates) via query parameters; if omitted, it defaults to
+    today.
 
     Metrics shown:
       * Occupancy: percentage of sold nights over available nights.
@@ -3214,17 +3208,13 @@ def dashboard():
     and revenue for the next two weeks starting from the selected start date.
     """
     from datetime import datetime, timedelta, date
-    # Parse date range from query parameters.  A quick‑select period (1d, week,
-    # month, year) takes precedence over explicit start/end values.  If no
-    # period is specified and neither start nor end is provided, default to
-    # showing the last 7 days (today and six previous days).  This change
-    # addresses user feedback that the dashboard should include recent history
-    # by default rather than only displaying today's metrics.
+    # Parse date range from query parameters; default to today
+    # Read optional quick‑select period (1d, week, month, year) from query
     period_sel = request.args.get('period')
-    start_date: date | None = None
-    end_date: date | None = None
+    start_date = None
+    end_date = None
+    # If a quick‑select period is specified, compute start_date and end_date accordingly
     if period_sel in {"1d", "week", "month", "year"}:
-        # Quick‑select periods always end on the current date
         end_date = date.today()
         if period_sel == "1d":
             start_date = end_date
@@ -3235,32 +3225,22 @@ def dashboard():
         elif period_sel == "year":
             start_date = end_date - timedelta(days=364)
     else:
-        # Try to parse explicit start/end date parameters.  If either
-        # parameter is missing, use the other as a boundary.  If both are
-        # missing, default to a 7‑day window ending today.
+        # Otherwise, fall back to explicit start/end query parameters
         start_str = request.args.get('start')
         end_str = request.args.get('end')
         try:
             if start_str:
                 start_date = date.fromisoformat(start_str)
+            else:
+                start_date = date.today()
             if end_str:
                 end_date = date.fromisoformat(end_str)
+            else:
+                end_date = date.today()
         except Exception:
-            # Invalid date strings fallback to None; we handle below
-            start_date = None
-            end_date = None
-        # If both start and end are provided and parsed successfully, use them.
-        if start_date and end_date:
-            pass
-        # If only one boundary is provided, use today for the other.
-        elif start_date and not end_date:
-            end_date = date.today()
-        elif end_date and not start_date:
+            # Fallback to today if parsing fails
             start_date = date.today()
-        else:
-            # Neither parameter provided; show last 7 days by default
             end_date = date.today()
-            start_date = end_date - timedelta(days=6)
     # Ensure start_date <= end_date
     if start_date and end_date and start_date > end_date:
         start_date, end_date = end_date, start_date
@@ -3268,17 +3248,9 @@ def dashboard():
     period_days = (end_date - start_date).days + 1
     # Connect to DB
     conn = get_db_connection()
-    # Number of rooms (units) currently in the system.  psycopg2 returns rows
-    # as tuples by default, whereas sqlite3 can return sqlite3.Row objects.  To
-    # support both, extract the count defensively.
+    # Number of rooms (units) currently in the system
     rooms_count_row = conn.execute("SELECT COUNT(*) as cnt FROM rooms").fetchone()
-    if rooms_count_row:
-        try:
-            rooms_count = rooms_count_row['cnt']  # type: ignore[index]
-        except Exception:
-            rooms_count = rooms_count_row[0]  # type: ignore[index]
-    else:
-        rooms_count = 0
+    rooms_count = rooms_count_row['cnt'] if rooms_count_row else 0
     # Compute sold nights: sum of overlapping nights for each booking in the period.  To
     # maintain compatibility across SQLite and PostgreSQL, perform the overlap
     # calculation in Python rather than relying on database‑specific date
@@ -3342,43 +3314,20 @@ def dashboard():
             'end_plus': (end_date + timedelta(days=1)).isoformat(),
         }
     ).fetchone()
-    # Extract total revenue from the row.  Handle both dict‑like and tuple rows.
-    if total_revenue_row:
-        try:
-            total_revenue = total_revenue_row['total_rev']  # type: ignore[index]
-        except Exception:
-            total_revenue = total_revenue_row[0]  # type: ignore[index]
-    else:
-        total_revenue = 0.0
+    total_revenue = total_revenue_row['total_rev'] if total_revenue_row else 0.0
     # ADR: average revenue per sold night
     adr = (total_revenue / sold_nights) if sold_nights > 0 else 0
     # RevPAR: revenue per available room
     revpar = (total_revenue / nights_available) if nights_available > 0 else 0
     # Check‑ins and check‑outs for start_date; these metrics are useful for today
-    # Count check‑ins and check‑outs for start_date.  psycopg2 returns tuples by
-    # default, so unpack the result defensively.
-    row_ci = conn.execute(
+    check_in_count = conn.execute(
         "SELECT COUNT(*) as cnt FROM bookings WHERE check_in_date = :date",
         {'date': start_date.isoformat()}
-    ).fetchone()
-    if row_ci:
-        try:
-            check_in_count = row_ci['cnt']  # type: ignore[index]
-        except Exception:
-            check_in_count = row_ci[0]  # type: ignore[index]
-    else:
-        check_in_count = 0
-    row_co = conn.execute(
+    ).fetchone()['cnt']
+    check_out_count = conn.execute(
         "SELECT COUNT(*) as cnt FROM bookings WHERE check_out_date = :date",
         {'date': start_date.isoformat()}
-    ).fetchone()
-    if row_co:
-        try:
-            check_out_count = row_co['cnt']  # type: ignore[index]
-        except Exception:
-            check_out_count = row_co[0]  # type: ignore[index]
-    else:
-        check_out_count = 0
+    ).fetchone()['cnt']
     # Deposit statuses within period (counts)
     deposit_rows = conn.execute(
         """
@@ -3393,16 +3342,7 @@ def dashboard():
             'end_plus': (end_date + timedelta(days=1)).isoformat(),
         }
     ).fetchall()
-    # Build a mapping of deposit status to count.  Support both tuple and dict rows.
-    deposit_counts: dict[str, int] = {}
-    for row in deposit_rows:
-        try:
-            status = row['status']  # type: ignore[index]
-            count = row['count']  # type: ignore[index]
-        except Exception:
-            status = row[0]  # type: ignore[index]
-            count = row[1]  # type: ignore[index]
-        deposit_counts[status] = count
+    deposit_counts = {row['status']: row['count'] for row in deposit_rows}
     # Build pick‑up data for the next 14 days (starting from start_date)
     pickup_dates = []
     pickup_occ = []
@@ -3447,71 +3387,96 @@ def dashboard():
         occ_for_day = (sold_for_day / rooms_count * 100) if rooms_count > 0 else 0
         pickup_occ.append(round(occ_for_day, 2))
         pickup_revenue.append(round(revenue_for_day, 2))
-    # -------------------------------------------------------------------------
-    # Per-room statistics: compute nights sold, revenue and booking count in Python.
-    room_stats = []
-    # Fetch bookings overlapping the selected period
+    
+# -------------------------------------------------------------------------
+    # Per-room aggregated statistics: compute nights sold, revenue and booking count
+    # across all bookings (not limited to the selected period).  This ensures
+    # that statistics for existing rooms are always displayed even when the
+    # current date range contains no bookings.  For each room we also
+    # calculate a simple occupancy metric based on the span of time between
+    # the earliest check-in and latest check-out in that room's history.
+    room_stats: list[dict] = []
+    # Load all bookings once.  When running against PostgreSQL the custom
+    # SQLiteCompatCursor will translate parameter markers and return rows as
+    # dictionaries.  If any error occurs, fall back to an empty list.
     try:
-        all_bookings = conn.execute(
-            "SELECT room_id, check_in_date, check_out_date, total_amount FROM bookings WHERE check_out_date > ? AND check_in_date < ?",
-            (start_date.isoformat(), (end_date + timedelta(days=1)).isoformat())
+        bookings_all = conn.execute(
+            "SELECT room_id, check_in_date, check_out_date, total_amount, status, paid_amount FROM bookings"
         ).fetchall()
     except Exception:
-        all_bookings = []
-    # Initialize aggregates by room
-    agg_by_room: dict = {}
-    for row in all_bookings:
-        # Extract fields from either dict-like or tuple rows
+        bookings_all = []
+    # Aggregate sold nights, revenue and booking counts per room.  Track the
+    # earliest check-in and latest check-out per room to estimate the total
+    # available nights window for occupancy and empty nights calculations.
+    agg_by_room_total: dict[int, dict] = {}
+    date_range_by_room: dict[int, dict] = {}
+    for row in bookings_all:
+        # Extract fields supporting both dict-like (RealDictRow) and tuple rows
         try:
-            room_id = row['room_id']
-            ci = row['check_in_date']
-            co = row['check_out_date']
-            total_amt = row['total_amount']
+            room_id = row['room_id']  # type: ignore[index]
+            ci_str = row['check_in_date']  # type: ignore[index]
+            co_str = row['check_out_date']  # type: ignore[index]
+            total_amt = row['total_amount']  # type: ignore[index]
         except Exception:
             room_id = row[0]
-            ci = row[1]
-            co = row[2]
+            ci_str = row[1]
+            co_str = row[2]
             total_amt = row[3]
         try:
-            ci_date = date.fromisoformat(ci)
-            co_date = date.fromisoformat(co)
+            ci_date = date.fromisoformat(ci_str)
+            co_date = date.fromisoformat(co_str)
         except Exception:
+            # Skip rows with invalid dates
             continue
-        # Compute overlap with selected period [start_date, end_date + 1)
-        overlap_start = max(ci_date, start_date)
-        overlap_end = min(co_date, end_date + timedelta(days=1))
-        nights_overlap = (overlap_end - overlap_start).days
-        if nights_overlap <= 0:
+        # Compute number of nights in this booking
+        nights_total = (co_date - ci_date).days
+        if nights_total <= 0:
             continue
-        if room_id not in agg_by_room:
-            agg_by_room[room_id] = {
+        # Initialize per-room aggregates on first encounter
+        if room_id not in agg_by_room_total:
+            agg_by_room_total[room_id] = {
                 'nights_sold': 0,
                 'revenue': 0.0,
                 'booking_count': 0,
             }
-        agg = agg_by_room[room_id]
-        agg['nights_sold'] += nights_overlap
+            date_range_by_room[room_id] = {
+                'earliest': ci_date,
+                'latest': co_date,
+            }
+        agg = agg_by_room_total[room_id]
+        agg['nights_sold'] += nights_total
         agg['booking_count'] += 1
-        nights_total = (co_date - ci_date).days
-        if nights_total > 0 and total_amt is not None:
-            agg['revenue'] += float(total_amt) / nights_total * nights_overlap
-    # Deposit counts by room and status (keep original SQL; no JULIANDAY)
-    deposit_by_room_rows = conn.execute(
-        """
-        SELECT room_id, status, COUNT(*) AS count
-        FROM bookings
-        WHERE paid_amount IS NOT NULL AND paid_amount > 0
-          AND check_out_date > ? AND check_in_date < ?
-        GROUP BY room_id, status
-        """,
-        (start_date.isoformat(), (end_date + timedelta(days=1)).isoformat())
-    ).fetchall()
-    deposit_by_room: dict = {}
+        # Distribute revenue evenly across nights when total_amount is present
+        if total_amt is not None:
+            try:
+                amt = float(total_amt)
+            except Exception:
+                amt = 0.0
+            agg['revenue'] += amt
+        # Update earliest and latest dates per room
+        dr = date_range_by_room[room_id]
+        if ci_date < dr['earliest']:
+            dr['earliest'] = ci_date
+        if co_date > dr['latest']:
+            dr['latest'] = co_date
+    # Deposit counts by room across all bookings (paid_amount > 0)
+    try:
+        deposit_by_room_rows = conn.execute(
+            """
+            SELECT room_id, status, COUNT(*) AS count
+            FROM bookings
+            WHERE paid_amount IS NOT NULL AND paid_amount > 0
+            GROUP BY room_id, status
+            """
+        ).fetchall()
+    except Exception:
+        deposit_by_room_rows = []
+    deposit_by_room: dict[int, dict] = {}
     for row in deposit_by_room_rows:
         try:
-            rid = row['room_id']
-            status = row['status']
-            cnt = row['count']
+            rid = row['room_id']  # type: ignore[index]
+            status = row['status']  # type: ignore[index]
+            cnt = row['count']  # type: ignore[index]
         except Exception:
             rid = row[0]
             status = row[1]
@@ -3519,35 +3484,46 @@ def dashboard():
         if rid not in deposit_by_room:
             deposit_by_room[rid] = {}
         deposit_by_room[rid][status] = cnt
-    # Fetch all rooms to ensure rooms with no bookings are included
+    # Fetch all rooms so that we include rooms with no bookings
     room_list = conn.execute(
         "SELECT id, room_number FROM rooms ORDER BY room_number"
     ).fetchall()
     conn.close()
     for r in room_list:
         try:
-            rid = r['id']
-            room_number = r['room_number']
+            rid = r['id']  # type: ignore[index]
+            room_number = r['room_number']  # type: ignore[index]
         except Exception:
             rid = r[0]
             room_number = r[1]
-        agg = agg_by_room.get(rid)
-        nights_sold_r = agg['nights_sold'] if agg else 0
-        revenue_r = float(agg['revenue']) if agg else 0.0
-        booking_count_r = agg['booking_count'] if agg else 0
-        nights_available_r = period_days  # each room available each day
-        empty_nights_r = nights_available_r - nights_sold_r
-        occupancy_r = (nights_sold_r / nights_available_r * 100) if nights_available_r > 0 else 0
-        adr_r = (revenue_r / nights_sold_r) if nights_sold_r > 0 else 0
+        agg = agg_by_room_total.get(rid)
+        # Sold nights, revenue and booking counts across all bookings; default to zero
+        nights_sold_total = agg['nights_sold'] if agg else 0
+        revenue_total = float(agg['revenue']) if agg else 0.0
+        booking_count_total = agg['booking_count'] if agg else 0
+        # Estimate available nights based on the date span of the room's bookings
+        if rid in date_range_by_room:
+            dr = date_range_by_room[rid]
+            try:
+                nights_available_total = (dr['latest'] - dr['earliest']).days
+            except Exception:
+                nights_available_total = 0
+        else:
+            nights_available_total = 0
+        empty_nights_total = (nights_available_total - nights_sold_total) if nights_available_total > 0 else 0
+        occupancy_total = (
+            (nights_sold_total / nights_available_total * 100) if nights_available_total > 0 else 0
+        )
+        adr_total = (revenue_total / nights_sold_total) if nights_sold_total > 0 else 0
         deposit_counts_r = deposit_by_room.get(rid, {})
         room_stats.append({
             'room_number': room_number,
-            'nights_sold': nights_sold_r,
-            'empty_nights': empty_nights_r,
-            'occupancy': occupancy_r,
-            'revenue': revenue_r,
-            'adr': adr_r,
-            'booking_count': booking_count_r,
+            'nights_sold': nights_sold_total,
+            'empty_nights': empty_nights_total,
+            'occupancy': occupancy_total,
+            'revenue': revenue_total,
+            'adr': adr_total,
+            'booking_count': booking_count_total,
             'deposit_counts': deposit_counts_r,
         })
     # Render dashboard with both overall metrics and per‑room stats
