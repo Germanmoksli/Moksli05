@@ -3269,7 +3269,8 @@ def dashboard():
         # '%s' when running on psycopg2.
         overlapping = conn.execute(
             "SELECT check_in_date, check_out_date FROM bookings WHERE check_out_date > ? AND check_in_date < ?",
-            (start_date.isoformat(), period_end_excl.isoformat()),
+            # Pass Python ``date`` objects directly so PostgreSQL correctly binds them as DATE values.
+            (start_date, period_end_excl),
         ).fetchall()
         for row in overlapping:
             # Support both dict‑like rows (from psycopg2 RealDictRow) and
@@ -3312,8 +3313,9 @@ def dashboard():
           AND b.check_in_date < :end_plus
         """,
         {
-            'start_date': start_date.isoformat(),
-            'end_plus': (end_date + timedelta(days=1)).isoformat(),
+            # Use date objects so PostgreSQL binds parameters as DATE.  See `_parse_date` for conversions.
+            'start_date': start_date,
+            'end_plus': end_date + timedelta(days=1),
         }
     ).fetchone()
     total_revenue = total_revenue_row['total_rev'] if total_revenue_row else 0.0
@@ -3324,11 +3326,12 @@ def dashboard():
     # Check‑ins and check‑outs for start_date; these metrics are useful for today
     check_in_count = conn.execute(
         "SELECT COUNT(*) as cnt FROM bookings WHERE check_in_date = :date",
-        {'date': start_date.isoformat()}
+        # Bind date object directly for accurate date equality comparisons
+        {'date': start_date}
     ).fetchone()['cnt']
     check_out_count = conn.execute(
         "SELECT COUNT(*) as cnt FROM bookings WHERE check_out_date = :date",
-        {'date': start_date.isoformat()}
+        {'date': start_date}
     ).fetchone()['cnt']
     # Deposit statuses within period (counts)
     deposit_rows = conn.execute(
@@ -3340,8 +3343,9 @@ def dashboard():
         GROUP BY status
         """,
         {
-            'start_date': start_date.isoformat(),
-            'end_plus': (end_date + timedelta(days=1)).isoformat(),
+            # Bind date objects directly for accurate comparisons
+            'start_date': start_date,
+            'end_plus': end_date + timedelta(days=1),
         }
     ).fetchall()
     deposit_counts = {row['status']: row['count'] for row in deposit_rows}
@@ -3388,10 +3392,11 @@ def dashboard():
         sold_for_day = 0
         revenue_for_day = 0.0
         try:
-            # Fetch all bookings that could overlap this day once per iteration
+            # Fetch all bookings that could overlap this day once per iteration.  Bind
+            # ``day`` directly as a ``date``; psycopg2 will handle conversion.
             day_rows = conn.execute(
                 "SELECT check_in_date, check_out_date, total_amount FROM bookings WHERE check_in_date <= ? AND check_out_date > ?",
-                (day.isoformat(), day.isoformat())
+                (day, day)
             ).fetchall()
         except Exception:
             day_rows = []
@@ -3430,7 +3435,8 @@ def dashboard():
     try:
         all_bookings = conn.execute(
             "SELECT room_id, check_in_date, check_out_date, total_amount FROM bookings WHERE check_out_date > ? AND check_in_date < ?",
-            (start_date.isoformat(), (end_date + timedelta(days=1)).isoformat())
+            # Bind date objects for correct comparisons
+            (start_date, end_date + timedelta(days=1))
         ).fetchall()
     except Exception:
         all_bookings = []
@@ -3484,7 +3490,8 @@ def dashboard():
               AND check_out_date > ? AND check_in_date < ?
             GROUP BY room_id, status
             """,
-            (start_date.isoformat(), (end_date + timedelta(days=1)).isoformat())
+            # Bind date objects directly so PostgreSQL binds them as DATE values
+            (start_date, end_date + timedelta(days=1))
         ).fetchall()
     except Exception:
         deposit_by_room_rows = []
