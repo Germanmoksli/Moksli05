@@ -504,9 +504,12 @@
                 <td class="status-{{ cell.status }} p-0 position-relative">
                   <div class="d-flex flex-column h-100">
                     <!-- Верх: выбор статуса -->
-                    <form method="post" action="{{ url_for('set_room_status', room_id=row.room['id'], date_str=cell.date.isoformat()) }}"
+                    <form method="post"
+                          hx-post="{{ url_for('set_room_status', room_id=row.room['id'], date_str=cell.date.isoformat()) }}"
+                          hx-trigger="change"
+                          hx-swap="none"
                           class="flex-grow-1 border-bottom">
-                      <select name="status" class="form-select form-select-sm py-0" onchange="this.form.submit()">
+                      <select name="status" class="form-select form-select-sm py-0">
                         <option value="occupied" {% if cell.status == 'occupied' %}selected{% endif %}>Заселено</option>
                         <option value="vacant"   {% if cell.status == 'vacant'   %}selected{% endif %}>Не заселено</option>
                         <option value="booked"   {% if cell.status == 'booked'   %}selected{% endif %}>Бронь</option>

@@ -348,7 +348,7 @@
     }
     </style>
   </head>
-  <body class="bg-light">
+  <body class="bg-light" hx-boost="true">
     <div class="d-flex">
       {# Показываем боковую навигацию только авторизованным пользователям #}
       {% if session.get('user_id') %}

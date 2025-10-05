@@ -3984,8 +3984,13 @@ def set_room_status(room_id, date_str):
         finally:
             # Close the connection once the update has been attempted.
             conn.close()
+        # If this is an htmx request (AJAX), return a 204 response so the client
+        # does not trigger a full page reload.  Htmx uses the HX-Request header
+        # to indicate a request originated from an htmx element.
+        if request.headers.get("HX-Request"):
+            return ("", 204)
+        # Otherwise flash a message and redirect back to the calendar for the month/year of the selected date
         flash("Статус обновлён.")
-        # Redirect back to the calendar for the month/year of the selected date
         return redirect(url_for(
             "calendar_view",
             year=date_obj.year,
