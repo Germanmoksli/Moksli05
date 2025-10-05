@@ -5,7 +5,7 @@
     <h2 class="text-primary fw-bold fs-4">Дашборд</h2>
   </div>
   <!-- Форма фильтра по дате: начало и конец периода -->
-  <form method="get" class="row g-2 mb-4" id="dateFilterForm">
+  <form id="dateFilterForm" hx-get="{{ url_for('dashboard') }}" hx-target="#dashboard-content" hx-push-url="true" class="row g-2 mb-4">
     <!-- Периодовой селектор: позволяет быстро выбрать отрезок времени -->
     <div class="col-auto">
       <label for="period" class="form-label mb-0">Период</label>
@@ -31,147 +31,9 @@
     </div>
   </form>
 
-  <!-- Основные KPI -->
-  <div class="row row-cols-1 row-cols-md-4 g-3 mb-4">
-    <div class="col">
-      <div class="p-3 bg-white border rounded">
-        <div class="d-flex justify-content-between align-items-center">
-          <h6 class="mb-1">Занятость</h6>
-          <small class="text-muted">{{ sold_nights }}/{{ nights_available }}</small>
-        </div>
-        <h3 class="fw-bold">{{ occupancy | round(1) }}%</h3>
-      </div>
-    </div>
-    <div class="col">
-      <div class="p-3 bg-white border rounded">
-        <h6 class="mb-1">ADR</h6>
-        <h3 class="fw-bold">{{ adr | currency }}</h3>
-      </div>
-    </div>
-    <div class="col">
-      <div class="p-3 bg-white border rounded">
-        <h6 class="mb-1">RevPAR</h6>
-        <h3 class="fw-bold">{{ revpar | currency }}</h3>
-      </div>
-    </div>
-    <div class="col">
-      <div class="p-3 bg-white border rounded">
-        <h6 class="mb-1">Выручка</h6>
-        <h3 class="fw-bold">{{ total_revenue | currency }}</h3>
-      </div>
-    </div>
+  <div id="dashboard-content">
+    {% include 'dashboard_content.html' %}
   </div>
-
-  <div class="row row-cols-1 row-cols-md-3 g-3 mb-4">
-    <div class="col">
-      <div class="p-3 bg-white border rounded">
-        <h6 class="mb-1">Заезды ({{ start_date.strftime('%d.%m') }})</h6>
-        <h3 class="fw-bold">{{ check_in_count }}</h3>
-      </div>
-    </div>
-    <div class="col">
-      <div class="p-3 bg-white border rounded">
-        <h6 class="mb-1">Выезды ({{ start_date.strftime('%d.%m') }})</h6>
-        <h3 class="fw-bold">{{ check_out_count }}</h3>
-      </div>
-    </div>
-    <div class="col">
-      <div class="p-3 bg-white border rounded">
-        <h6 class="mb-1">Депозиты</h6>
-        <ul class="list-unstyled mb-0 small">
-          <li><span class="text-muted">Оплачено:</span> {{ deposit_counts.get('paid', 0) }}</li>
-          <li><span class="text-muted">Удержано:</span> {{ deposit_counts.get('withheld', 0) }}</li>
-          <li><span class="text-muted">Возвращено:</span> {{ deposit_counts.get('returned', 0) }}</li>
-        </ul>
-      </div>
-    </div>
-  </div>
-
-  <h5 class="mb-2">Пикап (14 дней)</h5>
-  <div class="bg-white border rounded p-3 mb-4">
-    <canvas id="pickupChart" height="120"></canvas>
-  </div>
-
-  <!-- Подключаем Chart.js для построения графиков -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
-  <script>
-    document.addEventListener('DOMContentLoaded', function () {
-      var ctx = document.getElementById('pickupChart').getContext('2d');
-      var chart = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: {{ pickup_dates|tojson }},
-          datasets: [
-            {
-              label: 'Занятость (%)',
-              data: {{ pickup_occ|tojson }},
-              borderColor: 'rgba(54, 162, 235, 1)',
-              backgroundColor: 'rgba(54, 162, 235, 0.2)',
-              yAxisID: 'y-occupancy',
-              tension: 0.3
-            },
-            {
-              label: 'Выручка',
-              data: {{ pickup_revenue|tojson }},
-              borderColor: 'rgba(255, 99, 132, 1)',
-              backgroundColor: 'rgba(255, 99, 132, 0.2)',
-              yAxisID: 'y-revenue',
-              tension: 0.3
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          scales: {
-            'y-occupancy': {
-              type: 'linear',
-              position: 'left',
-              beginAtZero: true,
-              ticks: {
-                callback: function(value) {
-                  return value + '%';
-                }
-              },
-              title: {
-                display: true,
-                text: 'Занятость (%)'
-              }
-            },
-            'y-revenue': {
-              type: 'linear',
-              position: 'right',
-              beginAtZero: true,
-              grid: {
-                drawOnChartArea: false
-              },
-              title: {
-                display: true,
-                text: 'Выручка (₸)'
-              }
-            }
-          },
-          interaction: {
-            mode: 'index',
-            intersect: false
-          },
-          plugins: {
-            tooltip: {
-              callbacks: {
-                label: function (context) {
-                  var label = context.dataset.label || '';
-                  if (context.dataset.yAxisID === 'y-occupancy') {
-                    return label + ': ' + context.parsed.y + '%';
-                  } else {
-                    return label + ': ' + new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'KZT' }).format(context.parsed.y);
-                  }
-                }
-              }
-            }
-          }
-        }
-      });
-    });
-  </script>
 
   <!-- Скрипт для быстрого выбора периода -->
   <script>
@@ -187,16 +49,12 @@
           var startDate = new Date(today);
           // Вычисляем начальную дату исходя из выбранного периода
           if (val === '1d') {
-            // один день: начало и конец сегодня
             startDate = new Date(today);
           } else if (val === 'week') {
-            // неделя: последние 7 дней (сегодня и 6 предыдущих)
             startDate.setDate(today.getDate() - 6);
           } else if (val === 'month') {
-            // месяц: последние 30 дней (включая сегодня)
             startDate.setDate(today.getDate() - 29);
           } else if (val === 'year') {
-            // год: последние 365 дней
             startDate.setDate(today.getDate() - 364);
           }
           // Форматируем даты YYYY‑MM‑DD
@@ -205,45 +63,10 @@
           }
           document.getElementById('start').value = fmt(startDate);
           document.getElementById('end').value = fmt(today);
-          // Отправляем форму для применения фильтра
+          // Отправляем форму для применения фильтра; HX‑GET will intercept
           document.getElementById('dateFilterForm').submit();
         });
       }
     });
   </script>
-
-  <!-- Перечень квартир и их показатели -->
-  <h5 class="mb-2 mt-4">Статистика по квартирам</h5>
-  <div class="table-responsive mb-4">
-    <table class="table table-bordered table-sm align-middle text-center">
-      <thead class="table-light">
-        <tr>
-          <th scope="col">Квартира</th>
-          <th scope="col">Проданные ночи</th>
-          <th scope="col">Пустые ночи</th>
-          <th scope="col">Занятость</th>
-          <th scope="col">Доход</th>
-          <th scope="col">ADR</th>
-          <th scope="col">Бронирований</th>
-          <th scope="col">Депозиты (опл./удерж./возв.)</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for r in room_stats %}
-        <tr>
-          <td>{{ r.room_number }}</td>
-          <td>{{ r.nights_sold }}</td>
-          <td>{{ r.empty_nights }}</td>
-          <td>{{ r.occupancy | round(1) }}%</td>
-          <td>{{ r.revenue | currency }}</td>
-          <td>{{ r.adr | currency }}</td>
-          <td>{{ r.booking_count }}</td>
-          <td>
-            {{ r.deposit_counts.get('paid', 0) }} / {{ r.deposit_counts.get('withheld', 0) }} / {{ r.deposit_counts.get('returned', 0) }}
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
 {% endblock %}

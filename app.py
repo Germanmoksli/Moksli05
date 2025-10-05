@@ -3539,9 +3539,8 @@ def dashboard():
             'booking_count': booking_count_r,
             'deposit_counts': deposit_counts_r,
         })
-    # Render dashboard with both overall metrics and per‑room stats
-    return render_template(
-        'dashboard.html',
+    # Render either a full dashboard page or just the dynamic portion depending on HTMX
+    context = dict(
         start_date=start_date,
         end_date=end_date,
         period=period_sel,
@@ -3559,6 +3558,11 @@ def dashboard():
         pickup_revenue=pickup_revenue,
         room_stats=room_stats,
     )
+    # If the request comes from HTMX (ajax), return only the dashboard content partial
+    if request.headers.get('HX-Request'):
+        return render_template('dashboard_content.html', **context)
+    # Otherwise return the full dashboard page
+    return render_template('dashboard.html', **context)
 
 
 # --------------------------------------------------
