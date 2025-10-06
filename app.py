@@ -1415,9 +1415,14 @@ def register_guest():
         )
         conn.commit()
         conn.close()
-        # Log in the new user
+        # Log in the new user.  As part of the login flow we set both
+        # the effective role (user_role) and the original role
+        # (original_user_role).  For guests these values are identical,
+        # but having a separate original role allows owners who later
+        # switch to guest mode to return to their owner privileges.
         session['user_id'] = user_id
         session['user_role'] = 'guest'
+        session['original_user_role'] = 'guest'
         flash('Регистрация выполнена успешно!')
         return redirect(url_for('public_listings'))
     # GET: display the guest registration form
@@ -1468,6 +1473,56 @@ def send_verification_code():
         return jsonify({'success': False, 'message': 'Ошибка сервера при отправке кода.'}), 500
 
 
+# ---------------------------------------------------------------------------
+# Role switching
+#
+# Owners may wish to preview the application as a guest to see how their
+# listings appear to potential renters.  To facilitate this, we provide
+# a simple toggle endpoint that swaps the user's effective role between
+# their original role (typically "owner") and the guest role.  When a
+# user logs in, the ``original_user_role`` session key is set equal to
+# their role.  Switching to guest mode does not modify this original
+# role.  Only users whose original role is ``owner`` are permitted to
+# use this toggle; managers and other roles are not allowed to switch.
+
+@app.route('/switch_role')
+@login_required
+def switch_role():
+    """Toggle the current user's effective role between guest and owner.
+
+    The user's original role is stored in ``session['original_user_role']``
+    at login time.  Only users whose original role is ``owner`` are
+    permitted to toggle into guest mode.  When switching, the
+    ``session['user_role']`` value is updated accordingly.  Guests are
+    redirected to the public listings catalogue; owners are returned to
+    the main dashboard.
+    """
+    # Retrieve the original role from the session; fall back to the
+    # current role if no explicit original role is recorded.  This
+    # fallback should only occur if an older session predates the
+    # introduction of this feature.
+    original_role = session.get('original_user_role', session.get('user_role'))
+    # Only owners are allowed to switch roles.  Managers, maids and
+    # guests do not have access to this feature.  If the user is not
+    # an owner, simply inform them and redirect back to the dashboard.
+    if original_role != 'owner':
+        flash('Переключение доступно только владельцам.')
+        return redirect(url_for('index'))
+    # Determine the current effective role and toggle it.  If the user
+    # is currently acting as a guest, restore their original owner role.
+    current_role = session.get('user_role')
+    if current_role == 'guest':
+        session['user_role'] = original_role
+        flash('Теперь вы в режиме владельца.')
+        return redirect(url_for('index'))
+    # Otherwise switch into guest mode.  Note: we do not modify
+    # ``original_user_role`` here; the original owner role remains
+    # unchanged in the session.
+    session['user_role'] = 'guest'
+    flash('Теперь вы в режиме гостя.')
+    return redirect(url_for('public_listings'))
+
+
 # Route: login. Presents a login form and handles authentication. On
 # successful login the user's id and role are stored in the session and
 # they are redirected to the homepage. On failure an error message is
@@ -1488,9 +1543,19 @@ def login():
         # register() above for details.
         user = conn.execute('SELECT * FROM users WHERE username = ?', (email,)).fetchone()
         if user and check_password_hash(user['password_hash'], password):
-            # Store user id and role in the session
+            # Store user id and role in the session.  In addition to the current
+            # effective role (which may be toggled to "guest" later), we
+            # preserve the user's original role so that they can switch
+            # back and forth between guest and owner modes.  See
+            # ``switch_role`` below for details.
             session['user_id'] = user['id']
             session['user_role'] = user['role']
+            # Save the original role so that owners can return to their
+            # privileged view after switching to guest.  We always set
+            # this during login so that subsequent toggles have a
+            # reference point.  Without this, switching back would be
+            # impossible once the session role has been changed.
+            session['original_user_role'] = user['role']
             conn.close()
             flash('Вход выполнен успешно!')
             # Guests are returned to the public listings catalogue; other roles go to the dashboard

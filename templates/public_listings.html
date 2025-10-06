@@ -30,7 +30,10 @@
                 <li><a class="dropdown-item" href="{{ url_for('account') }}">Редактировать профиль</a></li>
                 <li><a class="dropdown-item" href="{{ url_for('user_bookings') }}">Мои бронирования</a></li>
                 <li><a class="dropdown-item" href="{{ url_for('favorites') }}">Избранное</a></li>
+                {# Предлагать добавить квартиру только владельцам. Гости видят только бронирования и избранное. #}
+                {% if session.get('original_user_role') == 'owner' %}
                 <li><a class="dropdown-item" href="{{ url_for('add_room') }}">Сдать свою квартиру</a></li>
+                {% endif %}
                 <li><hr class="dropdown-divider"></li>
                 <li><a class="dropdown-item" href="{{ url_for('logout') }}">Выход</a></li>
               </ul>

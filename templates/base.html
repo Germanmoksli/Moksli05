@@ -390,6 +390,19 @@
         </a>
         {% endif %}
 
+        {# Навигация для гостей.  Гости видят лишь каталог апартаментов, свои бронирования и избранное. #}
+        {% if session.get('user_role') == 'guest' %}
+        <a href="{{ url_for('public_listings') }}" class="{% if request.endpoint == 'public_listings' %}active{% endif %}">
+          <i class="bi bi-house"></i><span class="nav-text ms-2">Каталог</span>
+        </a>
+        <a href="{{ url_for('user_bookings') }}" class="{% if request.endpoint == 'user_bookings' %}active{% endif %}">
+          <i class="bi bi-calendar-check"></i><span class="nav-text ms-2">Мои бронирования</span>
+        </a>
+        <a href="{{ url_for('favorites') }}" class="{% if request.endpoint == 'favorites' %}active{% endif %}">
+          <i class="bi bi-heart"></i><span class="nav-text ms-2">Избранное</span>
+        </a>
+        {% endif %}
+
         {# Сотрудники: доступ только владельцу и менеджеру. Если текущий пользователь - владелец,
            показываем значок уведомления с количеством запросов на регистрацию. #}
         {% if session.get('user_role') in ['owner', 'manager'] %}
@@ -436,6 +449,14 @@
                 <small class="text-muted">{{ current_user_role | role_ru }}</small>
               </div>
             </a>
+            {# If the logged-in user's original role is owner, provide a toggle to switch between guest and owner modes. #}
+            {% if session.get('original_user_role') == 'owner' %}
+            <div class="mt-1">
+              <a href="{{ url_for('switch_role') }}" class="small text-primary text-decoration-none">
+                {% if session.get('user_role') == 'guest' %}В режим владельца{% else %}В режим гостя{% endif %}
+              </a>
+            </div>
+            {% endif %}
           {% else %}
             <a href="{{ url_for('login') }}" class="btn btn-sm btn-primary w-100 mb-2">Войти</a>
             <a href="{{ url_for('register') }}" class="btn btn-sm btn-secondary w-100">Регистрация</a>

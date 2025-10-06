@@ -16,6 +16,10 @@
           <p class="mb-2"><strong>Имя пользователя:</strong> {{ user.username }}</p>
           <p class="mb-2"><strong>Имя:</strong> {{ user.name or '' }}</p>
           <p class="mb-2"><strong>Роль:</strong> {{ user.role }}</p>
+          {# Display the owner's unique ID so that it can be shared with prospective managers. #}
+          {% if user.role == 'owner' %}
+          <p class="mb-2"><strong>ID владельца:</strong> {{ user.id }}</p>
+          {% endif %}
           <p class="mb-2"><strong>Телефон:</strong> {{ (user.contact_info or '') | format_phone }}</p>
         </div>
       </div>
