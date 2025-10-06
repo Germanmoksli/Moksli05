@@ -3539,8 +3539,9 @@ def dashboard():
             'booking_count': booking_count_r,
             'deposit_counts': deposit_counts_r,
         })
-    # Render either a full dashboard page or just the dynamic portion depending on HTMX
-    context = dict(
+    # Render dashboard with both overall metrics and per‑room stats
+    return render_template(
+        'dashboard.html',
         start_date=start_date,
         end_date=end_date,
         period=period_sel,
@@ -3558,11 +3559,6 @@ def dashboard():
         pickup_revenue=pickup_revenue,
         room_stats=room_stats,
     )
-    # If the request comes from HTMX (ajax), return only the dashboard content partial
-    if request.headers.get('HX-Request'):
-        return render_template('dashboard_content.html', **context)
-    # Otherwise return the full dashboard page
-    return render_template('dashboard.html', **context)
 
 
 # --------------------------------------------------
@@ -3962,34 +3958,79 @@ def set_room_status(room_id, date_str):
     if request.method == "POST":
         # Retrieve the desired status from the form. Default to "ready" if none provided.
         status = request.form.get("status", "ready").strip()
-        # When updating the status, do not tie it to bookings.  Always update
-        # only the selected date, regardless of whether a booking exists.  This
-        # allows managers to freely set the occupancy state on any day without
-        # affecting other days in the reservation.
+        # If a booking_id is provided, update the status across the entire booking
+        # range.  Otherwise, update only the specified date.  This allows the
+        # calendar to reflect bulk status changes for an entire reservation.
+        booking_id = request.form.get("booking_id")
         try:
-            conn.execute(
-                """
-                INSERT INTO room_statuses (room_id, date, status)
-                VALUES (?, ?, ?)
-                ON CONFLICT(room_id, date) DO UPDATE SET status = excluded.status
-                """,
-                (room_id, date_str, status),
-            )
-            # Explicitly commit so that SQLite persists the change.  On PostgreSQL
-            # this is a no‑op when autocommit is enabled.
+            if booking_id:
+                # Look up the booking's check-in and check-out dates and its room ID
+                b_row = conn.execute(
+                    "SELECT room_id, check_in_date, check_out_date FROM bookings WHERE id = ?",
+                    (booking_id,),
+                ).fetchone()
+                if b_row:
+                    # Use the booking's room_id instead of the URL parameter to avoid
+                    # inconsistencies if the user navigated to the wrong room cell.
+                    b_room_id = b_row[0]
+                    # Parse dates from ISO format or datetime objects
+                    try:
+                        start_date = b_row[1]
+                        end_date = b_row[2]
+                        # Ensure we have plain date objects
+                        if isinstance(start_date, str):
+                            start_date = date.fromisoformat(start_date)
+                        if isinstance(end_date, str):
+                            end_date = date.fromisoformat(end_date)
+                    except Exception:
+                        # Fallback: treat as single-day booking
+                        start_date = date_obj
+                        end_date = date_obj + timedelta(days=1)
+                    # Update each day from start_date up to but not including end_date
+                    day_count = (end_date - start_date).days or 1
+                    for offset in range(day_count):
+                        current_day = start_date + timedelta(days=offset)
+                        cur_str = current_day.isoformat()
+                        conn.execute(
+                            """
+                            INSERT INTO room_statuses (room_id, date, status)
+                            VALUES (?, ?, ?)
+                            ON CONFLICT(room_id, date) DO UPDATE SET status = excluded.status
+                            """,
+                            (b_room_id, cur_str, status),
+                        )
+                else:
+                    # Booking not found; fall back to single-date update
+                    conn.execute(
+                        """
+                        INSERT INTO room_statuses (room_id, date, status)
+                        VALUES (?, ?, ?)
+                        ON CONFLICT(room_id, date) DO UPDATE SET status = excluded.status
+                        """,
+                        (room_id, date_str, status),
+                    )
+            else:
+                # No booking id provided: update only the selected date
+                conn.execute(
+                    """
+                    INSERT INTO room_statuses (room_id, date, status)
+                    VALUES (?, ?, ?)
+                    ON CONFLICT(room_id, date) DO UPDATE SET status = excluded.status
+                    """,
+                    (room_id, date_str, status),
+                )
+            # Explicit commit for SQLite; on PostgreSQL autocommit does nothing
             try:
                 conn.commit()
             except Exception:
                 pass
         finally:
-            # Close the connection once the update has been attempted.
             conn.close()
-        # If this is an htmx request (AJAX), return a 204 response so the client
-        # does not trigger a full page reload.  Htmx uses the HX-Request header
-        # to indicate a request originated from an htmx element.
+        # Determine response based on whether the request is from HTMX
         if request.headers.get("HX-Request"):
-            return ("", 204)
-        # Otherwise flash a message and redirect back to the calendar for the month/year of the selected date
+            # For HTMX requests, return a 204 No Content to allow client-side
+            # JavaScript to handle immediate color updates without redirect.
+            return "", 204
         flash("Статус обновлён.")
         return redirect(url_for(
             "calendar_view",
@@ -4199,34 +4240,12 @@ def edit_booking(booking_id):
         total_amount_str = request.form.get("total_amount", "").strip()
         paid_amount_str = request.form.get("paid_amount", "").strip()
         notes = request.form.get("notes", "").strip() or None
-
-        # Convert the rate input (which represents price per night) to a float if provided.
-        rate = float(total_amount_str) if total_amount_str else None
+        total_amount = float(total_amount_str) if total_amount_str else None
         paid_amount = float(paid_amount_str) if paid_amount_str else None
-
-        # Compute the number of nights between the new check‑in and check‑out dates.
-        nights = 0
-        if check_in and check_out:
-            try:
-                ci = date.fromisoformat(check_in)
-                co = date.fromisoformat(check_out)
-                nights = (co - ci).days
-            except Exception:
-                nights = 0
-        # If nights is zero or negative (same day or invalid range), treat as one night to avoid zero total.
-        if nights <= 0:
-            nights = 1
-
-        # Compute the total booking amount.  The form field total_amount stores the price per night, so
-        # multiply by the number of nights to derive the total for database storage.  If rate is None,
-        # leave total_amount as None (allows null in DB).
-        total_amount = (rate * nights) if (rate is not None) else None
-
         if not check_in or not check_out:
             flash("Заполните даты заезда и выезда.")
             conn.close()
             return redirect(url_for("edit_booking", booking_id=booking_id, scroll_date=scroll_date))
-
         with conn:
             conn.execute(
                 """

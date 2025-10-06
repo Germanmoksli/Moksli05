@@ -501,7 +501,7 @@
                 <div class="row-resizer"></div>
               </th>
               {% for cell in row.days %}
-                <td class="status-{{ cell.status }} p-0 position-relative">
+                <td class="status-{{ cell.status }} p-0 position-relative" {% if cell.booking %}data-booking-id="{{ cell.booking['id'] }}"{% endif %}>
                   <div class="d-flex flex-column h-100">
                     <!-- Верх: выбор статуса -->
                     <form method="post"
@@ -509,7 +509,17 @@
                           hx-trigger="change"
                           hx-swap="none"
                           class="flex-grow-1 border-bottom">
-                      <select name="status" class="form-select form-select-sm py-0">
+                      {#
+                        If this cell belongs to a booking, include the booking ID as a hidden
+                        field.  This allows the server to update the status for the entire
+                        booking range, rather than just the selected date.  Without this
+                        hidden input, the server would have no knowledge of which booking
+                        spans the cell and would only update a single date.
+                      #}
+                      {% if cell.booking %}
+                        <input type="hidden" name="booking_id" value="{{ cell.booking['id'] }}">
+                      {% endif %}
+                      <select name="status" class="form-select form-select-sm py-0" onchange="updateBookingStatusColor(this)">
                         <option value="occupied" {% if cell.status == 'occupied' %}selected{% endif %}>Заселено</option>
                         <option value="vacant"   {% if cell.status == 'vacant'   %}selected{% endif %}>Не заселено</option>
                         <option value="booked"   {% if cell.status == 'booked'   %}selected{% endif %}>Бронь</option>
@@ -842,5 +852,36 @@
         });
       });
     });
+  </script>
+
+  <!-- Скрипт для обновления цвета всех ячеек брони после смены статуса -->
+  <script>
+    function updateBookingStatusColor(sel) {
+      // Определяем выбранный статус
+      var newStatus = sel.value;
+      // Находим ячейку, в которой находится селектор
+      var td = sel.closest('td');
+      if (!td) return;
+      // Извлекаем идентификатор брони из атрибута data-booking-id
+      var bookingId = td.getAttribute('data-booking-id');
+      // Вспомогательная функция: заменяет класс status-* на новый
+      function replaceStatusClass(el) {
+        var classes = el.className.split(/\s+/).filter(function (c) {
+          return !c.startsWith('status-');
+        });
+        classes.push('status-' + newStatus);
+        el.className = classes.join(' ');
+      }
+      if (bookingId) {
+        // Обновляем все ячейки с тем же bookingId
+        var cells = document.querySelectorAll('td[data-booking-id="' + bookingId + '"]');
+        cells.forEach(function (cell) {
+          replaceStatusClass(cell);
+        });
+      } else {
+        // Если брони нет (например, индивидуальный статус), обновляем только текущую ячейку
+        replaceStatusClass(td);
+      }
+    }
   </script>
 {% endblock %}
