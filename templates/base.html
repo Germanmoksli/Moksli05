@@ -348,7 +348,7 @@
     }
     </style>
   </head>
-  <body class="bg-light" hx-boost="true">
+  <body class="bg-light">
     <div class="d-flex">
       {# Показываем боковую навигацию только авторизованным пользователям #}
       {% if session.get('user_id') %}
@@ -559,7 +559,5 @@
       {% endfor %}
     </datalist>
 
-    <!-- HTMX library for partial page updates -->
-    <script src="https://unpkg.com/htmx.org@1.9.6"></script>
   </body>
 </html>
