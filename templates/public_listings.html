@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Каталог квартир</title>
+    <!-- Подключаем тему Bootswatch для приятного внешнего вида -->
+    <link href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.2/dist/lux/bootstrap.min.css" rel="stylesheet">
+  </head>
+  <body class="bg-light">
+    <!-- Простая навигационная панель с брендом и кнопкой регистрации владельца -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom">
+      <div class="container-fluid">
+        <a class="navbar-brand fw-bold" href="{{ url_for('public_listings') }}">MOKSLI</a>
+        <div class="d-flex gap-2">
+          <a href="{{ url_for('register') }}?account_type=owner" class="btn btn-primary">Сдать своё жильё</a>
+          {% if session.get('user_id') %}
+          <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">Личный кабинет</a>
+          {% endif %}
+        </div>
+      </div>
+    </nav>
+    <div class="container mt-4">
+      <!-- Форма фильтрации по датам. Пользователь выбирает даты заезда и выезда -->
+      <form method="get" class="row g-3 mb-4">
+        <div class="col-auto">
+          <label for="check_in" class="form-label">Дата въезда</label>
+          <input type="date" class="form-control" id="check_in" name="check_in" value="{{ check_in }}">
+        </div>
+        <div class="col-auto">
+          <label for="check_out" class="form-label">Дата выезда</label>
+          <input type="date" class="form-control" id="check_out" name="check_out" value="{{ check_out }}">
+        </div>
+        <div class="col-auto d-flex align-items-end">
+          <button type="submit" class="btn btn-primary">Поиск</button>
+        </div>
+      </form>
+      {% if rooms %}
+      <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+        {% for room in rooms %}
+        <div class="col">
+          <div class="card h-100 shadow-sm">
+            <div class="card-body">
+              <h5 class="card-title">{{ room['room_number'] }}</h5>
+              <p class="card-text">
+                {% if room['residential_complex'] %}<strong>ЖК:</strong> {{ room['residential_complex'] }}<br>{% endif %}
+                {% if room['capacity'] %}<strong>Вместимость:</strong> {{ room['capacity'] }}<br>{% endif %}
+                {% if room['notes'] %}<strong>Примечания:</strong> {{ room['notes'] }}<br>{% endif %}
+              </p>
+              {% if room['listing_url'] %}
+              <a href="{{ room['listing_url'] }}" class="btn btn-sm btn-outline-primary" target="_blank">Подробнее</a>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p>Квартиры не найдены.</p>
+      {% endif %}
+    </div>
+  </body>
+</html>

@@ -477,7 +477,15 @@ def get_db_connection():
                             capacity INTEGER,
                             notes TEXT,
                             listing_url TEXT,
-                            residential_complex TEXT
+                            residential_complex TEXT,
+                            -- ID of the owner (user) who created this room.  Allows
+                            -- multiple owners to have their own listings.  Nullable
+                            -- to support legacy records created before this column
+                            -- existed.  When a user is deleted, set the owner_id
+                            -- to NULL so the listing remains available but
+                            -- unowned.
+                            owner_id INTEGER,
+                            FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE SET NULL
                         );
                         """,
                         """
@@ -1054,6 +1062,9 @@ def require_login():
         'static',
         # Permit sending verification codes during registration without a session
         'send_verification_code',
+        # Allow public access to the listings page so guests can browse
+        'public_listings',
+        'index',
     }
     endpoint = request.endpoint
     # Some endpoints may include blueprint names (e.g. "static"). Split on the
@@ -1287,72 +1298,40 @@ def register():
             conn.close()
             flash('Пользователь с таким e‑mail уже существует или ожидает подтверждения.')
             return redirect(url_for('register'))
-        # Determine if an owner already exists in the system.  When using
-        # psycopg2 with RealDictCursor the row is a dict, but with sqlite3
-        # it is a tuple.  Extract the first value safely.
-        row_owner = conn.execute(
-            "SELECT COUNT(*) FROM users WHERE role = 'owner'"
-        ).fetchone()
-        if row_owner is None:
-            owner_exists = False
-        elif isinstance(row_owner, dict):
-            owner_exists = list(row_owner.values())[0] > 0
-        else:
-            owner_exists = row_owner[0] > 0
-        # Decide the final role based on account type and whether an owner exists
-        final_role = None
-        if account_type == 'owner':
-            if owner_exists:
-                # Disallow creating another owner if one already exists
-                flash('Владелец уже существует. Для регистрации сотрудников обратитесь к текущему владельцу.')
-                conn.close()
-                return redirect(url_for('register'))
-            else:
-                final_role = 'owner'
-        else:
-            # account_type is employee; if no owner exists, make this user the owner
-            if not owner_exists:
-                final_role = 'owner'
-            else:
-                final_role = None  # employee needs approval
+        # Determine the final role directly from the account_type field.  We no longer
+        # enforce a single owner in the system; each person registering as an owner
+        # will be granted owner privileges.  Employees (e.g. managers) can also
+        # register directly without waiting for approval.  You can extend
+        # ``account_type`` options to add more roles (e.g. guest) as needed.
+        final_role = 'owner' if account_type == 'owner' else 'employee'
         # All validations passed; remove verification code from session
         session.pop('verification_code', None)
         session.pop('verification_email', None)
         # Hash the password
         password_hash = generate_password_hash(password)
-        if final_role == 'owner':
-            # Directly create an owner user and add them to the global chat
-            with conn:
-                cur = conn.cursor()
+        # Create the user and add them to the global chat
+        with conn:
+            cur = conn.cursor()
+            cur.execute(
+                'INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)',
+                (email, password_hash, final_role)
+            )
+            new_user_id = cur.lastrowid
+            # Ensure chat rooms and membership tables exist
+            ensure_chat_rooms_table(conn)
+            ensure_chat_room_members_table(conn)
+            # Insert the new user into the global chat (room 1).  Use a safe
+            # INSERT OR IGNORE to avoid duplicate membership.
+            try:
                 cur.execute(
-                    'INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)',
-                    (email, password_hash, 'owner')
+                    'INSERT OR IGNORE INTO chat_room_members (room_id, user_id) VALUES (1, ?)',
+                    (new_user_id,)
                 )
-                new_user_id = cur.lastrowid
-                # Ensure chat rooms and membership tables exist
-                ensure_chat_rooms_table(conn)
-                ensure_chat_room_members_table(conn)
-                # Insert the new owner into the global chat (room 1)
-                try:
-                    cur.execute(
-                        'INSERT OR IGNORE INTO chat_room_members (room_id, user_id) VALUES (1, ?)',
-                        (new_user_id,)
-                    )
-                except Exception:
-                    pass
-            conn.close()
-            flash('Регистрация завершена. Вы зарегистрированы как владелец.')
-            return redirect(url_for('login'))
-        else:
-            # Create a pending registration request for employees
-            with conn:
-                conn.execute(
-                    'INSERT INTO registration_requests (username, password_hash) VALUES (?, ?)',
-                    (email, password_hash)
-                )
-            conn.close()
-            flash('Ваш запрос на регистрацию отправлен. Дождитесь одобрения владельца.')
-            return redirect(url_for('login'))
+            except Exception:
+                pass
+        conn.close()
+        flash('Регистрация завершена. Теперь вы можете войти в систему.')
+        return redirect(url_for('login'))
     # GET: render registration form
     conn.close()
     return render_template('register.html')
@@ -2004,6 +1983,15 @@ def ensure_user_room_last_seen_table(conn: sqlite3.Connection) -> None:
 # Home page
 @app.route("/")
 def index():
+    """Home page handler.
+
+    If the user is authenticated, render the internal dashboard landing page.
+    Otherwise, redirect guests to the public listings catalogue.
+    """
+    if not session.get('user_id'):
+        # Unauthenticated guests see the public listings page instead of the
+        # internal dashboard.
+        return redirect(url_for('public_listings'))
     return render_template("index.html")
 
 
@@ -2491,7 +2479,12 @@ def add_guest():
 @roles_required('owner')
 def list_rooms():
     conn = get_db_connection()
-    rooms = conn.execute("SELECT * FROM rooms ORDER BY id").fetchall()
+    # Show only rooms that belong to the current owner.  Each room is
+    # associated with the owner who created it via the owner_id column.
+    rooms = conn.execute(
+        "SELECT * FROM rooms WHERE owner_id = ? ORDER BY id",
+        (session.get('user_id'),)
+    ).fetchall()
     conn.close()
     return render_template("rooms.html", rooms=rooms)
 
@@ -2506,11 +2499,23 @@ def delete_room(room_id: int):
     message is flashed and the user is redirected to the list of rooms.
     """
     conn = get_db_connection()
-    # Verify that the room exists
-    room = conn.execute("SELECT id FROM rooms WHERE id = ?", (room_id,)).fetchone()
-    if room is None:
+    # Verify that the room exists and belongs to the current owner
+    room = conn.execute(
+        "SELECT id, owner_id FROM rooms WHERE id = ?",
+        (room_id,)
+    ).fetchone()
+    # Fetch the owner_id safely regardless of row type (dict or tuple).  When
+    # connecting via psycopg2 the row is a dict, whereas sqlite3 returns a
+    # tuple-like object.  Extract the owner_id accordingly.
+    def _get_owner(r):
+        try:
+            return r["owner_id"]
+        except Exception:
+            # Fallback for sqlite3.Row
+            return r[1] if r is not None and len(r) > 1 else None
+    if room is None or _get_owner(room) != session.get("user_id"):
         conn.close()
-        flash("Квартира не найдена.", "danger")
+        flash("Квартира не найдена или у вас нет прав на её удаление.", "danger")
         return redirect(url_for('list_rooms'))
     try:
         # Use a transaction to delete dependent records and the room itself
@@ -2604,10 +2609,14 @@ def add_room():
         conn = get_db_connection()
         try:
             with conn:
-                # Insert the room name, listing URL (if provided) and residential complex
+                # Insert the room and associate it with the current owner.  The owner_id
+                # column ensures that each owner only sees and manages their own
+                # listings.  Note that we always provide a value for owner_id; the
+                # session is guaranteed to contain user_id due to the @login_required
+                # decorator.
                 conn.execute(
-                    "INSERT INTO rooms (room_number, listing_url, residential_complex) VALUES (?, ?, ?)",
-                    (room_number, listing_url, residential_complex),
+                    "INSERT INTO rooms (room_number, listing_url, residential_complex, owner_id) VALUES (?, ?, ?, ?)",
+                    (room_number, listing_url, residential_complex, session.get('user_id')),
                 )
         except Exception:
             # On any insertion error (e.g. duplicate room number), roll back the
@@ -2637,12 +2646,20 @@ def edit_room(room_id: int):
     """
     conn = get_db_connection()
     room = conn.execute(
-        "SELECT id, room_number, listing_url, residential_complex FROM rooms WHERE id = ?",
+        "SELECT id, room_number, listing_url, residential_complex, owner_id FROM rooms WHERE id = ?",
         (room_id,)
     ).fetchone()
     if not room:
         conn.close()
         abort(404)
+    # Ensure the current owner owns this room
+    try:
+        room_owner = room["owner_id"]
+    except Exception:
+        room_owner = room[4] if room is not None and len(room) > 4 else None
+    if room_owner != session.get("user_id"):
+        conn.close()
+        abort(403)
     if request.method == "POST":
         new_name = request.form.get("room_number", "").strip()
         new_link = request.form.get("listing_url", "").strip() or None
@@ -5569,6 +5586,53 @@ def employee_profile(user_id: int):
         # Fallback: redirect back to chat. Alternatively could redirect to employees list.
         return redirect(url_for('chat'))
     return render_template('employee_info.html', user=user)
+
+
+# -----------------------------------------------------------------------------
+# Public listings page
+#
+# This route presents a public catalogue of all rooms (apartments) in the
+# system.  Guests can filter the list by specifying check‑in and check‑out
+# dates via query parameters.  Only rooms that are not booked in the given
+# period are displayed.  If the dates are omitted or invalid, all rooms are
+# shown.  Owners can use the “Сдать своё жильё” button to register and add
+# their own apartments.
+@app.route('/listings')
+def public_listings():
+    """Display a list of available apartments for guests.
+
+    Accepts optional ``check_in`` and ``check_out`` query parameters in
+    ``YYYY‑MM‑DD`` format.  When both dates are provided and form a valid
+    range (check_in < check_out), only rooms without overlapping bookings
+    are returned.  Otherwise, all rooms are shown.  The results are passed
+    to a lightweight template designed for unauthenticated users.
+    """
+    conn = get_db_connection()
+    check_in = request.args.get('check_in', default='', type=str)
+    check_out = request.args.get('check_out', default='', type=str)
+    rooms = []
+    # Attempt to parse dates
+    valid_dates = False
+    if check_in and check_out:
+        try:
+            check_in_date = datetime.strptime(check_in, '%Y-%m-%d').date()
+            check_out_date = datetime.strptime(check_out, '%Y-%m-%d').date()
+            if check_in_date < check_out_date:
+                valid_dates = True
+        except Exception:
+            valid_dates = False
+    if valid_dates:
+        # Exclude rooms that have overlapping bookings
+        query = (
+            "SELECT * FROM rooms WHERE id NOT IN ("
+            "SELECT room_id FROM bookings WHERE (check_in_date < ? AND check_out_date > ?))"
+        )
+        rooms = conn.execute(query, (check_out_date, check_in_date)).fetchall()
+    else:
+        # Show all rooms if no valid date range is provided
+        rooms = conn.execute('SELECT * FROM rooms').fetchall()
+    conn.close()
+    return render_template('public_listings.html', rooms=rooms, check_in=check_in, check_out=check_out)
 
 
 
