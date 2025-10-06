@@ -559,5 +559,77 @@
       {% endfor %}
     </datalist>
 
+    <!-- Универсальный скрипт маски для телефонных номеров.
+         Этот код автоматически применяет форматирование к каждому полю ввода
+         <input type="tel" id="phone"> в любых формах, где присутствует
+         селектор страны с id="country_code" (или name="country_code").
+         Он основывается на маске (атрибут data-mask) и длине (data-length)
+         выбранного кода страны и обновляет placeholder и формат ввода. -->
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        var telInputs = document.querySelectorAll('input[type="tel"]#phone');
+        telInputs.forEach(function (phoneInput) {
+          // Найдём ближайшую форму и селектор страны внутри неё
+          var form = phoneInput.closest('form');
+          if (!form) return;
+          var countrySelect = form.querySelector('#country_code, select[name="country_code"]');
+          if (!countrySelect) return;
+          var currentMask = '';
+          var currentLength = 0;
+          function updatePlaceholder() {
+            var selected = countrySelect.options[countrySelect.selectedIndex];
+            if (!selected) return;
+            currentMask = selected.getAttribute('data-mask') || '(XXX) XXX XX XX';
+            currentLength = parseInt(selected.getAttribute('data-length'), 10) || 10;
+            phoneInput.placeholder = currentMask;
+            // Очистить значение при смене страны
+            phoneInput.value = '';
+          }
+          function formatNumber(digits) {
+            var result = '';
+            var digitIndex = 0;
+            for (var i = 0; i < currentMask.length; i++) {
+              var ch = currentMask[i];
+              if (ch === 'X') {
+                if (digitIndex < digits.length) {
+                  result += digits[digitIndex++];
+                } else {
+                  break;
+                }
+              } else {
+                result += ch;
+              }
+            }
+            return result;
+          }
+          countrySelect.addEventListener('change', updatePlaceholder);
+          phoneInput.addEventListener('input', function () {
+            var digits = phoneInput.value.replace(/\D/g, '');
+            if (digits.length > currentLength) {
+              digits = digits.slice(0, currentLength);
+            }
+            phoneInput.value = formatNumber(digits);
+          });
+          phoneInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Backspace') {
+              e.preventDefault();
+              var digits = phoneInput.value.replace(/\D/g, '');
+              if (digits.length > 0) {
+                digits = digits.slice(0, -1);
+                phoneInput.value = formatNumber(digits);
+              }
+            }
+          });
+          phoneInput.addEventListener('focus', function () {
+            var len = phoneInput.value.length;
+            phoneInput.setSelectionRange(len, len);
+          });
+          updatePlaceholder();
+        });
+      });
+    </script>
+
+    <!-- HTMX library for partial page updates -->
+    <script src="https://unpkg.com/htmx.org@1.9.6"></script>
   </body>
 </html>
