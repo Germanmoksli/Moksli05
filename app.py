@@ -3964,6 +3964,12 @@ def set_room_status(room_id, date_str):
         booking_id = request.form.get("booking_id")
         try:
             if booking_id:
+                # When a booking ID is provided, update the booking's overall status
+                # so that each day of the booking inherits the same occupancy state by default.
+                conn.execute(
+                    "UPDATE bookings SET status = ? WHERE id = ?",
+                    (status, booking_id),
+                )
                 # Look up the booking's check-in and check-out dates and its room ID
                 b_row = conn.execute(
                     "SELECT room_id, check_in_date, check_out_date FROM bookings WHERE id = ?",
