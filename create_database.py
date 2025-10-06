@@ -1,5 +1,33 @@
 """
-Этот скрипт создаёт структуру базы данных для апарт‑отеля.  Поддерживается только PostgreSQL.
+This script sets up a simple SQLite database for an apartment‑hotel (apart‑hotel)
+management system. It defines several tables to handle reservations,
+guests, rooms, payments, expenses, cleaning tasks, and users with different
+roles (owner, manager, maid). Running this script will create a SQLite
+database file named ``aparthotel.db`` in the current directory (unless a
+different file name is supplied via the `--db-file` command line argument).
+
+You do not need any external packages to run this script; it relies solely
+on Python's standard library.
+
+Usage:
+
+    python create_database.py
+
+You can also specify a custom database file name:
+
+    python create_database.py --db-file my_database.db
+
+The database schema includes the following tables:
+
+    - guests
+    - rooms
+    - bookings
+    - payments
+    - expenses
+    - cleaning_tasks
+    - users
+
+Each table is created with columns appropriate to manage an apart‑hotel.
 """
 
 import argparse
@@ -14,11 +42,17 @@ except Exception:
 
 
 def create_tables(connection) -> None:
-    """Создать все таблицы для системы управления апарт‑отелем."""
+    """Create all tables needed for the apart‑hotel management system.
 
+    Args:
+        connection: An open SQLite connection. Tables will be created within
+            this database. If tables already exist, this function will not
+            recreate them.
+    """
     cursor = connection.cursor()
+    # Foreign keys are enforced by default in PostgreSQL.  SQLite support has been removed.
 
-    # Таблица гостей
+    # Table: guests
     cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS guests (
@@ -34,7 +68,15 @@ def create_tables(connection) -> None:
         """
     )
 
-    # Важно создать пользователей и квартиры до таблиц, которые используют их внешние ключи.
+
+    # NOTE: We intentionally create users and rooms before any tables
+    # that reference them via foreign keys.  In PostgreSQL, the referenced
+    # table must exist at the time a foreign key is declared.  If you
+    # create bookings before rooms, or rooms before users, the database
+    # would raise an UndefinedTable error.  The order below prevents
+    # such errors.
+
+    # Table: users (needs to be created before rooms)
     cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS users (
@@ -49,6 +91,7 @@ def create_tables(connection) -> None:
         """
     )
 
+    # Table: rooms (references users via owner_id)
     cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS rooms (
@@ -56,19 +99,25 @@ def create_tables(connection) -> None:
             room_number TEXT NOT NULL UNIQUE,
             capacity INTEGER,
             notes TEXT,
+            -- URL of the external listing/advertisement for this object (optional)
             listing_url TEXT,
+            -- Residential complex (ЖК) identifier or name for filtering
             residential_complex TEXT,
+            -- ID of the owner (user) who created this room.  Allows multiple
+            -- owners to have their own listings.  Nullable to support legacy
+            -- records created before this column existed.  When a user is
+            -- deleted, set the owner_id to NULL so the listing remains
+            -- available but unowned.
             owner_id INTEGER,
             FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE SET NULL
         );
         """
     )
-
-    # После создания users и rooms зафиксируем изменения,
-    # чтобы таблицы точно существовали для следующих внешних ключей.
+    # Commit after creating rooms so that subsequent foreign key constraints
+    # (e.g., bookings referencing rooms) do not fail due to uncommitted DDL.
     connection.commit()
 
-    # Таблица бронирований
+    # Table: bookings (references guests and rooms)
     cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS bookings (
@@ -87,7 +136,7 @@ def create_tables(connection) -> None:
         """
     )
 
-    # Платежи
+    # Table: payments (references bookings)
     cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS payments (
@@ -103,7 +152,7 @@ def create_tables(connection) -> None:
         """
     )
 
-    # Расходы
+    # Table: expenses
     cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS expenses (
@@ -116,12 +165,13 @@ def create_tables(connection) -> None:
         """
     )
 
-    # Задачи по уборке
+    # Table: cleaning_tasks (references rooms)
     cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS cleaning_tasks (
             id SERIAL PRIMARY KEY,
             room_id INTEGER NOT NULL,
+            -- Scheduled date/time of the cleaning task.  Use TIMESTAMP for PostgreSQL.
             scheduled_date TIMESTAMP NOT NULL,
             status TEXT NOT NULL DEFAULT 'scheduled',
             notes TEXT,
@@ -130,7 +180,7 @@ def create_tables(connection) -> None:
         """
     )
 
-    # Запросы на регистрацию (ожидают одобрения владельцем)
+    # Table: registration requests (pending user signups awaiting owner approval)
     cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS registration_requests (
@@ -143,7 +193,7 @@ def create_tables(connection) -> None:
         """
     )
 
-    # Чёрный список телефонов
+    # Table: blacklist for storing sanitized phone numbers of guests in a blacklist
     cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS blacklist (
@@ -152,7 +202,10 @@ def create_tables(connection) -> None:
         """
     )
 
-    # Сообщения (простой чат между сотрудниками/владельцами)
+    # Table: messages for employee chat. Stores a simple log of chat
+    # messages with the user_id of the author, the message text and
+    # a timestamp as an ISO string.  Messages are deleted when the
+    # corresponding user is removed (ON DELETE CASCADE).
     cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS messages (
@@ -165,28 +218,41 @@ def create_tables(connection) -> None:
         """
     )
 
-    # Финальный коммит для фиксации всех созданных таблиц
+    # All remaining tables have been created.  Commit final changes so that
+    # they persist.  If autocommit is enabled on the PostgreSQL connection
+    # this call will have no effect, but it's harmless.  Without this
+    # explicit commit, some deployments (e.g., Render) might not finalize
+    # DDL statements.
     connection.commit()
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
         description=(
-            "Create an aparthotel management database. Only PostgreSQL is supported."
+            "Create an aparthotel management database.  By default this script "
+            "initializes a local SQLite database, but you can specify a "
+            "PostgreSQL database URL via --db-url or the DATABASE_URL "
+            "environment variable.  When using PostgreSQL, the tables are "
+            "created on the remote server."
         )
     )
+    # Remove --db-file option; only --db-url or DATABASE_URL may be used.  SQLite support has been removed.
     parser.add_argument(
         "--db-url",
         type=str,
-        help="PostgreSQL database URL.  If omitted, DATABASE_URL environment variable will be used if set.",
+        help=(
+            "PostgreSQL database URL.  If omitted, the DATABASE_URL environment variable will be used if set."
+        ),
     )
     args = parser.parse_args()
 
+    # Determine PostgreSQL URL from command-line option or environment.  SQLite fallback has been removed.
     db_url = args.db_url or os.environ.get("DATABASE_URL")
     if not db_url:
         raise SystemExit(
-            "Error: a PostgreSQL database URL must be provided via --db-url or DATABASE_URL."
+            "Error: a PostgreSQL database URL must be provided via --db-url or the DATABASE_URL environment variable; SQLite support has been removed."
         )
+    # Normalize URL scheme if necessary
     if db_url.startswith("postgres://"):
         db_url = db_url.replace("postgres://", "postgresql://", 1)
     if psycopg2 is None:
@@ -194,11 +260,13 @@ def main() -> None:
             "Error: psycopg2 package is required to connect to PostgreSQL but is not installed."
         )
     try:
+        # Default to requiring SSL unless PGSSLMODE is set differently
         connection = psycopg2.connect(db_url, sslmode=os.environ.get("PGSSLMODE", "require"))
     except Exception as exc:
         raise SystemExit(f"Failed to connect to PostgreSQL database: {exc}")
     try:
         create_tables(connection)
+        # Ensure DDL changes are committed
         connection.commit()
     finally:
         connection.close()
