@@ -12,10 +12,29 @@
     <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom">
       <div class="container-fluid">
         <a class="navbar-brand fw-bold" href="{{ url_for('public_listings') }}">MOKSLI</a>
+        <!-- Навигация: для гостей отображаем кнопки регистрации и входа.  Для
+             авторизованных пользователей показываем меню с аватаром и именем -->
         <div class="d-flex gap-2">
-          <a href="{{ url_for('register') }}?account_type=owner" class="btn btn-primary">Сдать своё жильё</a>
-          {% if session.get('user_id') %}
-          <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">Личный кабинет</a>
+          {% if not session.get('user_id') %}
+            <a href="{{ url_for('register_guest') }}" class="btn btn-primary">Зарегистрироваться</a>
+            <a href="{{ url_for('login') }}" class="btn btn-outline-secondary">Войти</a>
+          {% else %}
+            <div class="dropdown">
+              <a href="#" class="d-flex align-items-center text-decoration-none dropdown-toggle" id="userMenu" data-bs-toggle="dropdown" aria-expanded="false">
+                {# Показываем фотографию пользователя, если она есть; иначе используем заглушку #}
+                {% set avatar = user_photo if user_photo else 'default_avatar.png' %}
+                <img src="{{ url_for('static', filename=avatar) }}" alt="avatar" class="rounded-circle me-2" width="32" height="32">
+                <strong>{{ current_user_name or current_username }}</strong>
+              </a>
+              <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
+                <li><a class="dropdown-item" href="{{ url_for('account') }}">Редактировать профиль</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('user_bookings') }}">Мои бронирования</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('favorites') }}">Избранное</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('add_room') }}">Сдать свою квартиру</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="{{ url_for('logout') }}">Выход</a></li>
+              </ul>
+            </div>
           {% endif %}
         </div>
       </div>
@@ -50,6 +69,14 @@
               {% if room['listing_url'] %}
               <a href="{{ room['listing_url'] }}" class="btn btn-sm btn-outline-primary" target="_blank">Подробнее</a>
               {% endif %}
+              <!-- Кнопка добавления/удаления из избранного для авторизованных пользователей -->
+              {% if session.get('user_id') %}
+                {% if room['id'] in favorite_ids %}
+                  <a href="{{ url_for('toggle_favorite', room_id=room['id']) }}" class="btn btn-sm btn-danger ms-2">Убрать</a>
+                {% else %}
+                  <a href="{{ url_for('toggle_favorite', room_id=room['id']) }}" class="btn btn-sm btn-outline-danger ms-2">В избранное</a>
+                {% endif %}
+              {% endif %}
             </div>
           </div>
         </div>
@@ -59,5 +86,7 @@
       <p>Квартиры не найдены.</p>
       {% endif %}
     </div>
+    <!-- Подключаем Bootstrap Bundle JS для поддержки выпадающего меню -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   </body>
 </html>

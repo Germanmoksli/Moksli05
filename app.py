@@ -656,6 +656,16 @@ def get_db_connection():
                             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
                         );
                         """,
+                        # Favorites table: stores which rooms are favorited by which users.
+                        """
+                        CREATE TABLE IF NOT EXISTS favorites (
+                            user_id INTEGER NOT NULL,
+                            room_id INTEGER NOT NULL,
+                            PRIMARY KEY (user_id, room_id),
+                            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                            FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
+                        );
+                        """,
                     ]
                     cur = conn.cursor()
                     for stmt in statements:
@@ -1351,6 +1361,69 @@ def register():
     return render_template('register.html')
 
 
+# ---------------------------------------------------------------------------
+# Guest registration
+#
+# This route allows guests to create an account without requiring admin
+# approval. Guests must provide a name, email and password. A corresponding
+# guest record is created with the same ID as the new user so that booking
+# history can be associated directly with the user ID. After successful
+# registration the user is logged in and redirected back to the public
+# listings catalogue.
+@app.route('/register_guest', methods=['GET', 'POST'])
+def register_guest():
+    """
+    Handle guest user registration.  On GET, display a simple registration
+    form.  On POST, create a new user with role 'guest' and insert a
+    corresponding record into the guests table using the same primary key.
+    The guest is automatically logged in and redirected to the public
+    listings page upon success.  If the email already exists in the users
+    table, a flash message is shown and the form is redisplayed.
+    """
+    if request.method == 'POST':
+        name = (request.form.get('name') or '').strip()
+        email = (request.form.get('email') or '').strip()
+        password = (request.form.get('password') or '').strip()
+        if not name or not email or not password:
+            flash('Введите имя, e‑mail и пароль.')
+            return redirect(url_for('register_guest'))
+        conn = get_db_connection()
+        # Check if user already exists
+        existing = conn.execute('SELECT id FROM users WHERE username = ?', (email,)).fetchone()
+        if existing:
+            conn.close()
+            flash('Пользователь с таким e‑mail уже зарегистрирован.')
+            return redirect(url_for('register_guest'))
+        # Hash the password
+        hashed_pw = generate_password_hash(password)
+        # Insert into users table and retrieve the generated ID
+        cur = conn.execute(
+            'INSERT INTO users (username, password_hash, role, name) VALUES (?, ?, ?, ?)',
+            (email, hashed_pw, 'guest', name)
+        )
+        # Determine the new user ID.  SQLiteCompatCursor sets lastrowid; on
+        # PostgreSQL we need to query currval if lastrowid is not available.
+        try:
+            user_id = cur.lastrowid  # type: ignore[attr-defined]
+        except Exception:
+            user_id = conn.execute("SELECT currval(pg_get_serial_sequence('users','id'))").fetchone()[0]
+        # Insert a corresponding guest record using the same ID
+        conn.execute(
+            'INSERT INTO guests (id, name, phone, extra_phone, email, notes, birth_date, photo) '
+            'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            (user_id, name, None, None, email, None, None, None)
+        )
+        conn.commit()
+        conn.close()
+        # Log in the new user
+        session['user_id'] = user_id
+        session['user_role'] = 'guest'
+        flash('Регистрация выполнена успешно!')
+        return redirect(url_for('public_listings'))
+    # GET: display the guest registration form
+    return render_template('register_guest.html')
+
+
 # Route: send verification code via email. This endpoint accepts a POST
 # request with an 'email' parameter (JSON or form data), generates a
 # 6‑digit verification code, stores it in the session, sends it to the
@@ -1420,7 +1493,11 @@ def login():
             session['user_role'] = user['role']
             conn.close()
             flash('Вход выполнен успешно!')
-            return redirect(url_for('index'))
+            # Guests are returned to the public listings catalogue; other roles go to the dashboard
+            if user['role'] == 'guest':
+                return redirect(url_for('public_listings'))
+            else:
+                return redirect(url_for('index'))
         else:
             # If no user or password mismatch, check pending registration requests
             pending = conn.execute('SELECT status FROM registration_requests WHERE username = ?', (email,)).fetchone()
@@ -5645,8 +5722,85 @@ def public_listings():
     else:
         # Show all rooms if no valid date range is provided
         rooms = conn.execute('SELECT * FROM rooms').fetchall()
+    # If the user is logged in, gather their favorite rooms
+    favorite_ids = set()
+    if session.get('user_id'):
+        try:
+            fav_rows = conn.execute('SELECT room_id FROM favorites WHERE user_id = ?', (session['user_id'],)).fetchall()
+            # Extract room_id from each row, handling both dict-like and tuple results
+            for r in fav_rows:
+                try:
+                    favorite_ids.add(r['room_id'])
+                except Exception:
+                    favorite_ids.add(r[0])
+        except Exception:
+            favorite_ids = set()
     conn.close()
-    return render_template('public_listings.html', rooms=rooms, check_in=check_in, check_out=check_out)
+    return render_template('public_listings.html', rooms=rooms, check_in=check_in, check_out=check_out, favorite_ids=favorite_ids)
+
+
+# ---------------------------------------------------------------------------
+# Favorites and user history
+
+@app.route('/toggle_favorite/<int:room_id>')
+@login_required
+def toggle_favorite(room_id: int):
+    """
+    Toggle the favorite status of a room for the current user.  If the
+    room is already in the user's favorites, it is removed; otherwise, it
+    is added.  After toggling, the user is redirected back to the referring
+    page (if available) or to the public listings page.
+    """
+    user_id = session.get('user_id')
+    conn = get_db_connection()
+    try:
+        row = conn.execute('SELECT 1 FROM favorites WHERE user_id = ? AND room_id = ?', (user_id, room_id)).fetchone()
+        if row:
+            conn.execute('DELETE FROM favorites WHERE user_id = ? AND room_id = ?', (user_id, room_id))
+        else:
+            conn.execute('INSERT INTO favorites (user_id, room_id) VALUES (?, ?)', (user_id, room_id))
+        conn.commit()
+    finally:
+        conn.close()
+    return redirect(request.referrer or url_for('public_listings'))
+
+
+@app.route('/favorites')
+@login_required
+def favorites():
+    """
+    Display a list of all rooms favorited by the current user.  The user
+    must be logged in to view this page.  Rooms are retrieved by joining
+    the favorites table with the rooms table.  The resulting list is
+    passed to the ``favorites.html`` template.
+    """
+    user_id = session.get('user_id')
+    conn = get_db_connection()
+    rows = conn.execute(
+        'SELECT r.* FROM favorites f JOIN rooms r ON f.room_id = r.id WHERE f.user_id = ?',
+        (user_id,)
+    ).fetchall()
+    conn.close()
+    return render_template('favorites.html', rooms=rows)
+
+
+@app.route('/user_bookings')
+@login_required
+def user_bookings():
+    """
+    Display all bookings associated with the logged-in guest.  Assumes that
+    the guest's user ID is used as the guest_id in the bookings table. If
+    there are no bookings, an empty list is shown.  Requires the user to
+    be logged in.
+    """
+    user_id = session.get('user_id')
+    conn = get_db_connection()
+    bookings = conn.execute(
+        'SELECT b.*, r.room_number FROM bookings b JOIN rooms r ON b.room_id = r.id WHERE b.guest_id = ? ORDER BY b.check_in_date DESC',
+        (user_id,)
+    ).fetchall()
+    conn.close()
+    return render_template('user_bookings.html', bookings=bookings)
 
 
 

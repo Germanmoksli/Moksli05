@@ -218,6 +218,23 @@ def create_tables(connection) -> None:
         """
     )
 
+    # Table: favorites.  Stores apartments (rooms) favorited by users.  A composite
+    # primary key is used so that each user can only favorite a room once.  When
+    # either the user or room is deleted, the corresponding favorite record is
+    # removed automatically via ON DELETE CASCADE.  This table enables the
+    # “Избранное” feature in the public listings and user profile.
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS favorites (
+            user_id INTEGER NOT NULL,
+            room_id INTEGER NOT NULL,
+            PRIMARY KEY (user_id, room_id),
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
+        );
+        """
+    )
+
     # All remaining tables have been created.  Commit final changes so that
     # they persist.  If autocommit is enabled on the PostgreSQL connection
     # this call will have no effect, but it's harmless.  Without this
