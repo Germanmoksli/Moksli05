@@ -454,55 +454,49 @@ def get_db_connection():
                         return
                     # Create tables.  These statements mirror create_database.py but omit SQLite‑specific PRAGMA calls.
                     statements = [
-                        """
-                        CREATE TABLE IF NOT EXISTS guests (
-                            id SERIAL PRIMARY KEY,
-                            name TEXT NOT NULL,
-                            phone TEXT,
-                            -- Additional phone number for the guest (optional).  Allows storing a
-                            -- secondary contact number without adding a separate table.
-                            extra_phone TEXT,
-                            email TEXT,
-                            notes TEXT,
-                            -- Date of birth for the guest.  Stored as DATE.  Optional.
-                            birth_date DATE,
-                            -- Filename of the uploaded guest photo stored in static/uploads.  Optional.
-                            photo TEXT
-                        );
-                        """,
-                        """
-                        CREATE TABLE IF NOT EXISTS rooms (
-                            id SERIAL PRIMARY KEY,
-                            room_number TEXT NOT NULL UNIQUE,
-                            capacity INTEGER,
-                            notes TEXT,
-                            listing_url TEXT,
-                            residential_complex TEXT,
-                            -- ID of the owner (user) who created this room.  Allows
-                            -- multiple owners to have their own listings.  Nullable
-                            -- to support legacy records created before this column
-                            -- existed.  When a user is deleted, set the owner_id
-                            -- to NULL so the listing remains available but
-                            -- unowned.
-                            owner_id INTEGER,
-                            FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE SET NULL
-                        );
-                        """,
-                        """
-                        CREATE TABLE IF NOT EXISTS bookings (
-                            id SERIAL PRIMARY KEY,
-                            guest_id INTEGER NOT NULL,
-                            room_id INTEGER NOT NULL,
-                            check_in_date DATE NOT NULL,
-                            check_out_date DATE NOT NULL,
-                            status TEXT NOT NULL DEFAULT 'booked',
-                            total_amount REAL,
-                            paid_amount REAL,
-                            notes TEXT,
-                            FOREIGN KEY (guest_id) REFERENCES guests(id) ON DELETE CASCADE,
-                            FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
-                        );
-                        """,
+                    # Таблица гостей
+                     """
+                     CREATE TABLE IF NOT EXISTS guests (
+                     id SERIAL PRIMARY KEY,
+                     name TEXT NOT NULL,
+                     phone TEXT,
+                     extra_phone TEXT,
+                     email TEXT,
+                     notes TEXT,
+                     birth_date DATE,
+                     photo TEXT
+                     );
+                     """,
+                      # Таблица комнат
+                     """
+                     CREATE TABLE IF NOT EXISTS rooms (
+                     id SERIAL PRIMARY KEY,
+                     room_number TEXT NOT NULL UNIQUE,
+                     capacity INTEGER,
+                     notes TEXT,
+                     listing_url TEXT,
+                     residential_complex TEXT,
+                     owner_id INTEGER,
+                     FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE SET NULL
+                     );
+                     """,
+                     # Таблица бронирований
+                     """
+                    CREATE TABLE IF NOT EXISTS bookings (
+                        id SERIAL PRIMARY KEY,
+                        guest_id INTEGER NOT NULL,
+                        room_id INTEGER NOT NULL,
+                        check_in_date DATE NOT NULL,
+                        check_out_date DATE NOT NULL,
+                        status TEXT NOT NULL DEFAULT 'booked',
+                        total_amount REAL,
+                        paid_amount REAL,
+                        notes TEXT,
+                        FOREIGN KEY (guest_id) REFERENCES guests(id) ON DELETE CASCADE,
+                        FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
+                    );
+                    """,
+                        # Платежи
                         """
                         CREATE TABLE IF NOT EXISTS payments (
                             id SERIAL PRIMARY KEY,
@@ -515,6 +509,7 @@ def get_db_connection():
                             FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE
                         );
                         """,
+                        # Расходы
                         """
                         CREATE TABLE IF NOT EXISTS expenses (
                             id SERIAL PRIMARY KEY,
@@ -524,6 +519,7 @@ def get_db_connection():
                             description TEXT
                         );
                         """,
+                        # Задачи по уборке
                         """
                         CREATE TABLE IF NOT EXISTS cleaning_tasks (
                             id SERIAL PRIMARY KEY,
@@ -534,17 +530,7 @@ def get_db_connection():
                             FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
                         );
                         """,
-                        """
-                        CREATE TABLE IF NOT EXISTS users (
-                            id SERIAL PRIMARY KEY,
-                            username TEXT NOT NULL UNIQUE,
-                            password_hash TEXT NOT NULL,
-                            role TEXT NOT NULL,
-                            name TEXT,
-                            contact_info TEXT,
-                            photo TEXT
-                        );
-                        """,
+                        # Запросы на регистрацию
                         """
                         CREATE TABLE IF NOT EXISTS registration_requests (
                             id SERIAL PRIMARY KEY,
@@ -554,14 +540,13 @@ def get_db_connection():
                             created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
                         );
                         """,
+                        # Чёрный список телефонов
                         """
                         CREATE TABLE IF NOT EXISTS blacklist (
-                            phone TEXT PRIMARY KEY,
-                            reason TEXT,
-                            added_at TEXT
+                            phone TEXT PRIMARY KEY
                         );
                         """,
-                        # Chat rooms and related tables
+                        # Таблицы для чата
                         """
                         CREATE TABLE IF NOT EXISTS chat_rooms (
                             id SERIAL PRIMARY KEY,
@@ -608,7 +593,7 @@ def get_db_connection():
                             FOREIGN KEY (room_id) REFERENCES chat_rooms(id) ON DELETE CASCADE
                         );
                         """,
-                        # Guest comments and room status
+                        # Комментарии гостей и статусы комнат
                         """
                         CREATE TABLE IF NOT EXISTS guest_comments (
                             id SERIAL PRIMARY KEY,
@@ -627,7 +612,7 @@ def get_db_connection():
                             FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
                         );
                         """,
-                        # Subscriptions table with payment details
+                        # Подписки
                         """
                         CREATE TABLE IF NOT EXISTS subscriptions (
                             id SERIAL PRIMARY KEY,
@@ -643,6 +628,7 @@ def get_db_connection():
                         );
                         """,
                     ]
+
                     cur = conn.cursor()
                     for stmt in statements:
                         cur.execute(stmt)
