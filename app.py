@@ -1591,7 +1591,9 @@ def login():
 def logout():
     session.clear()
     flash('Вы вышли из системы.')
-    return redirect(url_for('login'))
+    # После выхода отправляем пользователя на публичный каталог квартир,
+    # чтобы он сразу мог просматривать доступные объявления как гость.
+    return redirect(url_for('public_listings'))
 
 
 # Route to view and manage registration requests. Only accessible by owner.
