@@ -548,7 +548,16 @@
                     {% endif %}
                   </div>
                   <!-- Маленький квадратик для отметки готовности/галочки -->
-                  <div class="checkmark-toggle position-absolute bottom-0 start-0 m-1" onclick="this.classList.toggle('checked');">
+                  {#
+                    Persist the checked state across page reloads.  Use cell.checked (set in
+                    calendar_view) to determine initial state.  When clicked, call
+                    toggleCheckmark() which toggles the visual class and sends an
+                    asynchronous request to the server to save the new state in
+                    room_checkmarks.  The fetch uses JSON with a "checked" flag and
+                    ignores errors to avoid UI disruption.
+                  #}
+                  <div class="checkmark-toggle position-absolute bottom-0 start-0 m-1{% if cell.checked %} checked{% endif %}"
+                       onclick="toggleCheckmark(this, {{ row.room['id'] }}, '{{ cell.date.isoformat() }}');">
                     <i class="bi bi-check-lg"></i>
                   </div>
                 </td>
@@ -882,6 +891,31 @@
         // Если брони нет (например, индивидуальный статус), обновляем только текущую ячейку
         replaceStatusClass(td);
       }
+    }
+  </script>
+
+  <!-- Скрипт для персистентной галочки.  При клике на квадратик в ячейке
+       вызывается эта функция, которая переключает класс `checked` на
+       элементе и отправляет AJAX‑запрос на сервер.  Сервер сохраняет
+       новое состояние в таблице room_checkmarks и возвращает пустой
+       ответ.  Ошибки запроса игнорируются, чтобы интерфейс оставался
+       отзывчивым. -->
+  <script>
+    function toggleCheckmark(el, roomId, dateStr) {
+      // Toggle checked class locally
+      el.classList.toggle('checked');
+      var isChecked = el.classList.contains('checked');
+      // Send asynchronous request to persist state
+      fetch('/calendar/checkmark/' + roomId + '/' + dateStr, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ checked: isChecked })
+      }).catch(function(err) {
+        // Optionally handle errors; for now, silently ignore
+        console.error('Failed to toggle checkmark', err);
+      });
     }
   </script>
 {% endblock %}

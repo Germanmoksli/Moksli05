@@ -1548,6 +1548,31 @@ def ensure_status_table(conn: sqlite3.Connection) -> None:
     except Exception:
         pass
 
+# Ensure room_checkmarks table exists for persisting checkmark state in the calendar.
+def ensure_checkmark_table(conn: sqlite3.Connection) -> None:
+    """
+    Create the ``room_checkmarks`` table if it doesn't already exist.
+    This table stores a boolean checkmark for each combination of room and date.
+    The ``checked`` column is stored as an integer (1=true) for compatibility
+    across SQLite and PostgreSQL.  The primary key ensures only one row per
+    room/date combination.
+    """
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS room_checkmarks (
+            room_id INTEGER NOT NULL,
+            date TEXT NOT NULL,
+            checked INTEGER NOT NULL DEFAULT 1,
+            PRIMARY KEY (room_id, date),
+            FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
+        )
+        """
+    )
+    try:
+        conn.commit()
+    except Exception:
+        pass
+
 # Ensure blacklist table exists for storing sanitized phone numbers that are blacklisted
 def ensure_blacklist_table(conn: sqlite3.Connection) -> None:
     """
@@ -2919,6 +2944,23 @@ def calendar_view(year=None, month=None):
     ).fetchall()
     # Map statuses to dates per room
     status_map = {(int(s["room_id"]), date.fromisoformat(s["date"])): s["status"] for s in statuses}
+    # Load checkmarks for this month to persist the checked state of the small square in each cell.
+    ensure_checkmark_table(conn)
+    check_rows = conn.execute(
+        "SELECT room_id, date FROM room_checkmarks WHERE date >= ? AND date <= ? AND checked = 1",
+        (first_day, last_day),
+    ).fetchall()
+    # Convert to a set of tuples (room_id, date) using date objects for consistent lookup
+    check_map = set()
+    for row in check_rows:
+        try:
+            dt = date.fromisoformat(row["date"])
+        except Exception:
+            try:
+                dt = row["date"].date() if hasattr(row["date"], 'date') else date.fromisoformat(str(row["date"]))
+            except Exception:
+                continue
+        check_map.add((int(row["room_id"]), dt))
     conn.close()
 
     # Build a dictionary of guest names for tooltips
@@ -3000,16 +3042,20 @@ def calendar_view(year=None, month=None):
                         status_for_calendar = st
                     else:
                         status_for_calendar = "booked"
-                row["days"].append({"date": d, "status": status_for_calendar, "booking": b})
+                # Determine if the checkmark is set for this cell
+                is_checked = (room["id"], d) in check_map
+                row["days"].append({"date": d, "status": status_for_calendar, "booking": b, "checked": is_checked})
             else:
                 # For dates without a booking, use the custom status if present; otherwise mark past dates as vacant
                 # and future dates as ready.
                 if (room["id"], d) in status_map:
                     custom_status = status_map[(room["id"], d)]
-                    row["days"].append({"date": d, "status": custom_status, "booking": None})
+                    is_checked = (room["id"], d) in check_map
+                    row["days"].append({"date": d, "status": custom_status, "booking": None, "checked": is_checked})
                 else:
                     status_for_calendar = "vacant" if d < today else "ready"
-                    row["days"].append({"date": d, "status": status_for_calendar, "booking": None})
+                    is_checked = (room["id"], d) in check_map
+                    row["days"].append({"date": d, "status": status_for_calendar, "booking": None, "checked": is_checked})
         calendar_data.append(row)
 
     # Compute summary counts for the selected date.  We only count statuses
@@ -4044,6 +4090,68 @@ def set_room_status(room_id, date_str):
             month=date_obj.month,
             scroll_date=date_obj.isoformat(),
         ))
+
+# Toggle a checkmark for a specific room and date on the calendar.  When the user
+# clicks the small square in a calendar cell, this endpoint is called via
+# JavaScript (fetch) to persist the checked/unchecked state.  If the
+# checkmark does not exist, it will be inserted (checked).  If it does
+# exist, it will be removed (unchecked).  The new state is returned via
+# HTTP status only; the client updates the UI immediately.
+@app.route("/calendar/checkmark/<int:room_id>/<date_str>", methods=["POST"])
+@login_required
+def toggle_checkmark(room_id: int, date_str: str):
+    conn = get_db_connection()
+    ensure_checkmark_table(conn)
+    # Validate date
+    try:
+        date.fromisoformat(date_str)
+    except Exception:
+        conn.close()
+        return "Invalid date", 400
+    # Determine desired state.  If client sent JSON with "checked", use it;
+    # otherwise toggle the existing state.
+    desired_state = None
+    try:
+        if request.is_json:
+            data = request.get_json(silent=True) or {}
+            if 'checked' in data:
+                desired_state = bool(data['checked'])
+    except Exception:
+        desired_state = None
+    # Fetch current state
+    row = conn.execute(
+        "SELECT checked FROM room_checkmarks WHERE room_id = ? AND date = ?",
+        (room_id, date_str),
+    ).fetchone()
+    current_state = bool(row['checked']) if row else False
+    # Compute new state if not explicitly provided
+    if desired_state is None:
+        new_state = not current_state
+    else:
+        new_state = desired_state
+    # Apply new state
+    if new_state:
+        # Insert or update as checked
+        conn.execute(
+            """
+            INSERT INTO room_checkmarks (room_id, date, checked) VALUES (?, ?, 1)
+            ON CONFLICT(room_id, date) DO UPDATE SET checked = 1
+            """,
+            (room_id, date_str),
+        )
+    else:
+        # Remove the checkmark (delete row)
+        conn.execute(
+            "DELETE FROM room_checkmarks WHERE room_id = ? AND date = ?",
+            (room_id, date_str),
+        )
+    try:
+        conn.commit()
+    except Exception:
+        pass
+    conn.close()
+    # Return empty response.  Clients rely on front‑end code to toggle the UI.
+    return "", 204
     # GET: fetch current status if exists
     cur_status = conn.execute(
         "SELECT status FROM room_statuses WHERE room_id = ? AND date = ?",
