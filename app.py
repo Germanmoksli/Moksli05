@@ -4243,10 +4243,41 @@ def edit_booking(booking_id):
         check_out = request.form.get("check_out")
         # Статус депозита: заменяем поле status на deposit_status; по умолчанию "paid"
         deposit_status = (request.form.get("deposit_status") or "paid").strip() or "paid"
-        total_amount_str = request.form.get("total_amount", "").strip()
-        paid_amount_str = request.form.get("paid_amount", "").strip()
+        rate_str = (request.form.get("total_amount") or "").strip()
+        paid_amount_str = (request.form.get("paid_amount") or "").strip()
         notes = request.form.get("notes", "").strip() or None
-        total_amount = float(total_amount_str) if total_amount_str else None
+        # Determine the new number of nights for the updated dates
+        try:
+            nights_new = (date.fromisoformat(check_out) - date.fromisoformat(check_in)).days
+        except Exception:
+            nights_new = 0
+        if nights_new <= 0:
+            # Use at least one night to avoid zero or negative durations
+            nights_new = 1
+        # Parse the price per day entered by the user. If empty, fall back to the existing rate.
+        if rate_str:
+            try:
+                rate = float(rate_str)
+            except Exception:
+                rate = None
+        else:
+            # Compute the existing per‑day rate from the original booking if available
+            try:
+                old_check_in = date.fromisoformat(booking['check_in_date'])
+                old_check_out = date.fromisoformat(booking['check_out_date'])
+                old_nights = (old_check_out - old_check_in).days or 1
+                if booking['total_amount'] is not None:
+                    rate = booking['total_amount'] / old_nights
+                else:
+                    rate = None
+            except Exception:
+                rate = None
+        # Compute the new total amount based on the rate and number of nights
+        if rate is not None:
+            total_amount = rate * nights_new
+        else:
+            total_amount = None
+        # Parse deposit amount
         paid_amount = float(paid_amount_str) if paid_amount_str else None
         if not check_in or not check_out:
             flash("Заполните даты заезда и выезда.")
@@ -4272,7 +4303,7 @@ def edit_booking(booking_id):
                     booking_id,
                 ),
             )
-            # Если дополнительный телефон указан, обновляем его у гостя
+            # If an additional phone is provided, update it for the guest
             if extra_phone:
                 try:
                     ensure_extra_phone_column(conn)
@@ -4282,12 +4313,7 @@ def edit_booking(booking_id):
                     )
                 except Exception:
                     pass
-            # Previously the system marked each date in the updated booking range as
-            # "booked" in the room_statuses table.  This behaviour coupled room
-            # statuses tightly to bookings and prevented managers from setting
-            # occupancy states independently.  We now deliberately avoid altering
-            # room_statuses when a booking is edited.  Any per‑day status can be
-            # modified via the calendar interface regardless of reservations.
+            # We deliberately avoid altering room_statuses here; statuses can be set via the calendar.
         conn.close()
         flash("Бронирование обновлено успешно!")
         # Redirect back to calendar if scroll_date provided
