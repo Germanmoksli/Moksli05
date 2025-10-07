@@ -41,6 +41,14 @@ from datetime import datetime  # For timestamp handling and filters
 import re
 import uuid  # For generating unique payment identifiers
 
+# Standard library imports used for address autocompletion.  We avoid a
+# dependency on the third‑party requests library to simplify deployment on
+# platforms where not all packages are installed.  urllib provides URL
+# encoding and HTTP functionality, and json handles parsing.
+import urllib.parse
+import urllib.request
+import json
+
 
 
 # Configurations
@@ -1627,6 +1635,64 @@ def login():
             return redirect(url_for('login'))
     # GET: render login form
     return render_template('login.html')
+
+# -----------------------------------------------------------------------------
+# Address suggestions endpoint
+#
+# This endpoint provides autocomplete suggestions for user-entered addresses
+# using the OpenStreetMap Nominatim service.  It accepts a query string via
+# the ``q`` parameter and returns a list of up to five address candidates
+# including the display name, coordinates and basic address components.  The
+# client-side code calls this endpoint while the user types and presents
+# suggestions in a dropdown list.
+@app.route('/address_suggestions')
+def address_suggestions() -> 'Response':
+    """Return address suggestions using the Nominatim API for a given query.
+
+    The request must supply a ``q`` query parameter with partial address text.
+    If the query is empty, an empty list is returned.  The service makes
+    a request to the public Nominatim API and extracts relevant fields
+    from each result.  The ``addressdetails=1`` option requests structured
+    address fields.  A User-Agent header is provided as required by the
+    Nominatim usage policy.  In case of errors, an empty list is returned
+    to allow client-side fallbacks.
+    """
+    query = (request.args.get('q') or '').strip()
+    if not query:
+        return jsonify([])
+    try:
+        # Build query parameters and encode them into the URL.
+        params = {
+            'format': 'json',
+            'limit': 5,
+            'addressdetails': 1,
+            'q': query,
+        }
+        url = 'https://nominatim.openstreetmap.org/search?' + urllib.parse.urlencode(params)
+        # Provide a User-Agent header per Nominatim usage policy.
+        req = urllib.request.Request(url, headers={'User-Agent': 'MOKSLI App'})
+        with urllib.request.urlopen(req) as response:
+            # Read and decode the JSON response.
+            data = json.loads(response.read().decode('utf-8'))
+        suggestions = []
+        for item in data:
+            addr = item.get('address') or {}
+            suggestions.append({
+                'display_name': item.get('display_name'),
+                'lat': item.get('lat'),
+                'lon': item.get('lon'),
+                'country': addr.get('country'),
+                'city': addr.get('city') or addr.get('town') or addr.get('village'),
+                'street': addr.get('road'),
+                'house_number': addr.get('house_number'),
+            })
+        return jsonify(suggestions)
+    except Exception as e:
+        # Log the exception (printing here) and return empty list. If the
+        # Nominatim service cannot be reached or returns invalid JSON, we
+        # return an empty list so that the UI can degrade gracefully.
+        print(f"Nominatim API error: {e}")
+        return jsonify([])
 
 # -----------------------------------------------------------------------------
 # Social login routes

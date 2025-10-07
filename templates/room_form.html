@@ -146,7 +146,10 @@
         suggestionsList.innerHTML = '';
         return;
       }
-      fetch('{{ url_for('address_suggestions') }}?q=' + encodeURIComponent(query))
+      // Directly call the address_suggestions endpoint.  Using a literal URL
+      // avoids a Jinja url_for call which may fail if the endpoint is not
+      // registered in the current application context.
+      fetch('/address_suggestions?q=' + encodeURIComponent(query))
         .then(function(resp) { return resp.json(); })
         .then(function(data) {
           suggestionsList.innerHTML = '';
