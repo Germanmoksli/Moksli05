@@ -73,10 +73,7 @@ except Exception:
     OAuth = None  # type: ignore
 
 oauth = None  # will hold the OAuth instance if available
-if OAuth is not None:
-    # Only initialize OAuth when the package is installed.  If the required
-    # environment variables are missing, registration of the Google client will
-    # be skipped and the routes will flash an error message instead.
+if 'OAuth' in globals() and OAuth is not None:
     oauth = OAuth(app)
     google_client_id = os.environ.get('GOOGLE_CLIENT_ID')
     google_client_secret = os.environ.get('GOOGLE_CLIENT_SECRET')
@@ -90,7 +87,6 @@ if OAuth is not None:
             api_base_url='https://www.googleapis.com/oauth2/v2/',
             client_kwargs={'scope': 'openid email profile'},
         )
-
 
 # ----------------------------------------------------------------------------
 # Load environment variables from a local configuration file if present
@@ -1591,21 +1587,21 @@ def login():
             # preserve the user's original role so that they can switch
             # back and forth between guest and owner modes.  See
             # ``switch_role`` below for details.
+            # При входе мы записываем ID пользователя и оригинальную роль.
+            # Однако для всех типов аккаунтов мы запускаем сессия в режиме гостя
+            # (session['user_role'] = 'guest'). Это позволяет владельцам
+            # переключиться в свой режим позже через switch_role, а обычным
+            # гостям оставаться гостями.  Таким образом, кнопка «Войти»
+            # всегда открывает гостевой интерфейс.
             session['user_id'] = user['id']
-            session['user_role'] = user['role']
-            # Save the original role so that owners can return to their
-            # privileged view after switching to guest.  We always set
-            # this during login so that subsequent toggles have a
-            # reference point.  Without this, switching back would be
-            # impossible once the session role has been changed.
+            # Сохраняем оригинальную роль, чтобы её можно было восстановить через switch_role
             session['original_user_role'] = user['role']
+            # Независимо от исходной роли, начинаем с режима гостя
+            session['user_role'] = 'guest'
             conn.close()
             flash('Вход выполнен успешно!')
-            # Guests are returned to the public listings catalogue; other roles go to the dashboard
-            if user['role'] == 'guest':
-                return redirect(url_for('public_listings'))
-            else:
-                return redirect(url_for('index'))
+            # Перенаправляем всех пользователей на каталог квартир после входа
+            return redirect(url_for('public_listings'))
         else:
             # If no user or password mismatch, check pending registration requests
             pending = conn.execute('SELECT status FROM registration_requests WHERE username = ?', (email,)).fetchone()
