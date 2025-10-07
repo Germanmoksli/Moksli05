@@ -2957,6 +2957,75 @@ def ensure_booking_creator_column(conn: sqlite3.Connection) -> None:
         pass
 
 
+# Ensure additional columns exist on the rooms table and create the room_photos table.
+def ensure_rooms_additional_columns(conn) -> None:
+    """
+    Ensure that the ``rooms`` table contains all expected columns and that
+    the ``room_photos`` table exists.  This helper examines the rooms
+    table schema and issues ALTER TABLE statements to add missing columns.
+    It creates the room_photos table if it does not already exist.  Any
+    errors encountered during the process are ignored to prevent crashes.
+
+    Args:
+        conn: A database connection or compatibility wrapper.
+    """
+    try:
+        # Inspect the existing columns on the rooms table.  The PRAGMA
+        # statement is intercepted by the PostgreSQL compatibility layer to
+        # query information_schema when running on Postgres.
+        cur = conn.execute("PRAGMA table_info(rooms)")
+        rows = cur.fetchall()
+        col_names: list[str] = []
+        for row in rows:
+            try:
+                # sqlite3.Row uses tuple access
+                col_names.append(row[1])
+            except Exception:
+                # psycopg2's RealDictRow exposes 'name'
+                if isinstance(row, dict) and 'name' in row:
+                    col_names.append(row['name'])
+        # Define expected columns and their data types
+        expected = [
+            ("owner_id", "INTEGER"),
+            ("num_rooms", "INTEGER"),
+            ("floor", "INTEGER"),
+            ("floors_total", "INTEGER"),
+            ("area_total", "REAL"),
+            ("area_kitchen", "REAL"),
+            ("condition", "TEXT"),
+            ("kitchen_studio", "BOOLEAN"),
+            ("country", "TEXT"),
+            ("city", "TEXT"),
+            ("street", "TEXT"),
+            ("house_number", "TEXT"),
+            ("latitude", "REAL"),
+            ("longitude", "REAL"),
+            ("price_per_night", "REAL"),
+        ]
+        for col, coltype in expected:
+            if col not in col_names:
+                try:
+                    conn.execute(f"ALTER TABLE rooms ADD COLUMN {col} {coltype}")
+                except Exception:
+                    # Ignore errors (e.g. column exists or syntax unsupported)
+                    pass
+        # Create the room_photos table if needed
+        try:
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS room_photos ("
+                "id SERIAL PRIMARY KEY,"
+                "room_id INTEGER NOT NULL,"
+                "file_name TEXT NOT NULL,"
+                "FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE"
+                ")"
+            )
+        except Exception:
+            pass
+    except Exception:
+        # Best-effort: ignore all errors during schema upgrade
+        pass
+
+
 # Add room
 @app.route("/rooms/add", methods=["GET", "POST"])
 @login_required
@@ -3018,6 +3087,14 @@ def add_room():
             flash("Вы можете загрузить не более 20 фотографий.")
             return redirect(url_for("add_room"))
         conn = get_db_connection()
+        # Ensure the rooms table has all required columns and the room_photos table exists
+        # before attempting to insert a new room.  This makes the schema upgrade
+        # automatic and removes the need for manual migration scripts.
+        try:
+            ensure_rooms_additional_columns(conn)
+        except Exception:
+            # Ignore any schema update errors so that insertion can proceed
+            pass
         try:
             with conn:
                 # Insert the room record and retrieve its new id
