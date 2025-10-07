@@ -40,15 +40,6 @@ from datetime import date, timedelta
 from datetime import datetime  # For timestamp handling and filters
 import re
 import uuid  # For generating unique payment identifiers
-# To query the Nominatim API for address suggestions we use the
-# Python standard library instead of the `requests` package.  The
-# environment on some hosting providers (e.g. Render) may not have
-# the `requests` module installed by default, which would cause a
-# ModuleNotFoundError at runtime.  Using urllib ensures the
-# functionality works without additional dependencies.
-import urllib.parse  # For encoding URL query parameters
-import urllib.request  # For making HTTP requests to external services
-import json  # For decoding JSON responses
 
 
 
@@ -82,7 +73,10 @@ except Exception:
     OAuth = None  # type: ignore
 
 oauth = None  # will hold the OAuth instance if available
-if 'OAuth' in globals() and OAuth is not None:
+if OAuth is not None:
+    # Only initialize OAuth when the package is installed.  If the required
+    # environment variables are missing, registration of the Google client will
+    # be skipped and the routes will flash an error message instead.
     oauth = OAuth(app)
     google_client_id = os.environ.get('GOOGLE_CLIENT_ID')
     google_client_secret = os.environ.get('GOOGLE_CLIENT_SECRET')
@@ -96,6 +90,7 @@ if 'OAuth' in globals() and OAuth is not None:
             api_base_url='https://www.googleapis.com/oauth2/v2/',
             client_kwargs={'scope': 'openid email profile'},
         )
+
 
 # ----------------------------------------------------------------------------
 # Load environment variables from a local configuration file if present
@@ -1596,21 +1591,21 @@ def login():
             # preserve the user's original role so that they can switch
             # back and forth between guest and owner modes.  See
             # ``switch_role`` below for details.
-            # При входе мы записываем ID пользователя и оригинальную роль.
-            # Однако для всех типов аккаунтов мы запускаем сессия в режиме гостя
-            # (session['user_role'] = 'guest'). Это позволяет владельцам
-            # переключиться в свой режим позже через switch_role, а обычным
-            # гостям оставаться гостями.  Таким образом, кнопка «Войти»
-            # всегда открывает гостевой интерфейс.
             session['user_id'] = user['id']
-            # Сохраняем оригинальную роль, чтобы её можно было восстановить через switch_role
+            session['user_role'] = user['role']
+            # Save the original role so that owners can return to their
+            # privileged view after switching to guest.  We always set
+            # this during login so that subsequent toggles have a
+            # reference point.  Without this, switching back would be
+            # impossible once the session role has been changed.
             session['original_user_role'] = user['role']
-            # Независимо от исходной роли, начинаем с режима гостя
-            session['user_role'] = 'guest'
             conn.close()
             flash('Вход выполнен успешно!')
-            # Перенаправляем всех пользователей на каталог квартир после входа
-            return redirect(url_for('public_listings'))
+            # Guests are returned to the public listings catalogue; other roles go to the dashboard
+            if user['role'] == 'guest':
+                return redirect(url_for('public_listings'))
+            else:
+                return redirect(url_for('index'))
         else:
             # If no user or password mismatch, check pending registration requests
             pending = conn.execute('SELECT status FROM registration_requests WHERE username = ?', (email,)).fetchone()
@@ -1632,64 +1627,6 @@ def login():
             return redirect(url_for('login'))
     # GET: render login form
     return render_template('login.html')
-
-# -----------------------------------------------------------------------------
-# Address suggestions endpoint
-#
-# This endpoint provides autocomplete suggestions for user-entered addresses
-# using the OpenStreetMap Nominatim service.  It accepts a query string via
-# the ``q`` parameter and returns a list of up to five address candidates
-# including the display name, coordinates and basic address components.  The
-# client-side code calls this endpoint while the user types and presents
-# suggestions in a dropdown list.
-@app.route('/address_suggestions')
-def address_suggestions() -> 'Response':
-    """Return address suggestions using the Nominatim API for a given query.
-
-    The request must supply a ``q`` query parameter with partial address text.
-    If the query is empty, an empty list is returned.  The service makes
-    a request to the public Nominatim API and extracts relevant fields
-    from each result.  The ``addressdetails=1`` option requests structured
-    address fields.  A User-Agent header is provided as required by the
-    Nominatim usage policy.  In case of errors, an empty list is returned
-    to allow client-side fallbacks.
-    """
-    query = (request.args.get('q') or '').strip()
-    if not query:
-        return jsonify([])
-    try:
-        # Build query parameters and encode them into the URL.
-        params = {
-            'format': 'json',
-            'limit': 5,
-            'addressdetails': 1,
-            'q': query,
-        }
-        url = 'https://nominatim.openstreetmap.org/search?' + urllib.parse.urlencode(params)
-        # Provide a User-Agent header per Nominatim usage policy.
-        req = urllib.request.Request(url, headers={'User-Agent': 'MOKSLI App'})
-        with urllib.request.urlopen(req) as response:
-            # Read and decode the JSON response.
-            data = json.loads(response.read().decode('utf-8'))
-        suggestions = []
-        for item in data:
-            addr = item.get('address') or {}
-            suggestions.append({
-                'display_name': item.get('display_name'),
-                'lat': item.get('lat'),
-                'lon': item.get('lon'),
-                'country': addr.get('country'),
-                'city': addr.get('city') or addr.get('town') or addr.get('village'),
-                'street': addr.get('road'),
-                'house_number': addr.get('house_number'),
-            })
-        return jsonify(suggestions)
-    except Exception as e:
-        # Log the exception (printing here) and return empty list. If the
-        # Nominatim service cannot be reached or returns invalid JSON, we
-        # return an empty list so that the UI can degrade gracefully.
-        print(f"Nominatim API error: {e}")
-        return jsonify([])
 
 # -----------------------------------------------------------------------------
 # Social login routes
@@ -2961,30 +2898,25 @@ def ensure_booking_creator_column(conn: sqlite3.Connection) -> None:
 def ensure_rooms_additional_columns(conn) -> None:
     """
     Ensure that the ``rooms`` table contains all expected columns and that
-    the ``room_photos`` table exists.  This helper examines the rooms
-    table schema and issues ALTER TABLE statements to add missing columns.
-    It creates the room_photos table if it does not already exist.  Any
-    errors encountered during the process are ignored to prevent crashes.
+    the ``room_photos`` table exists.  This helper examines the existing
+    schema and adds missing columns (e.g., num_rooms, floor, etc.) via
+    ``ALTER TABLE``.  It also creates the ``room_photos`` table if it is
+    absent.  Any errors encountered are ignored to avoid disrupting
+    normal operation.
 
     Args:
         conn: A database connection or compatibility wrapper.
     """
     try:
-        # Inspect the existing columns on the rooms table.  The PRAGMA
-        # statement is intercepted by the PostgreSQL compatibility layer to
-        # query information_schema when running on Postgres.
         cur = conn.execute("PRAGMA table_info(rooms)")
         rows = cur.fetchall()
-        col_names: list[str] = []
+        col_names = []
         for row in rows:
             try:
-                # sqlite3.Row uses tuple access
                 col_names.append(row[1])
             except Exception:
-                # psycopg2's RealDictRow exposes 'name'
                 if isinstance(row, dict) and 'name' in row:
                     col_names.append(row['name'])
-        # Define expected columns and their data types
         expected = [
             ("owner_id", "INTEGER"),
             ("num_rooms", "INTEGER"),
@@ -3007,9 +2939,8 @@ def ensure_rooms_additional_columns(conn) -> None:
                 try:
                     conn.execute(f"ALTER TABLE rooms ADD COLUMN {col} {coltype}")
                 except Exception:
-                    # Ignore errors (e.g. column exists or syntax unsupported)
                     pass
-        # Create the room_photos table if needed
+        # Ensure room_photos table exists
         try:
             conn.execute(
                 "CREATE TABLE IF NOT EXISTS room_photos ("
@@ -3022,7 +2953,6 @@ def ensure_rooms_additional_columns(conn) -> None:
         except Exception:
             pass
     except Exception:
-        # Best-effort: ignore all errors during schema upgrade
         pass
 
 
@@ -3032,124 +2962,60 @@ def ensure_rooms_additional_columns(conn) -> None:
 @roles_required('owner')
 def add_room():
     """
-    Handle adding a new apartment listing.
+    Handle adding a new room (object).
 
-    Owners provide extensive details about their property including room count,
-    floor information, area, condition, kitchen type, address (with
-    suggestions), location on the map, up to 20 photographs, and the
-    nightly rental price.  These values are inserted into the ``rooms`` table
-    and associated ``room_photos`` records.  If a name is missing or too
-    many photos are uploaded, an error message is flashed and the form is
-    redisplayed.
+    In the updated workflow, a room only requires a single field: the object
+    name (stored in the ``room_number`` column). Capacity and notes are no
+    longer collected from the user. Instead, they default to NULL in the
+    database. Only users with the roles ``owner`` or ``manager`` can add
+    rooms.  If a user submits a blank room name, an error message is shown.
+    Duplicate names are also prevented via a unique constraint on the
+    ``room_number`` column.  Successful creation redirects back to the
+    list of rooms.
     """
     if request.method == "POST":
-        # Required name for the object
-        room_number = (request.form.get("room_number") or "").strip()
+        # Fetch and sanitize the room name (object name)
+        room_number = request.form.get("room_number", "").strip()
+        # Optional external listing URL
+        listing_url = request.form.get("listing_url", "").strip() or None
+        # Residential complex (ЖК). None if not selected or blank.
+        residential_complex = request.form.get("residential_complex")
+        residential_complex = residential_complex.strip() if residential_complex else None
+        # Ensure a name was provided
         if not room_number:
-            flash("Название объекта обязательно.")
-            return redirect(url_for("add_room"))
-        # Helper functions to coerce optional numeric fields
-        def _to_int(val):
-            try:
-                return int(val) if val else None
-            except Exception:
-                return None
-        def _to_float(val):
-            try:
-                return float(val) if val else None
-            except Exception:
-                return None
-        # Parse numeric and optional fields
-        num_rooms = _to_int(request.form.get("num_rooms"))
-        floor = _to_int(request.form.get("floor"))
-        floors_total = _to_int(request.form.get("floors_total"))
-        area_total = _to_float(request.form.get("area_total"))
-        area_kitchen = _to_float(request.form.get("area_kitchen"))
-        price_per_night = _to_float(request.form.get("price_per_night"))
-        # Condition and kitchen type
-        condition = request.form.get("condition") or None
-        kitchen_studio = request.form.get("kitchen_studio") == "yes"
-        # Address components and coordinates
-        country = request.form.get("country") or None
-        city = request.form.get("city") or None
-        street = request.form.get("street") or None
-        house_number = request.form.get("house_number") or None
-        latitude = _to_float(request.form.get("latitude"))
-        longitude = _to_float(request.form.get("longitude"))
-        # Optional listing URL and residential complex
-        listing_url = (request.form.get("listing_url") or "").strip() or None
-        residential_complex = request.form.get("residential_complex") or None
-        if residential_complex:
-            residential_complex = residential_complex.strip() or None
-        # Handle photos (limit to 20)
-        photos = request.files.getlist("photos")
-        if photos and len(photos) > 20:
-            flash("Вы можете загрузить не более 20 фотографий.")
+            flash("Название квартиры обязательно.")
             return redirect(url_for("add_room"))
         conn = get_db_connection()
-        # Ensure the rooms table has all required columns and the room_photos table exists
-        # before attempting to insert a new room.  This makes the schema upgrade
-        # automatic and removes the need for manual migration scripts.
+        # Ensure extended columns exist on the rooms table before inserting.
         try:
             ensure_rooms_additional_columns(conn)
         except Exception:
-            # Ignore any schema update errors so that insertion can proceed
+            # Ignore schema upgrade errors
             pass
         try:
             with conn:
-                # Insert the room record and retrieve its new id
-                cur = conn.execute(
-                    "INSERT INTO rooms (room_number, listing_url, residential_complex, owner_id, num_rooms, floor, floors_total, area_total, area_kitchen, condition, kitchen_studio, country, city, street, house_number, latitude, longitude, price_per_night) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
-                    (
-                        room_number,
-                        listing_url,
-                        residential_complex,
-                        session.get('user_id'),
-                        num_rooms,
-                        floor,
-                        floors_total,
-                        area_total,
-                        area_kitchen,
-                        condition,
-                        1 if kitchen_studio else 0,
-                        country,
-                        city,
-                        street,
-                        house_number,
-                        latitude,
-                        longitude,
-                        price_per_night,
-                    ),
+                # Insert the room and associate it with the current owner.  The owner_id
+                # column ensures that each owner only sees and manages their own
+                # listings.  Note that we always provide a value for owner_id; the
+                # session is guaranteed to contain user_id due to the @login_required
+                # decorator.
+                conn.execute(
+                    "INSERT INTO rooms (room_number, listing_url, residential_complex, owner_id) VALUES (?, ?, ?, ?)",
+                    (room_number, listing_url, residential_complex, session.get('user_id')),
                 )
-                new_id_row = cur.fetchone()
-                room_id = new_id_row[0] if new_id_row else None
-                # Save photos if provided
-                if photos and room_id:
-                    upload_folder = os.path.join(app.static_folder, "uploads", "rooms")
-                    os.makedirs(upload_folder, exist_ok=True)
-                    for file in photos:
-                        if file and file.filename:
-                            original = secure_filename(file.filename)
-                            ext = os.path.splitext(original)[1]
-                            unique_name = f"{uuid.uuid4().hex}{ext}"
-                            file.save(os.path.join(upload_folder, unique_name))
-                            conn.execute(
-                                "INSERT INTO room_photos (room_id, file_name) VALUES (?, ?)",
-                                (room_id, unique_name),
-                            )
-        except Exception as e:
-            # Roll back on error and notify the user
-            try:
-                conn.rollback()
-            except Exception:
-                pass
+        except Exception:
+            # On any insertion error (e.g. duplicate room number), roll back the
+            # transaction if necessary and inform the user.  When using
+            # PostgreSQL the unique constraint violation is a different
+            # exception type than sqlite3.IntegrityError, so catch all
+            # exceptions here.
             conn.close()
-            flash(f"Ошибка при добавлении квартиры: {e}")
+            flash("Ошибка: квартира с таким названием уже существует.")
             return redirect(url_for("add_room"))
         conn.close()
-        flash("Квартира успешно добавлена.")
+        flash("Квартира добавлена успешно!")
         return redirect(url_for("list_rooms"))
-    # GET: render the form for adding a room
+    # Render the form for GET requests
     return render_template("room_form.html")
 
 # Edit existing room (update name and listing URL)
