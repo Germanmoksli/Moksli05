@@ -105,42 +105,49 @@ def create_tables(connection) -> None:
             -- URL of the external listing/advertisement for this object (optional)
             listing_url TEXT,
             -- Residential complex (ЖК) identifier or name for filtering
-            residential_complex TEXT,
-            -- ID of the owner (user) who created this room.  Allows multiple
-            -- owners to have their own listings.  Nullable to support legacy
-            -- records created before this column existed.  When a user is
-            -- deleted, set the owner_id to NULL so the listing remains
-            -- available but unowned.
-            owner_id INTEGER,
-            -- Number of rooms in the apartment
-            num_rooms INTEGER,
-            -- Floor on which the apartment is located
-            floor INTEGER,
-            -- Total number of floors in the building
-            floors_total INTEGER,
-            -- Total area of the apartment (square metres)
-            area_total REAL,
-            -- Kitchen area of the apartment (square metres)
-            area_kitchen REAL,
-            -- Condition of the apartment (e.g., fresh renovation, normal, no renovation)
-            condition TEXT,
-            -- Whether the kitchen is a studio (true/false)
-            kitchen_studio BOOLEAN,
-            -- Address components (country, city, street, house number)
-            country TEXT,
-            city TEXT,
-            street TEXT,
-            house_number TEXT,
-            -- Geographic coordinates selected on the map
-            latitude REAL,
-            longitude REAL,
-            -- Price per night for rent
-            price_per_night REAL,
-            FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE SET NULL
+            residential_complex TEXT
+            -- Additional columns are added below using ALTER TABLE to
+            -- support upgrades to existing databases.
         );
         """
     )
-    # Commit after creating rooms so that subsequent foreign key constraints
+    # If the rooms table already existed, it may be missing new columns.  Use
+    # ALTER TABLE IF NOT EXISTS to add them without raising errors.  Not
+    # every PostgreSQL version supports IF NOT EXISTS for ADD COLUMN (9.6+
+    # does), but it avoids duplicate column errors if the migration
+    # runs multiple times.
+    alter_statements = [
+        "ALTER TABLE rooms ADD COLUMN IF NOT EXISTS owner_id INTEGER",  # owner reference; foreign key can be added separately if needed
+        "ALTER TABLE rooms ADD COLUMN IF NOT EXISTS num_rooms INTEGER",
+        "ALTER TABLE rooms ADD COLUMN IF NOT EXISTS floor INTEGER",
+        "ALTER TABLE rooms ADD COLUMN IF NOT EXISTS floors_total INTEGER",
+        "ALTER TABLE rooms ADD COLUMN IF NOT EXISTS area_total REAL",
+        "ALTER TABLE rooms ADD COLUMN IF NOT EXISTS area_kitchen REAL",
+        "ALTER TABLE rooms ADD COLUMN IF NOT EXISTS condition TEXT",
+        "ALTER TABLE rooms ADD COLUMN IF NOT EXISTS kitchen_studio BOOLEAN",
+        "ALTER TABLE rooms ADD COLUMN IF NOT EXISTS country TEXT",
+        "ALTER TABLE rooms ADD COLUMN IF NOT EXISTS city TEXT",
+        "ALTER TABLE rooms ADD COLUMN IF NOT EXISTS street TEXT",
+        "ALTER TABLE rooms ADD COLUMN IF NOT EXISTS house_number TEXT",
+        "ALTER TABLE rooms ADD COLUMN IF NOT EXISTS latitude REAL",
+        "ALTER TABLE rooms ADD COLUMN IF NOT EXISTS longitude REAL",
+        "ALTER TABLE rooms ADD COLUMN IF NOT EXISTS price_per_night REAL"
+    ]
+    for stmt in alter_statements:
+        try:
+            cursor.execute(stmt)
+        except Exception:
+            # Ignore errors (e.g. unsupported IF NOT EXISTS); continue to next
+            pass
+    # Try to add a foreign key constraint on owner_id to users(id).
+    # If the constraint already exists or the syntax is unsupported, ignore the error.
+    try:
+        cursor.execute(
+            "ALTER TABLE rooms ADD CONSTRAINT fk_rooms_owner FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE SET NULL"
+        )
+    except Exception:
+        pass
+    # Commit after creating/updating rooms so that subsequent foreign key constraints
     # (e.g., bookings referencing rooms) do not fail due to uncommitted DDL.
     connection.commit()
 
