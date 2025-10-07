@@ -10,7 +10,9 @@
            выполнен вход как гостя; регистрация владельцев и сотрудников по‑
            прежнему осуществляется через форму ниже. -->
       <div class="mb-3">
-        <p class="text-center mb-2">Или войдите через социальную сеть</p>
+        <!-- Текст изменён, чтобы акцентировать регистрацию через социальную сеть,
+             а не вход. Пользователь понимает, что создаёт новый аккаунт через Google. -->
+        <p class="text-center mb-2">Или зарегистрируйтесь через социальную сеть</p>
         <a href="{{ url_for('login_google') }}" class="btn btn-outline-danger w-100 mb-2">
           <i class="bi bi-google me-1"></i> Google
         </a>
@@ -51,7 +53,7 @@
           <button type="button" class="btn btn-secondary" id="send-code-btn">Отправить код</button>
           <!-- Кнопка запроса регистрации скрыта до получения кода -->
           <button type="submit" class="btn btn-primary" id="register-btn" style="display: none;">Запросить регистрацию</button>
-          <a href="{{ url_for('login') }}" class="btn btn-outline-secondary">Войти</a>
+          <!-- Убрана ссылка на страницу входа, чтобы страница регистрации не содержала переход на вход. -->
         </div>
       </form>
     </div>

@@ -6,7 +6,9 @@
       <h2 class="mb-4 text-center text-primary fw-bold fs-4">Регистрация гостя</h2>
       <!-- Социальная авторизация -->
       <div class="mb-3">
-        <p class="text-center mb-2">Или войдите через социальную сеть</p>
+        <!-- Текст изменён, чтобы акцентировать регистрацию через социальную сеть,
+             а не вход. Теперь пользователю понятнее, что он создает новую учётную запись. -->
+        <p class="text-center mb-2">Или зарегистрируйтесь через социальную сеть</p>
         <a href="{{ url_for('login_google') }}" class="btn btn-outline-danger w-100 mb-2">
           <i class="bi bi-google me-1"></i> Google
         </a>
@@ -29,8 +31,8 @@
           <div class="invalid-feedback">Введите пароль.</div>
         </div>
         <div class="d-flex justify-content-center gap-2 mt-2">
+          <!-- Кнопка регистрации оставлена. Ссылка на страницу входа убрана, чтобы страница регистрации не содержала переход на вход. -->
           <button type="submit" class="btn btn-primary">Зарегистрироваться</button>
-          <a href="{{ url_for('login') }}" class="btn btn-secondary">Войти</a>
         </div>
       </form>
     </div>
