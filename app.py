@@ -49,6 +49,49 @@ DB_DEFAULT_FILE = "aparthotel.db"
 app = Flask(__name__)
 app.secret_key = "change_this_secret_key"  # Needed for flashing messages
 
+# -----------------------------------------------------------------------------
+# Optional: OAuth configuration for social logins
+#
+# The application can allow users to authenticate via third‑party providers such
+# as Google.  To enable Google login, install the `authlib` package and set
+# the following environment variables in your hosting environment:
+#   GOOGLE_CLIENT_ID     – OAuth client ID obtained from the Google console
+#   GOOGLE_CLIENT_SECRET – OAuth client secret obtained from the Google console
+#
+# These settings are optional.  If the authlib package is not available or
+# the necessary environment variables are not defined, the application will
+# gracefully disable social login functionality and display a message when
+# users attempt to use it.  See the ``login_google`` route for details.
+
+try:
+    # authlib is used to implement OAuth/OIDC login flows.  If it is not
+    # installed, Google login will be disabled.  To enable it, add
+    # ``authlib`` to your requirements file and set GOOGLE_CLIENT_ID and
+    # GOOGLE_CLIENT_SECRET environment variables.
+    from authlib.integrations.flask_client import OAuth  # type: ignore
+except Exception:
+    OAuth = None  # type: ignore
+
+oauth = None  # will hold the OAuth instance if available
+if OAuth is not None:
+    # Only initialize OAuth when the package is installed.  If the required
+    # environment variables are missing, registration of the Google client will
+    # be skipped and the routes will flash an error message instead.
+    oauth = OAuth(app)
+    google_client_id = os.environ.get('GOOGLE_CLIENT_ID')
+    google_client_secret = os.environ.get('GOOGLE_CLIENT_SECRET')
+    if google_client_id and google_client_secret:
+        oauth.register(
+            name='google',
+            client_id=google_client_id,
+            client_secret=google_client_secret,
+            access_token_url='https://oauth2.googleapis.com/token',
+            authorize_url='https://accounts.google.com/o/oauth2/v2/auth',
+            api_base_url='https://www.googleapis.com/oauth2/v2/',
+            client_kwargs={'scope': 'openid email profile'},
+        )
+
+
 # ----------------------------------------------------------------------------
 # Load environment variables from a local configuration file if present
 #
@@ -1584,6 +1627,122 @@ def login():
             return redirect(url_for('login'))
     # GET: render login form
     return render_template('login.html')
+
+# -----------------------------------------------------------------------------
+# Social login routes
+#
+# These routes handle authentication with third‑party providers such as Google.
+# If the ``authlib`` package is not installed or the Google client ID/secret
+# are not configured, attempting to use these endpoints will result in a
+# flash message and the user will be redirected back to the registration page.
+
+@app.route('/login/google')
+def login_google():
+    """Initiate the Google OAuth 2.0 flow.
+
+    When a user clicks the Google login button, they are redirected to
+    Google's consent screen.  On success Google will redirect back to
+    the ``authorize_google`` endpoint defined below.
+    """
+    # Ensure OAuth is available and the Google client is registered.  If not,
+    # inform the user that social login is not configured.
+    if oauth is None or not hasattr(oauth, 'google'):
+        flash('Авторизация через Google временно недоступна. Пожалуйста, используйте стандартную регистрацию.')
+        # Choose the guest registration page by default when social login fails
+        return redirect(url_for('register_guest'))
+    # Build absolute redirect URI for the callback endpoint.  _external=True
+    # instructs Flask to generate a full URL rather than a relative path.
+    redirect_uri = url_for('authorize_google', _external=True)
+    # Initiate the authorization redirect.  This returns a Werkzeug
+    # response object that sends the user to Google's login page.
+    return oauth.google.authorize_redirect(redirect_uri)
+
+
+@app.route('/auth/google')
+def authorize_google():
+    """Callback endpoint for Google OAuth 2.0.
+
+    After the user authenticates with Google, they are redirected back to
+    this route.  The access token is exchanged for user info, which is
+    then used to create or log in a guest user.  If the user already
+    exists in the database, they are logged in as their existing role
+    (which may be guest or another role).  New social sign‑ups are
+    automatically created with role ``guest``.
+    """
+    # Abort if OAuth is unavailable or the Google client is not registered
+    if oauth is None or not hasattr(oauth, 'google'):
+        flash('Авторизация через Google временно недоступна.')
+        return redirect(url_for('register_guest'))
+    try:
+        # Exchange the authorization code for an access token
+        token = oauth.google.authorize_access_token()
+        # Fetch the user's profile information.  The 'userinfo' endpoint
+        # returns a JSON object containing email, name, picture, etc.
+        resp = oauth.google.get('userinfo')
+    except Exception as exc:
+        flash('Не удалось завершить авторизацию через Google: {}'.format(str(exc)))
+        return redirect(url_for('register_guest'))
+    userinfo = None
+    try:
+        userinfo = resp.json()
+    except Exception:
+        flash('Не удалось получить данные пользователя от Google.')
+        return redirect(url_for('register_guest'))
+    if not userinfo or not userinfo.get('email'):
+        flash('Не удалось получить адрес электронной почты от Google.')
+        return redirect(url_for('register_guest'))
+    email = userinfo['email']
+    # Try to find an existing user by email (username)
+    conn = get_db_connection()
+    user = conn.execute('SELECT * FROM users WHERE username = ?', (email,)).fetchone()
+    if user:
+        # Existing user found: log them in and redirect
+        session['user_id'] = user['id']
+        session['user_role'] = user['role']
+        session['original_user_role'] = user['role']
+        conn.close()
+        flash('Вход через Google выполнен успешно!')
+        # Guests go to the public listings; others go to their dashboard
+        if user['role'] == 'guest':
+            return redirect(url_for('public_listings'))
+        else:
+            return redirect(url_for('index'))
+    # No existing user: create a new guest account
+    # We must insert into ``users`` and ``guests`` tables.  The
+    # password_hash column is NOT NULL, so generate a random password and
+    # hash it.  The user will log in through Google, so they will not
+    # know this password.  They may use the regular password reset flow
+    # later if needed.
+    random_password = uuid.uuid4().hex
+    hashed_pw = generate_password_hash(random_password)
+    name = userinfo.get('name') or email.split('@')[0]
+    cur = conn.execute(
+        'INSERT INTO users (username, password_hash, role, name) VALUES (?, ?, ?, ?)',
+        (email, hashed_pw, 'guest', name)
+    )
+    # Retrieve the new user's ID.  Use lastrowid on SQLite or currval on PostgreSQL.
+    try:
+        new_user_id = cur.lastrowid  # type: ignore[attr-defined]
+    except Exception:
+        new_user_id = conn.execute("SELECT currval(pg_get_serial_sequence('users','id'))").fetchone()[0]
+    # Insert a matching record into the guests table.  Use whatever data is
+    # available from Google; phone, extra_phone, notes, birth_date are left null.
+    conn.execute(
+        'INSERT INTO guests (id, name, phone, extra_phone, email, notes, birth_date, photo) '
+        'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        (new_user_id, name, None, None, email, None, None, None)
+    )
+    conn.commit()
+    conn.close()
+    # Log in the newly created user as a guest.  Both the effective and
+    # original roles are set to 'guest'.
+    session['user_id'] = new_user_id
+    session['user_role'] = 'guest'
+    session['original_user_role'] = 'guest'
+    flash('Регистрация и вход через Google выполнены успешно!')
+    return redirect(url_for('public_listings'))
+
+
 
 
 # Route: logout. Clears the user's session and redirects to login.
