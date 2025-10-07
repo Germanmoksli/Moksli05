@@ -96,6 +96,9 @@ def create_tables(connection) -> None:
         """
         CREATE TABLE IF NOT EXISTS rooms (
             id SERIAL PRIMARY KEY,
+            -- Object name (user-defined name for the listing).  Formerly
+            -- called room_number; we retain the same column name for
+            -- compatibility but the label in the UI now reads "Название объекта".
             room_number TEXT NOT NULL UNIQUE,
             capacity INTEGER,
             notes TEXT,
@@ -109,6 +112,30 @@ def create_tables(connection) -> None:
             -- deleted, set the owner_id to NULL so the listing remains
             -- available but unowned.
             owner_id INTEGER,
+            -- Number of rooms in the apartment
+            num_rooms INTEGER,
+            -- Floor on which the apartment is located
+            floor INTEGER,
+            -- Total number of floors in the building
+            floors_total INTEGER,
+            -- Total area of the apartment (square metres)
+            area_total REAL,
+            -- Kitchen area of the apartment (square metres)
+            area_kitchen REAL,
+            -- Condition of the apartment (e.g., fresh renovation, normal, no renovation)
+            condition TEXT,
+            -- Whether the kitchen is a studio (true/false)
+            kitchen_studio BOOLEAN,
+            -- Address components (country, city, street, house number)
+            country TEXT,
+            city TEXT,
+            street TEXT,
+            house_number TEXT,
+            -- Geographic coordinates selected on the map
+            latitude REAL,
+            longitude REAL,
+            -- Price per night for rent
+            price_per_night REAL,
             FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE SET NULL
         );
         """
@@ -175,6 +202,18 @@ def create_tables(connection) -> None:
             scheduled_date TIMESTAMP NOT NULL,
             status TEXT NOT NULL DEFAULT 'scheduled',
             notes TEXT,
+            FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
+        );
+        """
+    )
+
+    # Table: room_photos (stores uploaded images for each room)
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS room_photos (
+            id SERIAL PRIMARY KEY,
+            room_id INTEGER NOT NULL,
+            file_name TEXT NOT NULL,
             FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
         );
         """
