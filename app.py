@@ -40,7 +40,15 @@ from datetime import date, timedelta
 from datetime import datetime  # For timestamp handling and filters
 import re
 import uuid  # For generating unique payment identifiers
-import requests  # For querying address suggestions (Nominatim API)
+# To query the Nominatim API for address suggestions we use the
+# Python standard library instead of the `requests` package.  The
+# environment on some hosting providers (e.g. Render) may not have
+# the `requests` module installed by default, which would cause a
+# ModuleNotFoundError at runtime.  Using urllib ensures the
+# functionality works without additional dependencies.
+import urllib.parse  # For encoding URL query parameters
+import urllib.request  # For making HTTP requests to external services
+import json  # For decoding JSON responses
 
 
 
@@ -1650,12 +1658,19 @@ def address_suggestions() -> 'Response':
     if not query:
         return jsonify([])
     try:
-        resp = requests.get(
-            'https://nominatim.openstreetmap.org/search',
-            params={'format': 'json', 'limit': 5, 'addressdetails': 1, 'q': query},
-            headers={'User-Agent': 'MOKSLI App'}
-        )
-        data = resp.json()
+        # Build query parameters and encode them into the URL.
+        params = {
+            'format': 'json',
+            'limit': 5,
+            'addressdetails': 1,
+            'q': query,
+        }
+        url = 'https://nominatim.openstreetmap.org/search?' + urllib.parse.urlencode(params)
+        # Provide a User-Agent header per Nominatim usage policy.
+        req = urllib.request.Request(url, headers={'User-Agent': 'MOKSLI App'})
+        with urllib.request.urlopen(req) as response:
+            # Read and decode the JSON response.
+            data = json.loads(response.read().decode('utf-8'))
         suggestions = []
         for item in data:
             addr = item.get('address') or {}
@@ -1669,7 +1684,11 @@ def address_suggestions() -> 'Response':
                 'house_number': addr.get('house_number'),
             })
         return jsonify(suggestions)
-    except Exception:
+    except Exception as e:
+        # Log the exception (printing here) and return empty list. If the
+        # Nominatim service cannot be reached or returns invalid JSON, we
+        # return an empty list so that the UI can degrade gracefully.
+        print(f"Nominatim API error: {e}")
         return jsonify([])
 
 # -----------------------------------------------------------------------------
