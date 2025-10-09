@@ -32,7 +32,7 @@ except Exception:
 import random
 import smtplib
 from email.mime.text import MIMEText
-from flask import Flask, render_template, request, redirect, url_for, flash, session, abort, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, session, abort, jsonify, send_from_directory
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 from werkzeug.utils import secure_filename
@@ -56,6 +56,29 @@ import json  # For decoding JSON responses
 DB_DEFAULT_FILE = "aparthotel.db"
 
 app = Flask(__name__)
+
+# Define a dedicated upload folder for apartment photos outside of the static
+# directory.  The static folder packaged with the application is often
+# read‑only on deployment platforms (e.g. Render).  User‑uploaded photos
+# must therefore be saved elsewhere.  ``app.root_path`` points to the
+# directory containing this file.  Create the folder if possible so that
+# uploads succeed at runtime.
+UPLOAD_ROOMS_FOLDER = os.path.join(app.root_path, 'uploads', 'rooms')
+try:
+    os.makedirs(UPLOAD_ROOMS_FOLDER, exist_ok=True)
+except Exception:
+    # If creation fails (e.g. filesystem is read‑only), the directory will
+    # be created lazily when saving photos.
+    pass
+
+# Route to serve uploaded apartment photos.  Files in the uploads folder
+# cannot be served by Flask's static handler because they reside outside
+# of the static directory.  This endpoint returns files stored in
+# ``UPLOAD_ROOMS_FOLDER`` when clients request ``/uploads/rooms/<filename>``.
+@app.route('/uploads/rooms/<path:filename>')
+def uploaded_room_image(filename: str):
+    """Serve an uploaded apartment photo from the uploads folder."""
+    return send_from_directory(UPLOAD_ROOMS_FOLDER, filename)
 app.secret_key = "change_this_secret_key"  # Needed for flashing messages
 
 # -----------------------------------------------------------------------------
@@ -3139,20 +3162,31 @@ def add_room():
                             room_id = new_id_row[0]
                         except Exception:
                             room_id = None
-                # Save photos if provided and we have a valid room_id
+                # Save photos if provided and we have a valid room_id.  Uploads
+                # are stored in the dedicated uploads folder rather than the
+                # static directory to ensure writeability.  Only the unique
+                # filename is stored in the database.  If saving fails for
+                # a given file, we simply skip it.
                 if photos and room_id:
-                    upload_folder = os.path.join(app.static_folder, "uploads", "rooms")
-                    os.makedirs(upload_folder, exist_ok=True)
+                    upload_folder = UPLOAD_ROOMS_FOLDER
+                    try:
+                        os.makedirs(upload_folder, exist_ok=True)
+                    except Exception:
+                        pass
                     for file in photos:
                         if file and file.filename:
                             original = secure_filename(file.filename)
                             ext = os.path.splitext(original)[1]
                             unique_name = f"{uuid.uuid4().hex}{ext}"
-                            file.save(os.path.join(upload_folder, unique_name))
-                            conn.execute(
-                                "INSERT INTO room_photos (room_id, file_name) VALUES (?, ?)",
-                                (room_id, unique_name),
-                            )
+                            try:
+                                file.save(os.path.join(upload_folder, unique_name))
+                                conn.execute(
+                                    "INSERT INTO room_photos (room_id, file_name) VALUES (?, ?)",
+                                    (room_id, unique_name),
+                                )
+                            except Exception:
+                                # Ignore errors saving this file
+                                continue
         except Exception as e:
             # Roll back on error and notify the user
             try:

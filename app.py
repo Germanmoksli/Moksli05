@@ -32,7 +32,7 @@ except Exception:
 import random
 import smtplib
 from email.mime.text import MIMEText
-from flask import Flask, render_template, request, redirect, url_for, flash, session, abort, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, session, abort, jsonify, send_from_directory
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 from werkzeug.utils import secure_filename
@@ -55,6 +55,34 @@ import json
 DB_DEFAULT_FILE = "aparthotel.db"
 
 app = Flask(__name__)
+
+# Define a dedicated upload folder for apartment photos outside of the static
+# directory.  The static folder packaged with the application is read‑only on
+# many deployment platforms (e.g. Render), so user‑uploaded files cannot be
+# saved there.  Instead, we store uploads in a separate folder within the
+# application root.  ``app.root_path`` points to the directory containing
+# this file.  When the app starts, ensure the directory exists so that
+# photos can be written at runtime.  Later, we expose a route to serve these
+# images to clients.
+UPLOAD_ROOMS_FOLDER = os.path.join(app.root_path, 'uploads', 'rooms')
+try:
+    os.makedirs(UPLOAD_ROOMS_FOLDER, exist_ok=True)
+except Exception:
+    # On platforms where the filesystem may be read‑only, creation will
+    # silently fail.  The folder will be created at runtime when saving
+    # images if possible.
+    pass
+
+# Expose a route to serve uploaded apartment photos.  Since the uploads
+# directory is outside of the ``static`` folder, Flask will not serve
+# these files automatically.  Clients request images via
+# ``/uploads/rooms/<filename>`` and this view returns the file from the
+# ``UPLOAD_ROOMS_FOLDER`` directory.  We use ``path:filename`` so that
+# filenames containing subdirectories (if ever used) are handled safely.
+@app.route('/uploads/rooms/<path:filename>')
+def uploaded_room_image(filename: str):
+    """Serve an uploaded apartment photo from the uploads folder."""
+    return send_from_directory(UPLOAD_ROOMS_FOLDER, filename)
 app.secret_key = "change_this_secret_key"  # Needed for flashing messages
 
 # -----------------------------------------------------------------------------
@@ -3088,7 +3116,15 @@ def add_room():
                     filename = secure_filename(photo.filename)
                     ext = os.path.splitext(filename)[1]
                     unique_name = f"{uuid.uuid4().hex}{ext}"
-                    upload_dir = os.path.join(app.root_path, 'static', 'uploads', 'rooms')
+                    # Save uploaded photos into the dedicated uploads folder.  We
+                    # deliberately avoid using the ``static`` directory for
+                    # user uploads because it may be read‑only.  The
+                    # ``UPLOAD_ROOMS_FOLDER`` directory is created on app
+                    # startup and is writable at runtime.  We generate a unique
+                    # filename to avoid collisions and record only the name
+                    # (not the full path) in the database.  If saving fails,
+                    # we skip that file.
+                    upload_dir = UPLOAD_ROOMS_FOLDER
                     try:
                         os.makedirs(upload_dir, exist_ok=True)
                     except Exception:
