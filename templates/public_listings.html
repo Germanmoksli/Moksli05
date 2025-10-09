@@ -6,6 +6,24 @@
     <title>Каталог квартир</title>
     <!-- Подключаем тему Bootswatch для приятного внешнего вида -->
     <link href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.2/dist/lux/bootstrap.min.css" rel="stylesheet">
+    <!-- Стили для отображения водяного знака поверх изображений в каталоге -->
+    <style>
+      /* Контейнер для изображения должен быть позиционирован относительным,
+         чтобы водяной знак можно было расположить абсолютно внутри */
+      .image-container { position: relative; overflow: hidden; }
+      /* Водяной знак располагается абсолютно; текст белый с тенью, чтобы его
+         было видно на любом фоне. pointer-events отключён, чтобы он не
+         мешал кликам по карточке. */
+      .image-container .watermark {
+        position: absolute;
+        color: rgba(255, 255, 255, 0.9);
+        font-weight: 700;
+        font-size: 0.9rem;
+        text-shadow: 0 0 4px rgba(0, 0, 0, 0.7);
+        pointer-events: none;
+        z-index: 1;
+      }
+    </style>
   </head>
   <body class="bg-light">
     <!-- Простая навигационная панель с брендом и кнопкой регистрации владельца -->
@@ -70,80 +88,58 @@
         <div class="col">
           {#
             Каждая карточка имеет скруглённые углы и небольшую тень. Внутри
-            используется горизонтальный layout: слева фотография, справа
-            информация. Вся карточка кликабельна благодаря классу
-            ``stretched-link``. Кнопка избранного в виде сердца находится
-            в правом верхнем углу.
+            используется горизонтальный layout: слева фотография с
+            теми же скруглениями, справа — информация о квартире. Используем
+            классы Bootstrap для flex‑раскладки и отступы для отделения
+            элементов.
           #}
-          <div class="card shadow-sm position-relative" style="border-radius: 10px; height: 200px;">
-            {# Кнопка избранного: сердце в правом верхнем углу. Используем
-               символы ♡ и ♥ для отображения пустого и заполненного сердца.
-               Цвет задаём через text-danger. #}
-            {% if session.get('user_id') %}
-            <a href="{{ url_for('toggle_favorite', room_id=room['id']) }}"
-               class="position-absolute bottom-0 end-0 m-2"
-               style="font-size: 1.5rem; z-index: 2;">
-              {% if room['id'] in favorite_ids %}
-                <span class="text-danger">&#9829;</span>
-              {% else %}
-                <span class="text-danger">&#9825;</span>
-              {% endif %}
-            </a>
-            {% endif %}
-            <div class="d-flex h-100">
+          <div class="card shadow-sm" style="border-radius: 10px;">
+            <div class="d-flex">
               {% if room['photo_src'] %}
-              <div class="d-flex" style="flex: 0 0 200px;">
+              {# Оборачиваем изображение в контейнер с position-relative, чтобы
+                 добавить поверх водяной знак. Дополнительно ограничиваем
+                 ширину и высоту, чтобы все фото были одинакового размера. #}
+              <div class="p-2 position-relative image-container" style="max-width: 200px; height: 200px;">
                 <img src="{{ room['photo_src'] }}"
                      alt="Фото квартиры"
-                     class="img-fluid"
-                     style="width: 200px; height: 100%; object-fit: cover; border-top-left-radius: 10px; border-bottom-left-radius: 10px;">
+                     class="img-fluid h-100 w-100"
+                     style="object-fit: cover; border-top-left-radius: 10px; border-bottom-left-radius: 10px;">
+                <span class="watermark">moksli.com</span>
               </div>
               {% endif %}
-              <div class="flex-grow-1 p-3 d-flex flex-column overflow-hidden">
-                {# Первая строка: количество комнат, площадь и цена. Вся строка жирная,
-                   цена выделена чуть большими размерами. #}
-                <div class="d-flex justify-content-between align-items-center mb-1">
-                  <div class="fw-bold">
-                    {% if room['num_rooms'] %}{{ room['num_rooms'] }} комн.{% if room['area_total'] is not none %}, {% endif %}{% endif %}
-                    {% if room['area_total'] is not none %}{{ room['area_total'] }} м²{% endif %}
-                  </div>
+              <div class="flex-grow-1 p-3 d-flex flex-column">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                  <h5 class="card-title mb-0">{{ room['room_number'] }}</h5>
                   {% if room['price_per_night'] is not none %}
                     <div class="fw-bold fs-5 text-end">{{ room['price_per_night'] }} ₸/сутки</div>
                   {% endif %}
                 </div>
-                {# Вторая строка: адрес, полужирным шрифтом #}
-                {% if room['country'] or room['city'] or room['street'] or room['house_number'] %}
-                <div class="fw-semibold mb-1">
-                  {{ room['country'] or '' }}{% if room['city'] %}, {{ room['city'] }}{% endif %}{% if room['street'] %}, {{ room['street'] }}{% endif %}{% if room['house_number'] %}, {{ room['house_number'] }}{% endif %}
+                <ul class="list-unstyled mb-2 small">
+                  {% if room['num_rooms'] %}<li><strong>Комнат:</strong> {{ room['num_rooms'] }}</li>{% endif %}
+                  {% if room['floor'] is not none %}<li><strong>Этаж:</strong> {{ room['floor'] }}{% if room['floors_total'] is not none %}/{{ room['floors_total'] }}{% endif %}</li>{% endif %}
+                  {% if room['area_total'] is not none %}<li><strong>Площадь:</strong> {{ room['area_total'] }}{% if room['area_kitchen'] is not none %} (кухня {{ room['area_kitchen'] }}){% endif %} м²</li>{% endif %}
+                  {% if room['condition'] %}<li><strong>Состояние:</strong> {{ condition_map.get(room['condition'], room['condition']) }}</li>{% endif %}
+                  {% if room['kitchen_studio'] is not none %}<li><strong>Кухня студия:</strong> {{ 'Да' if room['kitchen_studio'] else 'Нет' }}</li>{% endif %}
+                  {% if room['country'] or room['city'] or room['street'] or room['house_number'] %}
+                    <li><strong>Адрес:</strong>
+                      {{ room['country'] or '' }}{% if room['city'] %}, {{ room['city'] }}{% endif %}{% if room['street'] %}, {{ room['street'] }}{% endif %}{% if room['house_number'] %}, {{ room['house_number'] }}{% endif %}
+                    </li>
+                  {% endif %}
+                  {% if room['residential_complex'] %}<li><strong>ЖК:</strong> {{ room['residential_complex'] }}</li>{% endif %}
+                </ul>
+                <div class="mt-auto">
+                  <a href="{{ url_for('view_room_public', room_id=room['id']) }}" class="btn btn-sm btn-outline-primary">Подробнее</a>
+                  {% if room['listing_url'] %}
+                    <a href="{{ room['listing_url'] }}" class="btn btn-sm btn-outline-secondary ms-2" target="_blank">На объявление</a>
+                  {% endif %}
+                  {% if session.get('user_id') %}
+                    {% if room['id'] in favorite_ids %}
+                      <a href="{{ url_for('toggle_favorite', room_id=room['id']) }}" class="btn btn-sm btn-danger ms-2">Убрать</a>
+                    {% else %}
+                      <a href="{{ url_for('toggle_favorite', room_id=room['id']) }}" class="btn btn-sm btn-outline-danger ms-2">В избранное</a>
+                    {% endif %}
+                  {% endif %}
                 </div>
-                {% endif %}
-                {#
-                  Составляем строку описания через точку с запятой. Используем
-                  namespace для накопления частей, затем объединяем их.
-                #}
-                {% set ns = namespace(items=[]) %}
-                {% if room['floor'] is not none %}
-                  {% set floor_str = room['floor'] %}
-                  {% set total_str = room['floors_total'] %}
-                  {% set _ = ns.items.append('Этаж ' ~ floor_str ~ ('' if total_str is none else '/' ~ total_str)) %}
-                {% endif %}
-                {% if room['area_kitchen'] is not none and room['area_total'] is not none %}
-                  {% set _ = ns.items.append('Кухня ' ~ room['area_kitchen'] ~ ' м²') %}
-                {% endif %}
-                {% if room['condition'] %}
-                  {% set _ = ns.items.append('Состояние ' ~ condition_map.get(room['condition'], room['condition'])) %}
-                {% endif %}
-                {% if room['kitchen_studio'] is not none %}
-                  {% set _ = ns.items.append('Кухня‑студия ' ~ ('Да' if room['kitchen_studio'] else 'Нет')) %}
-                {% endif %}
-                {% if room['residential_complex'] %}
-                  {% set _ = ns.items.append('ЖК ' ~ room['residential_complex']) %}
-                {% endif %}
-                <div class="small" style="overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;">
-                  {{ ns.items|join('; ') }}
-                </div>
-                {# Добавляем пустую ссылку со stretched-link, чтобы вся карточка была кликабельна. #}
-                <a href="{{ url_for('view_room_public', room_id=room['id']) }}" class="stretched-link"></a>
               </div>
             </div>
           </div>
@@ -156,5 +152,18 @@
     </div>
     <!-- Подключаем Bootstrap Bundle JS для поддержки выпадающего меню -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Скрипт для случайного размещения водяных знаков на изображениях -->
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        const watermarks = document.querySelectorAll('.image-container .watermark');
+        watermarks.forEach(function(wm) {
+          // Генерируем случайные координаты в пределах 0–60% по горизонтали и вертикали
+          const x = Math.random() * 60;
+          const y = Math.random() * 60;
+          wm.style.left = x + '%';
+          wm.style.top = y + '%';
+        });
+      });
+    </script>
   </body>
 </html>

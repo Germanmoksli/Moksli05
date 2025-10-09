@@ -4,36 +4,7 @@
   <div class="container mt-4">
     <h2 class="text-primary fw-bold fs-3 mb-3">{{ room['room_number'] }}</h2>
     <div class="row">
-      <!-- Left column: photo gallery and map -->
-      <div class="col-md-6 mb-4">
-        {% if photos and photos|length > 0 %}
-        <div class="gallery-container">
-          <div class="main-image-container position-relative">
-            {# Display the first photo as the main image without cropping; constrain maximum height #}
-            <img id="mainImage" src="{{ photos[0] }}" class="img-fluid rounded" alt="Фото квартиры" style="width: 100%; max-height: 300px; object-fit: contain;">
-            <!-- Navigation arrows overlay -->
-            <button type="button" id="prevBtn" class="btn btn-light position-absolute top-50 start-0 translate-middle-y shadow-sm" style="opacity: 0.7;">
-              &lsaquo;
-            </button>
-            <button type="button" id="nextBtn" class="btn btn-light position-absolute top-50 end-0 translate-middle-y shadow-sm" style="opacity: 0.7;">
-              &rsaquo;
-            </button>
-          </div>
-          <!-- Thumbnails -->
-          <div class="thumbs d-flex flex-wrap mt-2">
-            {% for photo_src in photos %}
-              <img src="{{ photo_src }}" class="img-thumbnail me-2 mb-2" alt="Превью фото" style="width: 60px; height: 60px; object-fit: cover; cursor: pointer;">
-            {% endfor %}
-          </div>
-        </div>
-        {% endif %}
-        {% if room['latitude'] and room['longitude'] %}
-        <!-- Map underneath the gallery -->
-        <div id="mapid" class="rounded mt-3" style="height: 300px;"></div>
-        {% endif %}
-      </div>
-      <!-- Right column: apartment details -->
-      <div class="col-md-6">
+      <div class="col-md-8">
         <ul class="list-unstyled mb-3">
           {% if room['num_rooms'] %}<li><strong>Количество комнат:</strong> {{ room['num_rooms'] }}</li>{% endif %}
           {% if room['floor'] is not none %}
@@ -61,42 +32,30 @@
           {% if room['listing_url'] %}<li><strong>Ссылка на объявление:</strong> <a href="{{ room['listing_url'] }}" target="_blank">Перейти</a></li>{% endif %}
         </ul>
       </div>
+      <div class="col-md-4">
+        {% if room['latitude'] and room['longitude'] %}
+        <div id="mapid" style="height: 250px;"></div>
+        {% endif %}
+      </div>
     </div>
-    <a href="{{ url_for('public_listings') }}" class="btn btn-secondary mt-2">Назад в каталог</a>
-  </div>
-  {# Fullscreen lightbox overlay for viewing photos on a dark backdrop #}
-  <div id="lightboxOverlay" class="lightbox-overlay d-none d-flex flex-column justify-content-center align-items-center">
-    <div class="position-relative mb-2">
-      <img id="lightboxImage" src="{{ photos[0] if photos else '' }}" class="img-fluid" alt="Фото квартиры" style="max-width: 90vw; max-height: 80vh; object-fit: contain;">
-      <button type="button" id="lightboxPrevBtn" class="btn btn-light position-absolute top-50 start-0 translate-middle-y shadow-sm" style="opacity: 0.7;">
-        &lsaquo;
-      </button>
-      <button type="button" id="lightboxNextBtn" class="btn btn-light position-absolute top-50 end-0 translate-middle-y shadow-sm" style="opacity: 0.7;">
-        &rsaquo;
-      </button>
-      <button type="button" id="lightboxCloseBtn" class="btn btn-light position-absolute top-0 end-0 m-3 shadow-sm" style="opacity: 0.7; font-size: 1.5rem;">
-        &times;
-      </button>
-    </div>
-    {# Thumbnails inside lightbox for quick switching #}
-    <div class="lightbox-thumbs d-flex flex-wrap justify-content-center" style="max-width: 90vw; overflow-x: auto;">
+    {% if photos and photos|length > 0 %}
+    <h4 class="mt-4">Фотографии</h4>
+    <div class="row row-cols-2 row-cols-md-3 g-2">
+      {# Отображаем миниатюры фотографий с водяными знаками. Для каждого
+         изображения создаётся контейнер с относительным позиционированием,
+         чтобы поверх него можно было разместить водяной знак. #}
       {% for photo_src in photos %}
-        <img src="{{ photo_src }}" class="img-thumbnail me-2 mb-2" alt="Превью фото" style="width: 60px; height: 60px; object-fit: cover; cursor: pointer;">
+        <div class="col">
+          <div class="position-relative image-container">
+            <img src="{{ photo_src }}" class="img-fluid rounded w-100 h-100" style="object-fit: contain;" alt="Фото квартиры">
+            <span class="watermark">moksli.com</span>
+          </div>
+        </div>
       {% endfor %}
     </div>
+    {% endif %}
+    <a href="{{ url_for('public_listings') }}" class="btn btn-secondary mt-4">Назад в каталог</a>
   </div>
-  <style>
-    /* Fullscreen overlay styles for lightbox */
-    .lightbox-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background-color: rgba(0, 0, 0, 0.8);
-      z-index: 1050;
-    }
-  </style>
   {% if room['latitude'] and room['longitude'] %}
   <!-- Подключение Leaflet для отображения карты -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
@@ -111,124 +70,29 @@
     });
   </script>
   {% endif %}
-  <!-- Галерея фотографий: навигация между изображениями -->
+
+  <!-- Стили и скрипт для водяных знаков на фотографиях -->
+  <style>
+    .image-container { position: relative; overflow: hidden; }
+    .image-container .watermark {
+      position: absolute;
+      color: rgba(255, 255, 255, 0.9);
+      font-weight: 700;
+      font-size: 0.9rem;
+      text-shadow: 0 0 4px rgba(0, 0, 0, 0.7);
+      pointer-events: none;
+      z-index: 1;
+    }
+  </style>
   <script>
     document.addEventListener('DOMContentLoaded', function() {
-      var thumbnails = Array.from(document.querySelectorAll('.thumbs img'));
-      var mainImage = document.getElementById('mainImage');
-      var prevBtn = document.getElementById('prevBtn');
-      var nextBtn = document.getElementById('nextBtn');
-      // Elements for fullscreen lightbox
-      var lightboxOverlay = document.getElementById('lightboxOverlay');
-      var lightboxImage = document.getElementById('lightboxImage');
-      var lightboxPrevBtn = document.getElementById('lightboxPrevBtn');
-      var lightboxNextBtn = document.getElementById('lightboxNextBtn');
-      var lightboxCloseBtn = document.getElementById('lightboxCloseBtn');
-      var lightboxThumbs = [];
-      var currentIndex = 0;
-      function showImage(index) {
-        if (!thumbnails.length) return;
-        if (index < 0 || index >= thumbnails.length) return;
-        currentIndex = index;
-        if (mainImage) {
-          mainImage.src = thumbnails[index].src;
-        }
-      }
-      if (prevBtn) {
-        prevBtn.addEventListener('click', function() {
-          if (!thumbnails.length) return;
-          var newIndex = (currentIndex - 1 + thumbnails.length) % thumbnails.length;
-          showImage(newIndex);
-          // If lightbox is open, update the overlay image as well
-          if (lightboxOverlay && !lightboxOverlay.classList.contains('d-none') && lightboxImage) {
-            lightboxImage.src = thumbnails[newIndex].src;
-          }
-        });
-      }
-      if (nextBtn) {
-        nextBtn.addEventListener('click', function() {
-          if (!thumbnails.length) return;
-          var newIndex = (currentIndex + 1) % thumbnails.length;
-          showImage(newIndex);
-          // If lightbox is open, update the overlay image as well
-          if (lightboxOverlay && !lightboxOverlay.classList.contains('d-none') && lightboxImage) {
-            lightboxImage.src = thumbnails[newIndex].src;
-          }
-        });
-      }
-      thumbnails.forEach(function(thumb, index) {
-        thumb.addEventListener('click', function() {
-          showImage(index);
-          // Also update the lightbox image if it's open
-          if (lightboxOverlay && !lightboxOverlay.classList.contains('d-none') && lightboxImage) {
-            lightboxImage.src = thumb.src;
-            currentIndex = index;
-          }
-        });
+      const watermarks = document.querySelectorAll('.image-container .watermark');
+      watermarks.forEach(function(wm) {
+        const x = Math.random() * 60;
+        const y = Math.random() * 60;
+        wm.style.left = x + '%';
+        wm.style.top = y + '%';
       });
-
-      // Show lightbox when clicking on the main image
-      if (mainImage && lightboxOverlay && lightboxImage) {
-        mainImage.addEventListener('click', function() {
-          if (!thumbnails.length) return;
-          lightboxImage.src = mainImage.src;
-          lightboxOverlay.classList.remove('d-none');
-        });
-      }
-      // Close lightbox when clicking on close button
-      if (lightboxCloseBtn && lightboxOverlay) {
-        lightboxCloseBtn.addEventListener('click', function(e) {
-          e.stopPropagation();
-          lightboxOverlay.classList.add('d-none');
-        });
-      }
-      // Navigate within lightbox
-      if (lightboxPrevBtn) {
-        lightboxPrevBtn.addEventListener('click', function(e) {
-          if (!thumbnails.length) return;
-          e.stopPropagation();
-          var newIndex = (currentIndex - 1 + thumbnails.length) % thumbnails.length;
-          showImage(newIndex);
-          if (lightboxImage) {
-            lightboxImage.src = thumbnails[newIndex].src;
-          }
-        });
-      }
-      if (lightboxNextBtn) {
-        lightboxNextBtn.addEventListener('click', function(e) {
-          if (!thumbnails.length) return;
-          e.stopPropagation();
-          var newIndex = (currentIndex + 1) % thumbnails.length;
-          showImage(newIndex);
-          if (lightboxImage) {
-            lightboxImage.src = thumbnails[newIndex].src;
-          }
-        });
-      }
-      // Close lightbox when clicking on the dark overlay area
-      if (lightboxOverlay) {
-        lightboxOverlay.addEventListener('click', function(e) {
-          // Only close if the click target is the overlay itself, not the content
-          if (e.target === lightboxOverlay) {
-            lightboxOverlay.classList.add('d-none');
-          }
-        });
-      }
-
-      // Setup lightbox thumbnails after DOM is ready
-      if (lightboxOverlay) {
-        lightboxThumbs = Array.from(lightboxOverlay.querySelectorAll('.lightbox-thumbs img'));
-        lightboxThumbs.forEach(function(lbThumb, index) {
-          lbThumb.addEventListener('click', function(e) {
-            e.stopPropagation();
-            // Update both the main gallery and the lightbox
-            showImage(index);
-            if (lightboxImage) {
-              lightboxImage.src = lbThumb.src;
-            }
-          });
-        });
-      }
     });
   </script>
 {% endblock %}
