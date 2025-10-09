@@ -16,6 +16,7 @@ To run the app:
 
 import os
 import sqlite3
+import io  # Added for BytesIO used in watermark helper
 
 # Try to import psycopg2 for optional PostgreSQL support.  If the
 # import fails (e.g. the package is not installed), the application
@@ -42,7 +43,6 @@ import re
 import uuid  # For generating unique payment identifiers
 import base64  # For encoding uploaded photos into base64 strings
 import typing  # For type annotations (e.g., Optional)
-import io  # For in-memory byte streams
 
 # Standard library imports used for address autocompletion.  We avoid a
 # dependency on the third‑party requests library to simplify deployment on
@@ -51,6 +51,7 @@ import io  # For in-memory byte streams
 import urllib.parse
 import urllib.request
 import json
+import random  # For generating watermark positions
 
 
 
@@ -189,90 +190,77 @@ def _load_env_file() -> None:
 _load_env_file()
 
 # ----------------------------------------------------------------------------
-# Image watermarking helper
+# Watermark helper
 #
-# Uploaded photos can be watermarked with a simple text overlay.  The function
-# below takes raw image bytes and returns a new byte sequence with the
-# watermark applied at a random location.  It uses Pillow (PIL) to load
-# the image, draw the watermark, and save the result.  If Pillow is not
-# installed or an error occurs while processing, the original bytes are
-# returned unchanged.  The watermark text defaults to "moksli.com".
+# When users upload apartment photos, we add a bold "moksli.com" watermark to
+# the image.  This function takes image bytes, opens the image using Pillow,
+# chooses a random location for the watermark and draws the text with a
+# semi-transparent white colour and shadow to increase contrast.  The text is
+# drawn multiple times with slight offsets to simulate a bold effect if the
+# default font does not provide weight control.  If Pillow is unavailable or
+# processing fails, the original bytes are returned unchanged.
+def apply_watermark_to_image_data(image_bytes: bytes) -> bytes:
+    """
+    Overlay a bold "moksli.com" watermark onto an image represented by
+    ``image_bytes`` and return the resulting image bytes.  The watermark is
+    placed at a random location within the image and drawn with
+    semi‑transparent white text and a black shadow.  If the Pillow
+    dependencies are missing or an error occurs, the original image bytes
+    are returned.
 
-def apply_watermark_to_image_data(data: bytes, watermark: str = 'moksli.com') -> bytes:
-    """Overlay a watermark on an image and return the new image bytes.
-
-    This helper loads the provided image data using Pillow, draws the
-    watermark text onto the image at a random position, and saves the
-    modified image back to bytes.  The watermark is drawn twice: once as
-    a semi-transparent black shadow offset by one pixel, and again in
-    semi-transparent white at the chosen position.  If any error occurs
-    (e.g., Pillow is not installed or the image cannot be parsed), the
-    original bytes are returned.
-
-    Args:
-        data: The original image data as bytes.
-        watermark: The text to overlay on the image.
-
-    Returns:
-        A new bytes object containing the watermarked image.
+    :param image_bytes: The original image data
+    :return: New image data with watermark applied (or the original data on error)
     """
     try:
         from PIL import Image, ImageDraw, ImageFont  # type: ignore
     except Exception:
-        # Pillow is unavailable; return original data
-        return data
+        # Pillow is not installed; return the original data
+        return image_bytes
     try:
-        # Load the image from the input bytes
-        with io.BytesIO(data) as buf:
-            img = Image.open(buf)
-            # Ensure image is in a mode that supports alpha channel for overlay
-            if img.mode not in ('RGBA', 'LA'):
-                img = img.convert('RGBA')
-            draw = ImageDraw.Draw(img)
-            # Use a basic font.  If loading the default font fails, a built-in
-            # font will be used implicitly.
-            try:
-                font = ImageFont.load_default()
-            except Exception:
-                font = None  # type: ignore
-            # Measure the watermark text
-            if font:
-                text_width, text_height = draw.textsize(watermark, font=font)
-            else:
-                text_width, text_height = draw.textsize(watermark)
-            # Choose a random location such that the watermark fits within the image
-            max_x = max(0, img.width - text_width)
-            max_y = max(0, img.height - text_height)
-            try:
-                x = random.randint(0, max_x)
-            except Exception:
-                x = 0
-            try:
-                y = random.randint(0, max_y)
-            except Exception:
-                y = 0
-            # Draw a shadow for better contrast
-            shadow_color = (0, 0, 0, 128)
-            text_color = (255, 255, 255, 128)
-            try:
-                draw.text((x + 1, y + 1), watermark, fill=shadow_color, font=font)
-                draw.text((x, y), watermark, fill=text_color, font=font)
-            except Exception:
-                # Fall back to default font if custom font fails
-                draw.text((x + 1, y + 1), watermark, fill=shadow_color)
-                draw.text((x, y), watermark, fill=text_color)
-            # Determine format for saving; preserve JPEG/PNG when possible
-            fmt = img.format or 'PNG'
-            # For JPEG, drop alpha channel to RGB
-            if fmt.upper() in ('JPEG', 'JPG') and img.mode == 'RGBA':
-                img = img.convert('RGB')
-            # Save to bytes
-            out_buf = io.BytesIO()
-            img.save(out_buf, format=fmt)
-            return out_buf.getvalue()
+        # Load the image from bytes and ensure it has an alpha channel
+        with io.BytesIO(image_bytes) as stream:
+            img = Image.open(stream)
+            img = img.convert("RGBA")
+        # Prepare a transparent overlay for the text
+        overlay = Image.new("RGBA", img.size, (255, 255, 255, 0))
+        draw = ImageDraw.Draw(overlay)
+        text = "moksli.com"
+        # Compute font size relative to the smaller image dimension (8%)
+        font_size = max(12, int(min(img.size) * 0.08))
+        try:
+            # Attempt to load a bold TrueType font if available
+            font = ImageFont.truetype("DejaVuSans-Bold.ttf", font_size)
+        except Exception:
+            # Fallback to default font
+            font = ImageFont.load_default()
+        # Measure the size of the text
+        text_width, text_height = draw.textsize(text, font=font)
+        # Select a random position for the watermark ensuring it fits
+        max_x = max(0, img.size[0] - text_width)
+        max_y = max(0, img.size[1] - text_height)
+        x = random.randint(0, max_x) if max_x > 0 else 0
+        y = random.randint(0, max_y) if max_y > 0 else 0
+        # Draw a shadow by rendering the text offset in black with partial opacity
+        for dx, dy in [(-1, -1), (1, -1), (-1, 1), (1, 1)]:
+            draw.text((x + dx, y + dy), text, font=font, fill=(0, 0, 0, 128))
+        # Draw the main white text with higher opacity
+        draw.text((x, y), text, font=font, fill=(255, 255, 255, 192))
+        # Composite the overlay onto the image
+        watermarked = Image.alpha_composite(img, overlay)
+        # Convert back to original mode if the format does not support alpha
+        # Determine original format if present (else default to PNG)
+        fmt = img.format or "PNG"
+        if fmt.upper() in ["JPEG", "JPG", "WEBP"]:
+            watermarked = watermarked.convert("RGB")
+        out = io.BytesIO()
+        try:
+            watermarked.save(out, format=fmt)
+        except Exception:
+            # Fallback to PNG if the original format fails
+            watermarked.save(out, format="PNG")
+        return out.getvalue()
     except Exception:
-        # Any failure returns the original data
-        return data
+        return image_bytes
 
 # ----------------------------------------------------------------------------
 # Email sending utility
@@ -3276,11 +3264,11 @@ def add_room():
                 ext = os.path.splitext(original)[1]
                 unique_name = f"{uuid.uuid4().hex}{ext}"
                 image_data_str: typing.Optional[str] = None
-                # Try reading the photo into memory and encoding it
+                # Read the uploaded file into memory and apply a watermark
+                watermarked_bytes: typing.Optional[bytes] = None
                 try:
-                    # Read the uploaded file bytes into memory
                     file_bytes = photo.read()
-                    # Reset the stream pointer in case other functions need to re-read
+                    # Reset the stream (not strictly needed since we won't call photo.save)
                     try:
                         photo.seek(0)
                     except Exception:
@@ -3288,35 +3276,29 @@ def add_room():
                             photo.stream.seek(0)  # type: ignore[attr-defined]
                         except Exception:
                             pass
-                    # If we successfully read the bytes, apply a watermark
                     if file_bytes:
-                        # Overlay the watermark on the image data
-                        watermarked = apply_watermark_to_image_data(file_bytes)
-                        # Encode the watermarked bytes for storage in the DB
-                        image_data_str = base64.b64encode(watermarked).decode('utf-8')
-                    else:
-                        image_data_str = None
+                        try:
+                            watermarked_bytes = apply_watermark_to_image_data(file_bytes)
+                            image_data_str = base64.b64encode(watermarked_bytes).decode('utf-8')
+                        except Exception:
+                            image_data_str = base64.b64encode(file_bytes).decode('utf-8')
+                            watermarked_bytes = file_bytes
                 except Exception:
-                    # On any error, skip watermarking and base64 encoding
                     image_data_str = None
-                    watermarked = None
-                # Save the watermarked image to the uploads directory.  If
-                # watermarking failed or bytes were not read, we fall back to
-                # the original file object via photo.save().
+                    watermarked_bytes = None
+                # Save the watermarked image to the uploads directory. Ignore filesystem errors; the base64 data ensures persistence.
                 try:
                     os.makedirs(UPLOAD_ROOMS_FOLDER, exist_ok=True)
                 except Exception:
                     pass
                 try:
-                    # If we have watermarked bytes, write them directly
-                    if 'watermarked' in locals() and watermarked:
-                        with open(os.path.join(UPLOAD_ROOMS_FOLDER, unique_name), 'wb') as out_fp:
-                            out_fp.write(watermarked)
+                    if watermarked_bytes:
+                        with open(os.path.join(UPLOAD_ROOMS_FOLDER, unique_name), 'wb') as out_f:
+                            out_f.write(watermarked_bytes)
                     else:
-                        # Otherwise, save the original upload
+                        # Fallback: use Werkzeug's save method if no data is available
                         photo.save(os.path.join(UPLOAD_ROOMS_FOLDER, unique_name))
                 except Exception:
-                    # Ignore any filesystem errors; the base64 image will be stored in the DB
                     pass
                 saved_photos.append((unique_name, image_data_str))
         # Insert the new room record with all collected fields
@@ -3535,10 +3517,9 @@ def edit_room(room_id: int):
                             ext = os.path.splitext(original)[1]
                             unique_name = f"{uuid.uuid4().hex}{ext}"
                             image_data_str = None
+                            watermarked_bytes: typing.Optional[bytes] = None
                             try:
-                                # Read the uploaded image bytes
                                 file_bytes = file.read()
-                                # Reset pointer for consistency
                                 try:
                                     file.seek(0)
                                 except Exception:
@@ -3547,29 +3528,29 @@ def edit_room(room_id: int):
                                     except Exception:
                                         pass
                                 if file_bytes:
-                                    # Apply watermark to the image data
-                                    watermarked = apply_watermark_to_image_data(file_bytes)
-                                    # Encode to base64 for storage in DB
-                                    image_data_str = base64.b64encode(watermarked).decode("utf-8")
-                                else:
-                                    image_data_str = None
+                                    try:
+                                        watermarked_bytes = apply_watermark_to_image_data(file_bytes)
+                                        image_data_str = base64.b64encode(watermarked_bytes).decode("utf-8")
+                                    except Exception:
+                                        image_data_str = base64.b64encode(file_bytes).decode("utf-8")
+                                        watermarked_bytes = file_bytes
                             except Exception:
                                 image_data_str = None
-                                watermarked = None
-                            # Save the watermarked file to disk (or fallback to original)
+                                watermarked_bytes = None
+                            # Попробуем сохранить файл на диск
                             try:
                                 os.makedirs(UPLOAD_ROOMS_FOLDER, exist_ok=True)
                             except Exception:
                                 pass
                             try:
-                                if 'watermarked' in locals() and watermarked:
-                                    with open(os.path.join(UPLOAD_ROOMS_FOLDER, unique_name), 'wb') as out_fp:
-                                        out_fp.write(watermarked)
+                                if watermarked_bytes:
+                                    with open(os.path.join(UPLOAD_ROOMS_FOLDER, unique_name), 'wb') as out_f:
+                                        out_f.write(watermarked_bytes)
                                 else:
                                     file.save(os.path.join(UPLOAD_ROOMS_FOLDER, unique_name))
                             except Exception:
                                 pass
-                            # Insert photo record into DB
+                            # Сохраним запись в базе
                             try:
                                 conn.execute(
                                     "INSERT INTO room_photos (room_id, file_name, image_data) VALUES (?, ?, ?)",
