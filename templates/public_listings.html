@@ -92,11 +92,11 @@
             {% endif %}
             <div class="d-flex h-100">
               {% if room['photo_src'] %}
-              <div class="p-2 d-flex align-items-start">
+              <div class="d-flex" style="flex: 0 0 200px;">
                 <img src="{{ room['photo_src'] }}"
                      alt="Фото квартиры"
                      class="img-fluid"
-                     style="width: 120px; height: 120px; object-fit: cover; border-top-left-radius: 10px; border-bottom-left-radius: 10px;">
+                     style="width: 200px; height: 100%; object-fit: cover; border-top-left-radius: 10px; border-bottom-left-radius: 10px;">
               </div>
               {% endif %}
               <div class="flex-grow-1 p-3 d-flex flex-column overflow-hidden">
