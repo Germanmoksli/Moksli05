@@ -75,13 +75,13 @@
             ``stretched-link``. Кнопка избранного в виде сердца находится
             в правом верхнем углу.
           #}
-          <div class="card shadow-sm position-relative" style="border-radius: 10px;">
+          <div class="card shadow-sm position-relative" style="border-radius: 10px; height: 200px;">
             {# Кнопка избранного: сердце в правом верхнем углу. Используем
                символы ♡ и ♥ для отображения пустого и заполненного сердца.
                Цвет задаём через text-danger. #}
             {% if session.get('user_id') %}
             <a href="{{ url_for('toggle_favorite', room_id=room['id']) }}"
-               class="position-absolute top-0 end-0 m-2"
+               class="position-absolute bottom-0 end-0 m-2"
                style="font-size: 1.5rem; z-index: 2;">
               {% if room['id'] in favorite_ids %}
                 <span class="text-danger">&#9829;</span>
@@ -90,16 +90,16 @@
               {% endif %}
             </a>
             {% endif %}
-            <div class="d-flex">
+            <div class="d-flex h-100">
               {% if room['photo_src'] %}
-              <div class="p-2">
+              <div class="p-2 d-flex align-items-start">
                 <img src="{{ room['photo_src'] }}"
                      alt="Фото квартиры"
                      class="img-fluid"
-                     style="max-width: 200px; object-fit: cover; height: 100%; border-top-left-radius: 10px; border-bottom-left-radius: 10px;">
+                     style="width: 120px; height: 120px; object-fit: cover; border-top-left-radius: 10px; border-bottom-left-radius: 10px;">
               </div>
               {% endif %}
-              <div class="flex-grow-1 p-3 d-flex flex-column">
+              <div class="flex-grow-1 p-3 d-flex flex-column overflow-hidden">
                 {# Первая строка: количество комнат, площадь и цена. Вся строка жирная,
                    цена выделена чуть большими размерами. #}
                 <div class="d-flex justify-content-between align-items-center mb-1">
@@ -117,23 +117,30 @@
                   {{ room['country'] or '' }}{% if room['city'] %}, {{ room['city'] }}{% endif %}{% if room['street'] %}, {{ room['street'] }}{% endif %}{% if room['house_number'] %}, {{ room['house_number'] }}{% endif %}
                 </div>
                 {% endif %}
-                {# Остальная информация — обычный текст меньшего размера #}
-                <div class="small">
-                  {% if room['floor'] is not none %}
-                    <div>Этаж: {{ room['floor'] }}{% if room['floors_total'] is not none %}/{{ room['floors_total'] }}{% endif %}</div>
-                  {% endif %}
-                  {% if room['area_kitchen'] is not none and room['area_total'] is not none %}
-                    <div>Кухня: {{ room['area_kitchen'] }} м²</div>
-                  {% endif %}
-                  {% if room['condition'] %}
-                    <div>Состояние: {{ condition_map.get(room['condition'], room['condition']) }}</div>
-                  {% endif %}
-                  {% if room['kitchen_studio'] is not none %}
-                    <div>Кухня студия: {{ 'Да' if room['kitchen_studio'] else 'Нет' }}</div>
-                  {% endif %}
-                  {% if room['residential_complex'] %}
-                    <div>ЖК: {{ room['residential_complex'] }}</div>
-                  {% endif %}
+                {#
+                  Составляем строку описания через точку с запятой. Используем
+                  namespace для накопления частей, затем объединяем их.
+                #}
+                {% set ns = namespace(items=[]) %}
+                {% if room['floor'] is not none %}
+                  {% set floor_str = room['floor'] %}
+                  {% set total_str = room['floors_total'] %}
+                  {% set _ = ns.items.append('Этаж ' ~ floor_str ~ ('' if total_str is none else '/' ~ total_str)) %}
+                {% endif %}
+                {% if room['area_kitchen'] is not none and room['area_total'] is not none %}
+                  {% set _ = ns.items.append('Кухня ' ~ room['area_kitchen'] ~ ' м²') %}
+                {% endif %}
+                {% if room['condition'] %}
+                  {% set _ = ns.items.append('Состояние ' ~ condition_map.get(room['condition'], room['condition'])) %}
+                {% endif %}
+                {% if room['kitchen_studio'] is not none %}
+                  {% set _ = ns.items.append('Кухня‑студия ' ~ ('Да' if room['kitchen_studio'] else 'Нет')) %}
+                {% endif %}
+                {% if room['residential_complex'] %}
+                  {% set _ = ns.items.append('ЖК ' ~ room['residential_complex']) %}
+                {% endif %}
+                <div class="small" style="overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;">
+                  {{ ns.items|join('; ') }}
                 </div>
                 {# Добавляем пустую ссылку со stretched-link, чтобы вся карточка была кликабельна. #}
                 <a href="{{ url_for('view_room_public', room_id=room['id']) }}" class="stretched-link"></a>
