@@ -65,9 +65,9 @@
     <a href="{{ url_for('public_listings') }}" class="btn btn-secondary mt-2">Назад в каталог</a>
   </div>
   {# Fullscreen lightbox overlay for viewing photos on a dark backdrop #}
-  <div id="lightboxOverlay" class="lightbox-overlay d-none justify-content-center align-items-center">
-    <div class="position-relative">
-      <img id="lightboxImage" src="{{ photos[0] if photos else '' }}" class="img-fluid" alt="Фото квартиры" style="max-width: 90vw; max-height: 90vh; object-fit: contain;">
+  <div id="lightboxOverlay" class="lightbox-overlay d-none d-flex flex-column justify-content-center align-items-center">
+    <div class="position-relative mb-2">
+      <img id="lightboxImage" src="{{ photos[0] if photos else '' }}" class="img-fluid" alt="Фото квартиры" style="max-width: 90vw; max-height: 80vh; object-fit: contain;">
       <button type="button" id="lightboxPrevBtn" class="btn btn-light position-absolute top-50 start-0 translate-middle-y shadow-sm" style="opacity: 0.7;">
         &lsaquo;
       </button>
@@ -77,6 +77,12 @@
       <button type="button" id="lightboxCloseBtn" class="btn btn-light position-absolute top-0 end-0 m-3 shadow-sm" style="opacity: 0.7; font-size: 1.5rem;">
         &times;
       </button>
+    </div>
+    {# Thumbnails inside lightbox for quick switching #}
+    <div class="lightbox-thumbs d-flex flex-wrap justify-content-center" style="max-width: 90vw; overflow-x: auto;">
+      {% for photo_src in photos %}
+        <img src="{{ photo_src }}" class="img-thumbnail me-2 mb-2" alt="Превью фото" style="width: 60px; height: 60px; object-fit: cover; cursor: pointer;">
+      {% endfor %}
     </div>
   </div>
   <style>
@@ -118,6 +124,7 @@
       var lightboxPrevBtn = document.getElementById('lightboxPrevBtn');
       var lightboxNextBtn = document.getElementById('lightboxNextBtn');
       var lightboxCloseBtn = document.getElementById('lightboxCloseBtn');
+      var lightboxThumbs = [];
       var currentIndex = 0;
       function showImage(index) {
         if (!thumbnails.length) return;
@@ -205,6 +212,21 @@
           if (e.target === lightboxOverlay) {
             lightboxOverlay.classList.add('d-none');
           }
+        });
+      }
+
+      // Setup lightbox thumbnails after DOM is ready
+      if (lightboxOverlay) {
+        lightboxThumbs = Array.from(lightboxOverlay.querySelectorAll('.lightbox-thumbs img'));
+        lightboxThumbs.forEach(function(lbThumb, index) {
+          lbThumb.addEventListener('click', function(e) {
+            e.stopPropagation();
+            // Update both the main gallery and the lightbox
+            showImage(index);
+            if (lightboxImage) {
+              lightboxImage.src = lbThumb.src;
+            }
+          });
         });
       }
     });
