@@ -9,8 +9,8 @@
         {% if photos and photos|length > 0 %}
         <div class="gallery-container">
           <div class="main-image-container position-relative">
-            {# Display the first photo as the main image.  Will be swapped via JS. #}
-            <img id="mainImage" src="{{ photos[0] }}" class="img-fluid rounded" alt="Фото квартиры" style="width: 100%; height: 300px; object-fit: cover;">
+            {# Display the first photo as the main image without cropping; constrain maximum height #}
+            <img id="mainImage" src="{{ photos[0] }}" class="img-fluid rounded" alt="Фото квартиры" style="width: 100%; max-height: 300px; object-fit: contain;">
             <!-- Navigation arrows overlay -->
             <button type="button" id="prevBtn" class="btn btn-light position-absolute top-50 start-0 translate-middle-y shadow-sm" style="opacity: 0.7;">
               &lsaquo;
@@ -64,6 +64,33 @@
     </div>
     <a href="{{ url_for('public_listings') }}" class="btn btn-secondary mt-2">Назад в каталог</a>
   </div>
+  {# Fullscreen lightbox overlay for viewing photos on a dark backdrop #}
+  <div id="lightboxOverlay" class="lightbox-overlay d-none justify-content-center align-items-center">
+    <div class="position-relative">
+      <img id="lightboxImage" src="{{ photos[0] if photos else '' }}" class="img-fluid" alt="Фото квартиры" style="max-width: 90vw; max-height: 90vh; object-fit: contain;">
+      <button type="button" id="lightboxPrevBtn" class="btn btn-light position-absolute top-50 start-0 translate-middle-y shadow-sm" style="opacity: 0.7;">
+        &lsaquo;
+      </button>
+      <button type="button" id="lightboxNextBtn" class="btn btn-light position-absolute top-50 end-0 translate-middle-y shadow-sm" style="opacity: 0.7;">
+        &rsaquo;
+      </button>
+      <button type="button" id="lightboxCloseBtn" class="btn btn-light position-absolute top-0 end-0 m-3 shadow-sm" style="opacity: 0.7; font-size: 1.5rem;">
+        &times;
+      </button>
+    </div>
+  </div>
+  <style>
+    /* Fullscreen overlay styles for lightbox */
+    .lightbox-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: rgba(0, 0, 0, 0.8);
+      z-index: 1050;
+    }
+  </style>
   {% if room['latitude'] and room['longitude'] %}
   <!-- Подключение Leaflet для отображения карты -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
@@ -85,6 +112,12 @@
       var mainImage = document.getElementById('mainImage');
       var prevBtn = document.getElementById('prevBtn');
       var nextBtn = document.getElementById('nextBtn');
+      // Elements for fullscreen lightbox
+      var lightboxOverlay = document.getElementById('lightboxOverlay');
+      var lightboxImage = document.getElementById('lightboxImage');
+      var lightboxPrevBtn = document.getElementById('lightboxPrevBtn');
+      var lightboxNextBtn = document.getElementById('lightboxNextBtn');
+      var lightboxCloseBtn = document.getElementById('lightboxCloseBtn');
       var currentIndex = 0;
       function showImage(index) {
         if (!thumbnails.length) return;
@@ -99,6 +132,10 @@
           if (!thumbnails.length) return;
           var newIndex = (currentIndex - 1 + thumbnails.length) % thumbnails.length;
           showImage(newIndex);
+          // If lightbox is open, update the overlay image as well
+          if (lightboxOverlay && !lightboxOverlay.classList.contains('d-none') && lightboxImage) {
+            lightboxImage.src = thumbnails[newIndex].src;
+          }
         });
       }
       if (nextBtn) {
@@ -106,13 +143,70 @@
           if (!thumbnails.length) return;
           var newIndex = (currentIndex + 1) % thumbnails.length;
           showImage(newIndex);
+          // If lightbox is open, update the overlay image as well
+          if (lightboxOverlay && !lightboxOverlay.classList.contains('d-none') && lightboxImage) {
+            lightboxImage.src = thumbnails[newIndex].src;
+          }
         });
       }
       thumbnails.forEach(function(thumb, index) {
         thumb.addEventListener('click', function() {
           showImage(index);
+          // Also update the lightbox image if it's open
+          if (lightboxOverlay && !lightboxOverlay.classList.contains('d-none') && lightboxImage) {
+            lightboxImage.src = thumb.src;
+            currentIndex = index;
+          }
         });
       });
+
+      // Show lightbox when clicking on the main image
+      if (mainImage && lightboxOverlay && lightboxImage) {
+        mainImage.addEventListener('click', function() {
+          if (!thumbnails.length) return;
+          lightboxImage.src = mainImage.src;
+          lightboxOverlay.classList.remove('d-none');
+        });
+      }
+      // Close lightbox when clicking on close button
+      if (lightboxCloseBtn && lightboxOverlay) {
+        lightboxCloseBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          lightboxOverlay.classList.add('d-none');
+        });
+      }
+      // Navigate within lightbox
+      if (lightboxPrevBtn) {
+        lightboxPrevBtn.addEventListener('click', function(e) {
+          if (!thumbnails.length) return;
+          e.stopPropagation();
+          var newIndex = (currentIndex - 1 + thumbnails.length) % thumbnails.length;
+          showImage(newIndex);
+          if (lightboxImage) {
+            lightboxImage.src = thumbnails[newIndex].src;
+          }
+        });
+      }
+      if (lightboxNextBtn) {
+        lightboxNextBtn.addEventListener('click', function(e) {
+          if (!thumbnails.length) return;
+          e.stopPropagation();
+          var newIndex = (currentIndex + 1) % thumbnails.length;
+          showImage(newIndex);
+          if (lightboxImage) {
+            lightboxImage.src = thumbnails[newIndex].src;
+          }
+        });
+      }
+      // Close lightbox when clicking on the dark overlay area
+      if (lightboxOverlay) {
+        lightboxOverlay.addEventListener('click', function(e) {
+          // Only close if the click target is the overlay itself, not the content
+          if (e.target === lightboxOverlay) {
+            lightboxOverlay.classList.add('d-none');
+          }
+        });
+      }
     });
   </script>
 {% endblock %}
