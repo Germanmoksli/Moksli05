@@ -3108,10 +3108,11 @@ def add_room():
                 ensure_rooms_additional_columns(conn)
             except Exception:
                 pass
-            cur = conn.cursor()
-            cur.execute(
+            # Insert the room record and return its ID.  Use RETURNING so
+            # that the inserted ID is available when using PostgreSQL.
+            cur = conn.execute(
                 "INSERT INTO rooms (room_number, listing_url, residential_complex, owner_id, num_rooms, floor, floors_total, area_total, area_kitchen, condition, kitchen_studio, country, city, street, house_number, latitude, longitude, price_per_night) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
                 (
                     room_number,
                     listing_url,
@@ -3133,17 +3134,29 @@ def add_room():
                     price_per_night,
                 ),
             )
-            new_room_id = cur.lastrowid
-            # Insert photo records for each uploaded file
-            for fname in saved_photos:
+            new_id_row = cur.fetchone()
+            new_room_id = None
+            if new_id_row:
+                # When using psycopg2 RealDictRow the row behaves like a dict;
+                # fallback to tuple indexing if dict methods are absent.
                 try:
-                    cur.execute(
-                        "INSERT INTO room_photos (room_id, file_name) VALUES (?, ?)",
-                        (new_room_id, fname),
-                    )
+                    new_room_id = new_id_row.get('id')  # type: ignore[attr-defined]
                 except Exception:
-                    # Ignore errors inserting individual photo rows
-                    continue
+                    try:
+                        new_room_id = new_id_row[0]
+                    except Exception:
+                        new_room_id = None
+            # Insert photo records for each uploaded file if we have a valid room id
+            if new_room_id:
+                for fname in saved_photos:
+                    try:
+                        conn.execute(
+                            "INSERT INTO room_photos (room_id, file_name) VALUES (?, ?)",
+                            (new_room_id, fname),
+                        )
+                    except Exception:
+                        # Ignore errors inserting individual photo rows
+                        continue
             # Commit the transaction if supported
             try:
                 conn.commit()
