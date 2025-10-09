@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Изменить статус{% endblock %}
+{% block content %}
+  <h2 class="text-primary fw-bold fs-4 mb-3">Квартира №{{ room_id }} — {{ date }}</h2>
+  <form method="post" class="card p-3">
+    <div class="mb-3">
+      <label for="status" class="form-label">Статус на выбранную дату</label>
+      <select id="status" name="status" class="form-select" required>
+        <option value="" disabled {% if not current_status %}selected{% endif %}>Выберите статус</option>
+        {% for value, label in status_options %}
+          <option value="{{ value }}" {% if current_status == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      <button type="submit" class="btn btn-primary">Сохранить</button>
+      <a class="btn btn-soft-danger" href="{{ url_for('calendar_view', year=year, month=month, scroll_date=date) }}">Отмена</a>
+      <!-- Ссылка для быстрого создания брони на эту дату и квартиру -->
+      <a class="btn btn-primary"
+         href="{{ url_for('add_booking', room_id=room_id, check_in=date, check_out=date, scroll_date=date) }}">
+        Создать бронь
+      </a>
+    </div>
+  </form>
+{% endblock %}

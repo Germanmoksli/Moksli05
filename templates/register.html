@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}Регистрация{% endblock %}
+{% block content %}
+  <!-- Центрируем форму регистрации аналогично странице авторизации: по центру окна и с фиксированной шириной -->
+  <div class="d-flex align-items-center justify-content-center min-vh-100">
+    <div style="max-width: 400px; width: 100%;">
+      <h2 class="mb-4 text-center text-primary fw-bold fs-4">MOKSLI</h2>
+      <!-- Социальная авторизация. Предлагаем альтернативный способ регистрации
+           через Google или Apple.  При использовании этих кнопок будет
+           выполнен вход как гостя; регистрация владельцев и сотрудников по‑
+           прежнему осуществляется через форму ниже. -->
+      <div class="mb-3">
+        <!-- Текст изменён, чтобы акцентировать регистрацию через социальную сеть,
+             а не вход. Пользователь понимает, что создаёт новый аккаунт через Google. -->
+        <p class="text-center mb-2">Или зарегистрируйтесь через социальную сеть</p>
+        <a href="{{ url_for('login_google') }}" class="btn btn-outline-danger w-100 mb-2">
+          <i class="bi bi-google me-1"></i> Google
+        </a>
+        {# Removed Apple login button for now #}
+      </div>
+      <form method="post" id="register-form" class="needs-validation" novalidate>
+        <!-- Тип аккаунта: владелец или сотрудник. По умолчанию выбран сотрудник. -->
+      <div class="mb-3">
+        <label class="form-label d-block">Тип аккаунта</label>
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" name="account_type" id="account_type_employee" value="employee" checked>
+          <label class="form-check-label" for="account_type_employee">Сотрудник</label>
+        </div>
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" name="account_type" id="account_type_owner" value="owner">
+          <label class="form-check-label" for="account_type_owner">Владелец</label>
+        </div>
+        <div class="form-text">Выберите «Владелец», если вы хотите размещать собственные квартиры. Выберите «Сотрудник», если вы регистрируетесь как менеджер.</div>
+      </div>
+      <div class="mb-3">
+        <label for="email" class="form-label">E‑mail</label>
+        <input type="email" class="form-control" id="email" name="email" required>
+        <div class="invalid-feedback">Введите e‑mail.</div>
+      </div>
+      <div class="mb-3">
+        <label for="password" class="form-label">Пароль</label>
+        <input type="password" class="form-control" id="password" name="password" required>
+        <div class="invalid-feedback">Введите пароль.</div>
+      </div>
+      <!-- Блок ввода кода подтверждения; скрыт до отправки кода -->
+        <div class="mb-3" id="code-group" style="display: none;">
+          <label for="verification_code" class="form-label">Код подтверждения</label>
+          <input type="text" pattern="\d{6}" class="form-control" id="verification_code" name="verification_code" placeholder="000000">
+          <div class="invalid-feedback">Введите 6‑значный код.</div>
+        </div>
+        <!-- Кнопки: отправка кода, запрос регистрации и ссылка на вход. Располагаем по центру аналогично странице входа. -->
+        <div class="d-flex justify-content-center align-items-center gap-2 mt-2">
+          <button type="button" class="btn btn-secondary" id="send-code-btn">Отправить код</button>
+          <!-- Кнопка запроса регистрации скрыта до получения кода -->
+          <button type="submit" class="btn btn-primary" id="register-btn" style="display: none;">Запросить регистрацию</button>
+          <!-- Убрана ссылка на страницу входа, чтобы страница регистрации не содержала переход на вход. -->
+        </div>
+      </form>
+    </div>
+  </div>
+  <!-- Скрипт для отправки кода и отображения поля ввода -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const sendBtn = document.getElementById('send-code-btn');
+      const emailInput = document.getElementById('email');
+      const codeGroup = document.getElementById('code-group');
+      const registerBtn = document.getElementById('register-btn');
+      sendBtn.addEventListener('click', function () {
+        const email = emailInput.value.trim();
+        if (!email) {
+          alert('Введите e‑mail.');
+          return;
+        }
+        // Build the verification endpoint separately to avoid nested quotes.
+        const verifyUrl = "{{ url_for('send_verification_code') }}";
+        fetch(verifyUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email })
+        })
+        .then(async resp => {
+          let data;
+          try {
+            data = await resp.json();
+          } catch (_) {
+            throw new Error('Непредвиденный ответ от сервера');
+          }
+          if (!resp.ok) {
+            throw new Error(data.message || 'Не удалось отправить код.');
+          }
+          return data;
+        })
+        .then(data => {
+          if (data.success) {
+            alert('Код отправлен на ваш e‑mail.');
+            codeGroup.style.display = '';
+            registerBtn.style.display = '';
+          } else {
+            alert(data.message || 'Не удалось отправить код.');
+          }
+        })
+        .catch((err) => {
+          alert(err.message || 'Ошибка отправки запроса.');
+        });
+      });
+    });
+  </script>
+{% endblock %}

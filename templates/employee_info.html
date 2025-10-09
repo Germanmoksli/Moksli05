@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Профиль сотрудника{% endblock %}
+
+{% block content %}
+  <div class="mx-auto" style="max-width: 600px;">
+    <h2 class="text-primary fw-bold fs-4 mb-4">Профиль сотрудника</h2>
+    <div class="d-flex align-items-start mb-3">
+      <!-- Display avatar; fall back to default avatar if none -->
+      <div class="me-3 text-center">
+        {% set avatar_filename = user.photo if user.photo else 'default_avatar.png' %}
+        <img src="{{ url_for('static', filename=avatar_filename) }}" class="rounded-circle" style="width: 150px; height: 150px; object-fit: cover;" alt="Аватар">
+      </div>
+      <div class="flex-grow-1">
+        <p class="mb-2"><strong>Имя пользователя:</strong> {{ user.username }}</p>
+        <p class="mb-2"><strong>Имя:</strong> {{ user.name or '' }}</p>
+        <p class="mb-2"><strong>Роль:</strong> {{ user.role }}</p>
+        <p class="mb-2"><strong>Телефон:</strong> {{ (user.contact_info or '') | format_phone }}</p>
+      </div>
+    </div>
+    <div class="d-flex justify-content-center gap-2 mt-3">
+      <a href="{{ request.referrer or url_for('chat') }}" class="btn btn-secondary">Назад</a>
+      <a href="{{ url_for('start_chat', user_id=user.id) }}" class="btn btn-primary" title="Начать чат">
+        <i class="bi bi-chat-dots me-1"></i> Написать
+      </a>
+    </div>
+  </div>
+{% endblock %}

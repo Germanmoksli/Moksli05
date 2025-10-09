@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Регистрация гостя{% endblock %}
+{% block content %}
+  <div class="d-flex align-items-center justify-content-center min-vh-100">
+    <div style="max-width: 400px; width: 100%;">
+      <h2 class="mb-4 text-center text-primary fw-bold fs-4">Регистрация гостя</h2>
+      <!-- Социальная авторизация -->
+      <div class="mb-3">
+        <!-- Текст изменён, чтобы акцентировать регистрацию через социальную сеть,
+             а не вход. Теперь пользователю понятнее, что он создает новую учётную запись. -->
+        <p class="text-center mb-2">Или зарегистрируйтесь через социальную сеть</p>
+        <a href="{{ url_for('login_google') }}" class="btn btn-outline-danger w-100 mb-2">
+          <i class="bi bi-google me-1"></i> Google
+        </a>
+        {# Removed Apple login button for now #}
+      </div>
+      <form method="post" class="needs-validation" novalidate>
+        <div class="mb-3">
+          <label for="name" class="form-label">Имя</label>
+          <input type="text" class="form-control" id="name" name="name" required>
+          <div class="invalid-feedback">Введите имя.</div>
+        </div>
+        <div class="mb-3">
+          <label for="email" class="form-label">E‑mail</label>
+          <input type="email" class="form-control" id="email" name="email" required>
+          <div class="invalid-feedback">Введите e‑mail.</div>
+        </div>
+        <div class="mb-3">
+          <label for="password" class="form-label">Пароль</label>
+          <input type="password" class="form-control" id="password" name="password" required>
+          <div class="invalid-feedback">Введите пароль.</div>
+        </div>
+        <div class="d-flex justify-content-center gap-2 mt-2">
+          <!-- Кнопка регистрации оставлена. Ссылка на страницу входа убрана, чтобы страница регистрации не содержала переход на вход. -->
+          <button type="submit" class="btn btn-primary">Зарегистрироваться</button>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endblock %}

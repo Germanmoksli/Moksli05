@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Подписка{% endblock %}
+{% block content %}
+  <div class="d-flex align-items-center justify-content-center min-vh-100">
+    <div style="max-width: 400px; width: 100%;">
+      <h2 class="mb-4 text-center text-primary fw-bold fs-4">Подписка</h2>
+      {% if current_sub and current_sub['status'] == 'active' %}
+        <div class="alert alert-success text-center" role="alert">
+          У вас уже активна подписка: <strong>{{ current_sub['plan_name'] }}</strong>.<br>
+          Следующее списание: {{ current_sub['next_billing_date'] }}
+        </div>
+        <div class="d-flex justify-content-center">
+          <a href="{{ url_for('index') }}" class="btn btn-primary">Вернуться на главную</a>
+        </div>
+      {% elif current_sub and current_sub['status'] == 'pending' %}
+        <div class="alert alert-info text-center" role="alert">
+          Ваш платеж ожидается. Пожалуйста завершите оплату для тарифа <strong>{{ current_sub['plan_name'] }}</strong>.
+        </div>
+        <div class="d-flex justify-content-center gap-2">
+          <a href="{{ current_sub['payment_url'] }}" class="btn btn-success">Оплатить сейчас</a>
+          <a href="{{ url_for('index') }}" class="btn btn-secondary">Вернуться на главную</a>
+        </div>
+      {% else %}
+        <form method="post" class="needs-validation" novalidate>
+          <div class="mb-3">
+            <label for="plan_name" class="form-label">Тариф</label>
+            <select id="plan_name" name="plan_name" class="form-select" required>
+              <option value="standard">Standard</option>
+              <option value="premium">Premium</option>
+            </select>
+            <div class="invalid-feedback">Выберите тариф.</div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Стоимость: <span id="plan-price">1000 KZT</span></label>
+          </div>
+          <div class="d-flex justify-content-center align-items-center gap-2">
+            <button type="submit" class="btn btn-primary">Оформить подписку</button>
+            <a href="{{ url_for('index') }}" class="btn btn-secondary">Отмена</a>
+          </div>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+  <script>
+    // Обновляем отображение стоимости в зависимости от выбранного тарифа
+    document.addEventListener('DOMContentLoaded', function() {
+      const planSelect = document.getElementById('plan_name');
+      const priceSpan = document.getElementById('plan-price');
+      const prices = { 'standard': 1000, 'premium': 2000 };
+      if (planSelect) {
+        planSelect.addEventListener('change', function() {
+          const selected = planSelect.value;
+          priceSpan.textContent = prices[selected] + ' KZT';
+        });
+      }
+    });
+  </script>
+{% endblock %}
