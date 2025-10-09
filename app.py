@@ -225,15 +225,23 @@ def apply_watermark_to_image_data(image_bytes: bytes) -> bytes:
         overlay = Image.new("RGBA", img.size, (255, 255, 255, 0))
         draw = ImageDraw.Draw(overlay)
         text = "moksli.com"
-        # Compute font size relative to the smaller image dimension (20%) for a very bold watermark
-        # This ensures the watermark text is large and clearly visible even on high‑resolution images
-        font_size = max(12, int(min(img.size) * 0.2))
+        # Compute font size relative to the smaller image dimension.  Use 30% of
+        # the smaller side to make the watermark very large and prominent on
+        # high‑resolution images.
+        font_size = max(20, int(min(img.size) * 0.3))
         try:
-            # Attempt to load a bold TrueType font if available
-            font = ImageFont.truetype("DejaVuSans-Bold.ttf", font_size)
+            # Attempt to load the DejaVuSans bold font from the system path.  This
+            # font is usually available on Linux distributions.  Using an
+            # absolute path avoids issues where PIL cannot find the file in
+            # the current working directory.
+            font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_size)
         except Exception:
-            # Fallback to default font
-            font = ImageFont.load_default()
+            try:
+                font = ImageFont.truetype("DejaVuSans-Bold.ttf", font_size)
+            except Exception:
+                # Fallback to default font; size may not respect font_size, but
+                # repeated shadow drawing below will help make it visible.
+                font = ImageFont.load_default()
         # Measure the size of the text
         text_width, text_height = draw.textsize(text, font=font)
         # Select a random position for the watermark ensuring it fits

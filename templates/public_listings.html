@@ -22,6 +22,7 @@
         text-shadow: 0 0 4px rgba(0, 0, 0, 0.7);
         pointer-events: none;
         z-index: 1;
+        white-space: nowrap;
       }
     </style>
   </head>
@@ -163,9 +164,10 @@
       document.addEventListener('DOMContentLoaded', function() {
         const watermarks = document.querySelectorAll('.image-container .watermark');
         watermarks.forEach(function(wm) {
-          // Генерируем случайные координаты в пределах 0–60% по горизонтали и вертикали
-          const x = Math.random() * 60;
-          const y = Math.random() * 60;
+          // Генерируем случайные координаты в пределах 0–50% по горизонтали и вертикали,
+          // чтобы водяной знак всегда находился внутри рамки и не выходил за край.
+          const x = Math.random() * 50;
+          const y = Math.random() * 50;
           wm.style.left = x + '%';
           wm.style.top = y + '%';
         });
