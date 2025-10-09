@@ -79,8 +79,11 @@
                 {% endif %}
                 {% if room['residential_complex'] %}<li><strong>ЖК:</strong> {{ room['residential_complex'] }}</li>{% endif %}
               </ul>
+              <!-- Кнопки подробнее и внешней ссылки. Всегда показываем кнопку «Подробнее» для перехода на страницу
+                   подробной информации внутри приложения. Если указана внешняя ссылка, добавляем вторую кнопку -->
+              <a href="{{ url_for('view_room_public', room_id=room['id']) }}" class="btn btn-sm btn-outline-primary">Подробнее</a>
               {% if room['listing_url'] %}
-              <a href="{{ room['listing_url'] }}" class="btn btn-sm btn-outline-primary" target="_blank">Подробнее</a>
+                <a href="{{ room['listing_url'] }}" class="btn btn-sm btn-outline-secondary ms-2" target="_blank">На объявление</a>
               {% endif %}
               <!-- Кнопка добавления/удаления из избранного для авторизованных пользователей -->
               {% if session.get('user_id') %}

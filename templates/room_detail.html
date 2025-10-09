@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}{{ room['room_number'] }}{% endblock %}
+{% block content %}
+  <div class="container mt-4">
+    <h2 class="text-primary fw-bold fs-3 mb-3">{{ room['room_number'] }}</h2>
+    <div class="row">
+      <div class="col-md-8">
+        <ul class="list-unstyled mb-3">
+          {% if room['num_rooms'] %}<li><strong>Количество комнат:</strong> {{ room['num_rooms'] }}</li>{% endif %}
+          {% if room['floor'] is not none %}
+            <li><strong>Этаж:</strong> {{ room['floor'] }}{% if room['floors_total'] is not none %}/{{ room['floors_total'] }}{% endif %}</li>
+          {% endif %}
+          {% if room['area_total'] is not none %}
+            <li><strong>Площадь:</strong> {{ room['area_total'] }} м²{% if room['area_kitchen'] is not none %} (кухня {{ room['area_kitchen'] }} м²){% endif %}</li>
+          {% endif %}
+          {% if room['condition'] %}
+            {% set condition_map = {'fresh': 'Свежий ремонт, новая мебель', 'good': 'Не свежий, но аккуратный ремонт', 'none': 'Без ремонта'} %}
+            <li><strong>Состояние:</strong> {{ condition_map.get(room['condition'], room['condition']) }}</li>
+          {% endif %}
+          {% if room['kitchen_studio'] is not none %}
+            <li><strong>Кухня студия:</strong> {{ 'Да' if room['kitchen_studio'] else 'Нет' }}</li>
+          {% endif %}
+          {% if room['price_per_night'] is not none %}
+            <li><strong>Цена за сутки:</strong> {{ room['price_per_night'] }} ₸</li>
+          {% endif %}
+          {% if room['country'] or room['city'] or room['street'] or room['house_number'] %}
+            <li><strong>Адрес:</strong>
+              {{ room['country'] or '' }}{% if room['city'] %}, {{ room['city'] }}{% endif %}{% if room['street'] %}, {{ room['street'] }}{% endif %}{% if room['house_number'] %}, {{ room['house_number'] }}{% endif %}
+            </li>
+          {% endif %}
+          {% if room['residential_complex'] %}<li><strong>Жилой комплекс:</strong> {{ room['residential_complex'] }}</li>{% endif %}
+          {% if room['listing_url'] %}<li><strong>Ссылка на объявление:</strong> <a href="{{ room['listing_url'] }}" target="_blank">Перейти</a></li>{% endif %}
+        </ul>
+      </div>
+      <div class="col-md-4">
+        {% if room['latitude'] and room['longitude'] %}
+        <div id="mapid" style="height: 250px;"></div>
+        {% endif %}
+      </div>
+    </div>
+    {% if photos and photos|length > 0 %}
+    <h4 class="mt-4">Фотографии</h4>
+    <div class="row row-cols-2 row-cols-md-3 g-2">
+      {% for photo in photos %}
+        <div class="col">
+          <img src="{{ url_for('static', filename='uploads/rooms/' + (photo['file_name'] if photo['file_name'] is not none else photo[0])) }}" class="img-fluid rounded" alt="Фото квартиры">
+        </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+    <a href="{{ url_for('public_listings') }}" class="btn btn-secondary mt-4">Назад в каталог</a>
+  </div>
+  {% if room['latitude'] and room['longitude'] %}
+  <!-- Подключение Leaflet для отображения карты -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      var lat = {{ room['latitude'] }};
+      var lon = {{ room['longitude'] }};
+      var map = L.map('mapid').setView([lat, lon], 15);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
+      L.marker([lat, lon]).addTo(map);
+    });
+  </script>
+  {% endif %}
+{% endblock %}
