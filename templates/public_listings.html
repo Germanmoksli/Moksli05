@@ -87,61 +87,67 @@
         {% for room in rooms %}
         <div class="col">
           {#
-            Каждая карточка имеет скруглённые углы и небольшую тень. Внутри
-            используется горизонтальный layout: слева фотография с
-            теми же скруглениями, справа — информация о квартире. Используем
-            классы Bootstrap для flex‑раскладки и отступы для отделения
-            элементов.
+            Каждая карточка: два элемента (фото и инфо) и кнопка‑сердце. Используем
+            stretched-link, чтобы по клику на карточку перейти на страницу комнаты.
           #}
-          <div class="card shadow-sm" style="border-radius: 10px;">
+          <div class="card shadow-sm position-relative" style="border-radius: 10px; overflow: hidden;">
             <div class="d-flex">
               {% if room['photo_src'] %}
-              {# Оборачиваем изображение в контейнер с position-relative, чтобы
-                 добавить поверх водяной знак. Дополнительно ограничиваем
-                 ширину и высоту, чтобы все фото были одинакового размера. #}
-              <div class="p-2 position-relative image-container" style="max-width: 200px; height: 200px;">
-                <img src="{{ room['photo_src'] }}"
-                     alt="Фото квартиры"
-                     class="img-fluid h-100 w-100"
+              <div class="p-2 position-relative image-container" style="width: 200px; height: 200px;">
+                <img src="{{ room['photo_src'] }}" alt="Фото квартиры"
+                     class="img-fluid w-100 h-100"
                      style="object-fit: cover; border-top-left-radius: 10px; border-bottom-left-radius: 10px;">
                 <span class="watermark">moksli.com</span>
               </div>
               {% endif %}
-              <div class="flex-grow-1 p-3 d-flex flex-column">
-                <div class="d-flex justify-content-between align-items-start mb-2">
-                  <h5 class="card-title mb-0">{{ room['room_number'] }}</h5>
+              <div class="flex-grow-1 p-3">
+                {# Первая строка: количество комнат и площадь слева, цена справа #}
+                <div class="d-flex justify-content-between align-items-start">
+                  <div class="fw-bold" style="font-size: 1.1rem;">
+                    {% if room['num_rooms'] %}{{ room['num_rooms'] }} комн.{% endif %}
+                    {% if room['area_total'] is not none %}, {{ room['area_total'] }} м²{% endif %}
+                  </div>
                   {% if room['price_per_night'] is not none %}
-                    <div class="fw-bold fs-5 text-end">{{ room['price_per_night'] }} ₸/сутки</div>
+                  <div class="fw-bold text-end" style="font-size: 1.2rem;">{{ room['price_per_night'] }} ₸/сутки</div>
                   {% endif %}
                 </div>
-                <ul class="list-unstyled mb-2 small">
-                  {% if room['num_rooms'] %}<li><strong>Комнат:</strong> {{ room['num_rooms'] }}</li>{% endif %}
-                  {% if room['floor'] is not none %}<li><strong>Этаж:</strong> {{ room['floor'] }}{% if room['floors_total'] is not none %}/{{ room['floors_total'] }}{% endif %}</li>{% endif %}
-                  {% if room['area_total'] is not none %}<li><strong>Площадь:</strong> {{ room['area_total'] }}{% if room['area_kitchen'] is not none %} (кухня {{ room['area_kitchen'] }}){% endif %} м²</li>{% endif %}
-                  {% if room['condition'] %}<li><strong>Состояние:</strong> {{ condition_map.get(room['condition'], room['condition']) }}</li>{% endif %}
-                  {% if room['kitchen_studio'] is not none %}<li><strong>Кухня студия:</strong> {{ 'Да' if room['kitchen_studio'] else 'Нет' }}</li>{% endif %}
+                {# Вторая строка: адрес #}
+                <div class="fw-semibold mb-1">
                   {% if room['country'] or room['city'] or room['street'] or room['house_number'] %}
-                    <li><strong>Адрес:</strong>
-                      {{ room['country'] or '' }}{% if room['city'] %}, {{ room['city'] }}{% endif %}{% if room['street'] %}, {{ room['street'] }}{% endif %}{% if room['house_number'] %}, {{ room['house_number'] }}{% endif %}
-                    </li>
+                    {{ room['country'] or '' }}{% if room['city'] %}, {{ room['city'] }}{% endif %}{% if room['street'] %}, {{ room['street'] }}{% endif %}{% if room['house_number'] %}, {{ room['house_number'] }}{% endif %}
                   {% endif %}
-                  {% if room['residential_complex'] %}<li><strong>ЖК:</strong> {{ room['residential_complex'] }}</li>{% endif %}
-                </ul>
-                <div class="mt-auto">
-                  <a href="{{ url_for('view_room_public', room_id=room['id']) }}" class="btn btn-sm btn-outline-primary">Подробнее</a>
-                  {% if room['listing_url'] %}
-                    <a href="{{ room['listing_url'] }}" class="btn btn-sm btn-outline-secondary ms-2" target="_blank">На объявление</a>
-                  {% endif %}
-                  {% if session.get('user_id') %}
-                    {% if room['id'] in favorite_ids %}
-                      <a href="{{ url_for('toggle_favorite', room_id=room['id']) }}" class="btn btn-sm btn-danger ms-2">Убрать</a>
-                    {% else %}
-                      <a href="{{ url_for('toggle_favorite', room_id=room['id']) }}" class="btn btn-sm btn-outline-danger ms-2">В избранное</a>
-                    {% endif %}
-                  {% endif %}
+                </div>
+                {# Оставшаяся информация объединяется в строку и ограничивается двумя строками с троеточием #}
+                {% set desc_parts = [] %}
+                {% if room['floor'] is not none %}
+                  {% set _ = desc_parts.append('этаж ' ~ room['floor'] ~ (room['floors_total'] is not none and '/' ~ room['floors_total'] or '')) %}
+                {% endif %}
+                {% if room['kitchen_studio'] is not none %}
+                  {% set _ = desc_parts.append('кухня студия ' ~ ('Да' if room['kitchen_studio'] else 'Нет')) %}
+                {% endif %}
+                {% if room['condition'] %}
+                  {% set _ = desc_parts.append(condition_map.get(room['condition'], room['condition'])) %}
+                {% endif %}
+                {% if room['residential_complex'] %}
+                  {% set _ = desc_parts.append('ЖК ' ~ room['residential_complex']) %}
+                {% endif %}
+                <div class="text-muted small" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                  {{ desc_parts|join('; ') }}
                 </div>
               </div>
             </div>
+            {# Сердечко для избранного: в нижнем правом углу #}
+            {% if session.get('user_id') %}
+            <a href="{{ url_for('toggle_favorite', room_id=room['id']) }}" class="position-absolute bottom-0 end-0 m-2" style="z-index:2;">
+              {% if room['id'] in favorite_ids %}
+                <span class="fs-4" style="color: red;">&#10084;</span>
+              {% else %}
+                <span class="fs-4" style="color: red;">&#9825;</span>
+              {% endif %}
+            </a>
+            {% endif %}
+            {# Ссылка-растяжка, чтобы вся карточка была кликабельной #}
+            <a href="{{ url_for('view_room_public', room_id=room['id']) }}" class="stretched-link"></a>
           </div>
         </div>
         {% endfor %}

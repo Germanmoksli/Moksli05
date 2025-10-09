@@ -4,7 +4,33 @@
   <div class="container mt-4">
     <h2 class="text-primary fw-bold fs-3 mb-3">{{ room['room_number'] }}</h2>
     <div class="row">
-      <div class="col-md-8">
+      <!-- Левая колонка: галерея и карта -->
+      <div class="col-md-7">
+        {% if photos and photos|length > 0 %}
+        {# Основное изображение. Оборачиваем в position-relative контейнер,
+           чтобы разместить стрелки и водяной знак поверх изображения. #}
+        <div class="position-relative image-container mb-2" style="height: 350px;">
+          <img id="mainImage" src="{{ photos[0] }}" class="img-fluid rounded w-100 h-100" style="object-fit: contain;" alt="Фото квартиры">
+          <span class="watermark">moksli.com</span>
+          <button id="prevBtn" type="button" class="btn btn-light btn-sm position-absolute top-50 start-0 translate-middle-y">&#x2039;</button>
+          <button id="nextBtn" type="button" class="btn btn-light btn-sm position-absolute top-50 end-0 translate-middle-y">&#x203a;</button>
+        </div>
+        {# Миниатюры. Каждая миниатюра содержит data-index для JS. #}
+        <div class="d-flex flex-wrap gap-2 mb-3">
+          {% for idx, photo_src in enumerate(photos) %}
+          <div class="position-relative image-container" style="width: 100px; height: 100px; cursor:pointer;">
+            <img src="{{ photo_src }}" class="img-fluid rounded border thumbnail-img w-100 h-100" data-index="{{ idx }}" style="object-fit: cover;" alt="Миниатюра">
+            <span class="watermark">moksli.com</span>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+        {% if room['latitude'] and room['longitude'] %}
+        <div id="mapid" style="height: 250px;"></div>
+        {% endif %}
+      </div>
+      <!-- Правая колонка: детали о квартире -->
+      <div class="col-md-5">
         <ul class="list-unstyled mb-3">
           {% if room['num_rooms'] %}<li><strong>Количество комнат:</strong> {{ room['num_rooms'] }}</li>{% endif %}
           {% if room['floor'] is not none %}
@@ -32,46 +58,39 @@
           {% if room['listing_url'] %}<li><strong>Ссылка на объявление:</strong> <a href="{{ room['listing_url'] }}" target="_blank">Перейти</a></li>{% endif %}
         </ul>
       </div>
-      <div class="col-md-4">
-        {% if room['latitude'] and room['longitude'] %}
-        <div id="mapid" style="height: 250px;"></div>
-        {% endif %}
-      </div>
     </div>
+    <a href="{{ url_for('public_listings') }}" class="btn btn-secondary mt-4">Назад в каталог</a>
+
+    {# Полноэкранный просмотр галереи: появляется при клике на основное изображение #}
     {% if photos and photos|length > 0 %}
-    <h4 class="mt-4">Фотографии</h4>
-    <div class="row row-cols-2 row-cols-md-3 g-2">
-      {# Отображаем миниатюры фотографий с водяными знаками. Для каждого
-         изображения создаётся контейнер с относительным позиционированием,
-         чтобы поверх него можно было разместить водяной знак. #}
-      {% for photo_src in photos %}
-        <div class="col">
-          <div class="position-relative image-container">
-            <img src="{{ photo_src }}" class="img-fluid rounded w-100 h-100" style="object-fit: contain;" alt="Фото квартиры">
+    <div id="fullscreenOverlay" class="d-none position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-75" style="z-index: 1050;">
+      <div class="d-flex flex-column h-100 align-items-center justify-content-center">
+        <div class="position-relative w-75" style="max-height: 80%;">
+          <img id="fsMainImage" src="{{ photos[0] }}" class="img-fluid w-100 h-100" style="object-fit: contain;" alt="Фото квартиры">
+          <span class="watermark">moksli.com</span>
+          <button id="fsPrevBtn" type="button" class="btn btn-light btn-sm position-absolute top-50 start-0 translate-middle-y">&#x2039;</button>
+          <button id="fsNextBtn" type="button" class="btn btn-light btn-sm position-absolute top-50 end-0 translate-middle-y">&#x203a;</button>
+          <button id="fsCloseBtn" type="button" class="btn btn-light btn-sm position-absolute top-0 end-0 m-3">&times;</button>
+        </div>
+        <div class="d-flex flex-wrap gap-2 mt-3 justify-content-center" style="max-width: 90%;">
+          {% for idx, photo_src in enumerate(photos) %}
+          <div class="position-relative image-container" style="width: 80px; height: 80px; cursor:pointer;">
+            <img src="{{ photo_src }}" class="img-fluid rounded border fs-thumbnail w-100 h-100" data-index="{{ idx }}" style="object-fit: cover;" alt="Миниатюра">
             <span class="watermark">moksli.com</span>
           </div>
+          {% endfor %}
         </div>
-      {% endfor %}
+      </div>
     </div>
     {% endif %}
-    <a href="{{ url_for('public_listings') }}" class="btn btn-secondary mt-4">Назад в каталог</a>
   </div>
+
+  <!-- Подключаем Leaflet только если есть координаты -->
   {% if room['latitude'] and room['longitude'] %}
-  <!-- Подключение Leaflet для отображения карты -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      var lat = {{ room['latitude'] }};
-      var lon = {{ room['longitude'] }};
-      var map = L.map('mapid').setView([lat, lon], 15);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
-      L.marker([lat, lon]).addTo(map);
-    });
-  </script>
   {% endif %}
-
-  <!-- Стили и скрипт для водяных знаков на фотографиях -->
+  <!-- Дополнительные стили для водяных знаков -->
   <style>
     .image-container { position: relative; overflow: hidden; }
     .image-container .watermark {
@@ -84,8 +103,19 @@
       z-index: 1;
     }
   </style>
+  <!-- Скрипты для галереи, карты и водяных знаков -->
   <script>
     document.addEventListener('DOMContentLoaded', function() {
+      // Инициализация карты при наличии координат
+      {% if room['latitude'] and room['longitude'] %}
+      var lat = {{ room['latitude'] }};
+      var lon = {{ room['longitude'] }};
+      var map = L.map('mapid').setView([lat, lon], 15);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
+      L.marker([lat, lon]).addTo(map);
+      {% endif %}
+
+      // Размещение водяных знаков в случайных позициях
       const watermarks = document.querySelectorAll('.image-container .watermark');
       watermarks.forEach(function(wm) {
         const x = Math.random() * 60;
@@ -93,6 +123,67 @@
         wm.style.left = x + '%';
         wm.style.top = y + '%';
       });
+
+      // Галерея: основное изображение и миниатюры
+      const mainImage = document.getElementById('mainImage');
+      const thumbnails = document.querySelectorAll('.thumbnail-img');
+      let currentIndex = 0;
+      function showImage(idx) {
+        if (!thumbnails.length) return;
+        if (idx < 0) idx = thumbnails.length - 1;
+        if (idx >= thumbnails.length) idx = 0;
+        currentIndex = idx;
+        mainImage.src = thumbnails[idx].src;
+        // Синхронизируем полноэкранный режим, если он открыт
+        const fsMain = document.getElementById('fsMainImage');
+        if (fsMain) {
+          fsMain.src = thumbnails[idx].src;
+        }
+      }
+      // События для стрелок
+      const prevBtn = document.getElementById('prevBtn');
+      const nextBtn = document.getElementById('nextBtn');
+      if (prevBtn && nextBtn) {
+        prevBtn.addEventListener('click', function() { showImage(currentIndex - 1); });
+        nextBtn.addEventListener('click', function() { showImage(currentIndex + 1); });
+      }
+      // События для миниатюр
+      thumbnails.forEach(function(thumb, index) {
+        thumb.addEventListener('click', function() { showImage(index); });
+      });
+
+      // Полноэкранный режим
+      const overlay = document.getElementById('fullscreenOverlay');
+      const fsPrevBtn = document.getElementById('fsPrevBtn');
+      const fsNextBtn = document.getElementById('fsNextBtn');
+      const fsCloseBtn = document.getElementById('fsCloseBtn');
+      const fsThumbnails = document.querySelectorAll('.fs-thumbnail');
+      // Показать полноэкранный режим при клике на основное изображение
+      if (overlay) {
+        mainImage.addEventListener('click', function() {
+          overlay.classList.remove('d-none');
+          // Устанавливаем полноэкранное изображение на текущее
+          const fsMain = document.getElementById('fsMainImage');
+          fsMain.src = mainImage.src;
+        });
+        // Закрыть полноэкранный режим
+        fsCloseBtn.addEventListener('click', function() {
+          overlay.classList.add('d-none');
+        });
+        // Навигация в полноэкранном режиме
+        fsPrevBtn.addEventListener('click', function() { showImage(currentIndex - 1); });
+        fsNextBtn.addEventListener('click', function() { showImage(currentIndex + 1); });
+        // Миниатюры в полноэкранном режиме
+        fsThumbnails.forEach(function(thumb, index) {
+          thumb.addEventListener('click', function() { showImage(index); });
+        });
+        // Закрытие по клику вне изображения
+        overlay.addEventListener('click', function(event) {
+          if (event.target === overlay) {
+            overlay.classList.add('d-none');
+          }
+        });
+      }
     });
   </script>
 {% endblock %}
