@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+{% block title %}Аккаунт{% endblock %}
+
+{% block content %}
+  <div class="mx-auto" style="max-width: 600px;">
+    <h2 class="text-primary fw-bold fs-4 mb-4">Аккаунт</h2>
+    <!-- View mode: display user information as plain text -->
+    <div id="account-view">
+      <div class="d-flex align-items-start mb-3">
+        <!-- Display avatar in view mode -->
+        <div class="me-3 text-center">
+          {% set avatar_filename = user.photo if user.photo else 'default_avatar.png' %}
+          <img src="{{ url_for('static', filename=avatar_filename) }}" class="rounded-circle" style="width: 150px; height: 150px; object-fit: cover;">
+        </div>
+        <div class="flex-grow-1">
+          <p class="mb-2"><strong>Имя пользователя:</strong> {{ user.username }}</p>
+          <p class="mb-2"><strong>Имя:</strong> {{ user.name or '' }}</p>
+          <p class="mb-2"><strong>Роль:</strong> {{ user.role }}</p>
+          {# Display the owner's unique ID so that it can be shared with prospective managers. #}
+          {% if user.role == 'owner' %}
+          <p class="mb-2"><strong>ID владельца:</strong> {{ user.id }}</p>
+          {% endif %}
+          <p class="mb-2"><strong>Телефон:</strong> {{ (user.contact_info or '') | format_phone }}</p>
+        </div>
+      </div>
+      <div class="d-flex justify-content-center gap-2 mt-3">
+        <button type="button" id="edit-button" class="btn btn-primary">Редактировать</button>
+        <a href="{{ url_for('logout') }}" class="btn btn-secondary">Выйти</a>
+      </div>
+    </div>
+    <!-- Edit mode form: hidden by default, reveals on clicking Edit -->
+    <form id="account-edit-form" method="post" enctype="multipart/form-data" class="needs-validation" novalidate style="display: none;">
+      <!-- Photo and identity section -->
+      <div class="d-flex align-items-start mb-3">
+        <div id="photo-wrapper" class="me-3 text-center">
+          {# Display the user's photo if available; otherwise show a default avatar image. #}
+          {% set avatar_filename = user.photo if user.photo else 'default_avatar.png' %}
+          <img src="{{ url_for('static', filename=avatar_filename) }}" class="rounded-circle" style="width: 150px; height: 150px; object-fit: cover; cursor: pointer;">
+          <input type="file" id="photo" name="photo" accept="image/*" class="d-none">
+        </div>
+        <div class="flex-grow-1">
+          <div class="mb-3">
+            <label class="form-label">Имя пользователя</label>
+            <input type="text" class="form-control" value="{{ user.username }}" readonly>
+          </div>
+          <div class="mb-3">
+            <label for="name" class="form-label">Имя</label>
+            <input type="text" class="form-control" id="name" name="name" value="{{ user.name or '' }}">
+          </div>
+        </div>
+      </div>
+      <!-- Role: read-only -->
+      <div class="mb-3">
+        <label class="form-label">Роль</label>
+        <input type="text" class="form-control" value="{{ user.role }}" readonly>
+      </div>
+      <!-- Phone editing fields -->
+      <div class="mb-3">
+        <label class="form-label">Телефон</label>
+        <div class="row g-2 align-items-end">
+          <div class="col-auto clickable-field" onclick="this.querySelector('select').focus();">
+            <select id="country_code" name="country_code" class="form-select">
+              <option value="+7" data-mask="(XXX) XXX XX XX" data-length="10" data-flag="🇰🇿" {% if phone_country_code == '+7' %}selected{% endif %}>🇰🇿 +7</option>
+              <option value="+1" data-mask="(XXX) XXX-XXXX" data-length="10" data-flag="🇺🇸" {% if phone_country_code == '+1' %}selected{% endif %}>🇺🇸 +1</option>
+              <option value="+44" data-mask="(XXXX) XXX XXXX" data-length="10" data-flag="🇬🇧" {% if phone_country_code == '+44' %}selected{% endif %}>🇬🇧 +44</option>
+              <option value="+49" data-mask="(XXXX) XXX XXXX" data-length="10" data-flag="🇩🇪" {% if phone_country_code == '+49' %}selected{% endif %}>🇩🇪 +49</option>
+              <option value="+81" data-mask="(XXXX) XXX XXX" data-length="9" data-flag="🇯🇵" {% if phone_country_code == '+81' %}selected{% endif %}>🇯🇵 +81</option>
+            </select>
+          </div>
+          <div class="col clickable-field" onclick="this.querySelector('input').focus();">
+            <!-- Prepopulate the subscriber number (without country code) using the provided phone_digits variable. -->
+            <input type="tel" class="form-control" id="phone" name="phone" placeholder="" list="guest-phones" value="{{ phone_digits or '' }}">
+          </div>
+        </div>
+      </div>
+      <!-- Buttons for edit mode -->
+      <div class="d-flex justify-content-center gap-2 mt-4">
+        <button type="submit" class="btn btn-primary">Сохранить</button>
+        <button type="button" id="cancel-edit" class="btn btn-secondary">Отмена</button>
+      </div>
+    </form>
+    <!-- Script to handle photo upload and preview -->
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        var wrapper = document.getElementById('photo-wrapper');
+        var input = document.getElementById('photo');
+        if (wrapper && input) {
+          wrapper.addEventListener('click', function() {
+            input.click();
+          });
+          input.addEventListener('change', function() {
+            var file = input.files[0];
+            if (file) {
+              var reader = new FileReader();
+              reader.onload = function(e) {
+                wrapper.innerHTML = '<img src="' + e.target.result + '" class="rounded-circle" style="width: 150px; height: 150px; object-fit: cover; cursor: pointer;">';
+              };
+              reader.readAsDataURL(file);
+            }
+          });
+        }
+      });
+    </script>
+    <!-- Script for phone masking similar to booking form with backspace handling -->
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        var codeSelect = document.getElementById('country_code');
+        var phoneInput = document.getElementById('phone');
+        if (!codeSelect || !phoneInput) return;
+        var currentMask = '';
+        var currentLength = 0;
+        function updatePlaceholder() {
+          var selected = codeSelect.options[codeSelect.selectedIndex];
+          currentMask = selected.getAttribute('data-mask');
+          currentLength = parseInt(selected.getAttribute('data-length'), 10) || 10;
+          phoneInput.placeholder = currentMask;
+          // Preserve any existing digits when switching country codes or on initial load.
+          var existingDigits = phoneInput.value.replace(/\D/g, '');
+          if (existingDigits) {
+            // Trim existing digits to the maximum length allowed for the selected country
+            existingDigits = existingDigits.slice(0, currentLength);
+            phoneInput.value = formatNumber(existingDigits);
+          } else {
+            phoneInput.value = '';
+          }
+        }
+        function formatNumber(digits) {
+          var result = '';
+          var digitIndex = 0;
+          for (var i = 0; i < currentMask.length; i++) {
+            var ch = currentMask[i];
+            if (ch === 'X') {
+              if (digitIndex < digits.length) {
+                result += digits[digitIndex++];
+              } else {
+                break;
+              }
+            } else {
+              result += ch;
+            }
+          }
+          return result;
+        }
+        codeSelect.addEventListener('change', updatePlaceholder);
+        phoneInput.addEventListener('input', function () {
+          var digits = phoneInput.value.replace(/\D/g, '');
+          if (digits.length > currentLength) {
+            digits = digits.slice(0, currentLength);
+          }
+          phoneInput.value = formatNumber(digits);
+        });
+        // Handle Backspace to delete the last digit regardless of separators
+        phoneInput.addEventListener('keydown', function (e) {
+          if (e.key === 'Backspace') {
+            e.preventDefault();
+            var digits = phoneInput.value.replace(/\D/g, '');
+            if (digits.length > 0) {
+              digits = digits.slice(0, -1);
+              phoneInput.value = formatNumber(digits);
+            }
+          }
+        });
+        // Keep cursor at end when focusing
+        phoneInput.addEventListener('focus', function () {
+          var len = phoneInput.value.length;
+          phoneInput.setSelectionRange(len, len);
+        });
+        // Initialize placeholder and format existing phone number on first load
+        updatePlaceholder();
+      });
+    </script>
+    <!-- Script to toggle between view and edit modes -->
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        var editBtn = document.getElementById('edit-button');
+        var cancelBtn = document.getElementById('cancel-edit');
+        var viewDiv = document.getElementById('account-view');
+        var editForm = document.getElementById('account-edit-form');
+        if (editBtn) {
+          editBtn.addEventListener('click', function () {
+            viewDiv.style.display = 'none';
+            editForm.style.display = 'block';
+          });
+        }
+        if (cancelBtn) {
+          cancelBtn.addEventListener('click', function () {
+            editForm.style.display = 'none';
+            viewDiv.style.display = 'block';
+          });
+        }
+      });
+    </script>
+  </div>
+{% endblock %}

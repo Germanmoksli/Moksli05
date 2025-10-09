@@ -20,3 +20,8 @@ psycopg2-binary>=2.9
 # Additional dependencies can be added here as your project grows.
 # Gunicorn is a production-ready WSGI server for Flask
 gunicorn>=20.1
+
+# The application uses the Python standard library for HTTP requests,
+# therefore no ``requests`` dependency is required.  If you choose
+# to use the third-party ``requests`` package in your own extensions,
+# you can add it back here.
