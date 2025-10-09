@@ -3084,26 +3084,30 @@ def add_room():
     # Render the form for GET requests
     return render_template("room_form.html")
 
-# Edit existing room (update name and listing URL)
+# Edit existing room (update all details)
 @app.route("/rooms/<int:room_id>/edit", methods=["GET", "POST"])
 @login_required
 @roles_required('owner')
 def edit_room(room_id: int):
     """
-    Edit an existing room's details, including its name and external listing URL.
-    Only owners and managers are allowed to perform edits.  On GET, render
-    a form pre-filled with the room's current data.  On POST, validate
-    inputs and update the database accordingly.
+    Edit an existing apartment's full details.  Owners may update all fields,
+    including room count, floor information, area, condition, kitchen type,
+    address, price and optional residential complex or listing URL.  On GET
+    a pre-filled form is rendered; on POST the values are validated and the
+    database is updated accordingly.  Only the owner of the apartment may
+    perform this action.
     """
     conn = get_db_connection()
-    room = conn.execute(
-        "SELECT id, room_number, listing_url, residential_complex, owner_id FROM rooms WHERE id = ?",
-        (room_id,)
-    ).fetchone()
+    # Ensure the extended columns exist before fetching or updating.  Do not
+    # interrupt the request if the schema update fails.
+    try:
+        ensure_rooms_additional_columns(conn)
+    except Exception:
+        pass
+    room = conn.execute("SELECT * FROM rooms WHERE id = ?", (room_id,)).fetchone()
     if not room:
         conn.close()
         abort(404)
-    # Ensure the current owner owns this room
     try:
         room_owner = room["owner_id"]
     except Exception:
@@ -3112,30 +3116,82 @@ def edit_room(room_id: int):
         conn.close()
         abort(403)
     if request.method == "POST":
-        new_name = request.form.get("room_number", "").strip()
-        new_link = request.form.get("listing_url", "").strip() or None
-        # Update the residential complex (may be blank/None)
-        new_complex = request.form.get("residential_complex")
-        new_complex = new_complex.strip() if new_complex else None
+        new_name = (request.form.get("room_number") or "").strip()
         if not new_name:
-            flash("Название квартиры обязательно.")
+            flash("Название объекта обязательно.")
             return redirect(url_for("edit_room", room_id=room_id))
+        def _to_int(val):
+            try:
+                return int(val) if val else None
+            except Exception:
+                return None
+        def _to_float(val):
+            try:
+                return float(val) if val else None
+            except Exception:
+                return None
+        num_rooms = _to_int(request.form.get("num_rooms"))
+        floor = _to_int(request.form.get("floor"))
+        floors_total = _to_int(request.form.get("floors_total"))
+        area_total = _to_float(request.form.get("area_total"))
+        area_kitchen = _to_float(request.form.get("area_kitchen"))
+        price_per_night = _to_float(request.form.get("price_per_night"))
+        condition = request.form.get("condition") or None
+        kitchen_studio = 1 if request.form.get("kitchen_studio") == "yes" else 0
+        country = request.form.get("country") or None
+        city = request.form.get("city") or None
+        street = request.form.get("street") or None
+        house_number = request.form.get("house_number") or None
+        latitude = _to_float(request.form.get("latitude"))
+        longitude = _to_float(request.form.get("longitude"))
+        listing_url = (request.form.get("listing_url") or "").strip() or None
+        residential_complex = request.form.get("residential_complex") or None
+        if residential_complex:
+            residential_complex = residential_complex.strip() or None
         try:
             with conn:
                 conn.execute(
-                    "UPDATE rooms SET room_number = ?, listing_url = ?, residential_complex = ? WHERE id = ?",
-                    (new_name, new_link, new_complex, room_id),
+                    "UPDATE rooms SET room_number = ?, listing_url = ?, residential_complex = ?, num_rooms = ?, floor = ?, floors_total = ?, area_total = ?, area_kitchen = ?, condition = ?, kitchen_studio = ?, country = ?, city = ?, street = ?, house_number = ?, latitude = ?, longitude = ?, price_per_night = ? WHERE id = ?",
+                    (
+                        new_name,
+                        listing_url,
+                        residential_complex,
+                        num_rooms,
+                        floor,
+                        floors_total,
+                        area_total,
+                        area_kitchen,
+                        condition,
+                        kitchen_studio,
+                        country,
+                        city,
+                        street,
+                        house_number,
+                        latitude,
+                        longitude,
+                        price_per_night,
+                        room_id,
+                    ),
                 )
-        except Exception:
-            # Catch any update error, including unique constraint violations in PostgreSQL.
+        except Exception as e:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
             conn.close()
-            flash("Ошибка: квартира с таким названием уже существует.")
+            flash(f"Ошибка при обновлении квартиры: {e}")
             return redirect(url_for("edit_room", room_id=room_id))
         conn.close()
         flash("Данные квартиры обновлены.")
         return redirect(url_for("list_rooms"))
+    address_parts = []
+    # Build a display string for the address
+    for part in [room.get("country"), room.get("city"), room.get("street"), room.get("house_number")]:
+        if part:
+            address_parts.append(str(part))
+    address_display = ", ".join(address_parts)
     conn.close()
-    return render_template("room_edit_form.html", room=room)
+    return render_template("room_edit_form.html", room=room, address_display=address_display)
 
 
 # Calendar view

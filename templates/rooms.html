@@ -10,11 +10,12 @@
       <thead>
         <tr>
           <th>ID</th>
-          <th>Номер</th>
+          <th>Название</th>
           <th>ЖК</th>
-          <th>Вместимость</th>
-          <th>Примечания</th>
-          <th>Ссылка</th>
+          <th>Комнат</th>
+          <th>Этаж</th>
+          <th>Площадь (общ/кухня)</th>
+          <th>Цена (сутки)</th>
           <th>Действия</th>
         </tr>
       </thead>
@@ -24,11 +25,31 @@
             <td>{{ room['id'] }}</td>
             <td>{{ room['room_number'] }}</td>
             <td>{{ room['residential_complex'] or '' }}</td>
-            <td>{{ room['capacity'] or '' }}</td>
-            <td>{{ room['notes'] or '' }}</td>
+            <td>{{ room['num_rooms'] if room['num_rooms'] is not none else '' }}</td>
             <td>
-              {% if room['listing_url'] %}
-                <a href="{{ room['listing_url'] }}" target="_blank">Перейти</a>
+              {% if room['floor'] is not none and room['floors_total'] is not none %}
+                {{ room['floor'] }}/{{ room['floors_total'] }}
+              {% elif room['floor'] is not none %}
+                {{ room['floor'] }}
+              {% else %}
+                &nbsp;
+              {% endif %}
+            </td>
+            <td>
+              {% if room['area_total'] is not none %}
+                {{ room['area_total'] }}
+                {% if room['area_kitchen'] is not none %}
+                  / {{ room['area_kitchen'] }}
+                {% endif %}
+              {% else %}
+                &nbsp;
+              {% endif %}
+            </td>
+            <td>
+              {% if room['price_per_night'] is not none %}
+                {{ room['price_per_night'] }}
+              {% else %}
+                &nbsp;
               {% endif %}
             </td>
             <td>
@@ -44,6 +65,6 @@
       </tbody>
     </table>
   {% else %}
-    <p>Нет комнат в системе.</p>
+    <p>Нет квартир в системе.</p>
   {% endif %}
 {% endblock %}

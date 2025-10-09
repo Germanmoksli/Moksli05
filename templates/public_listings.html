@@ -59,16 +59,26 @@
       </form>
       {% if rooms %}
       <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+        {% set condition_map = {'fresh': 'Свежий ремонт, новая мебель', 'good': 'Не свежий, но аккуратный ремонт', 'none': 'Без ремонта'} %}
         {% for room in rooms %}
         <div class="col">
           <div class="card h-100 shadow-sm">
             <div class="card-body">
               <h5 class="card-title">{{ room['room_number'] }}</h5>
-              <p class="card-text">
-                {% if room['residential_complex'] %}<strong>ЖК:</strong> {{ room['residential_complex'] }}<br>{% endif %}
-                {% if room['capacity'] %}<strong>Вместимость:</strong> {{ room['capacity'] }}<br>{% endif %}
-                {% if room['notes'] %}<strong>Примечания:</strong> {{ room['notes'] }}<br>{% endif %}
-              </p>
+              <ul class="list-unstyled mb-2">
+                {% if room['num_rooms'] %}<li><strong>Комнат:</strong> {{ room['num_rooms'] }}</li>{% endif %}
+                {% if room['floor'] is not none %}<li><strong>Этаж:</strong> {{ room['floor'] }}{% if room['floors_total'] is not none %}/{{ room['floors_total'] }}{% endif %}</li>{% endif %}
+                {% if room['area_total'] is not none %}<li><strong>Площадь:</strong> {{ room['area_total'] }}{% if room['area_kitchen'] is not none %} (кухня {{ room['area_kitchen'] }}){% endif %} м²</li>{% endif %}
+                {% if room['condition'] %}<li><strong>Состояние:</strong> {{ condition_map.get(room['condition'], room['condition']) }}</li>{% endif %}
+                {% if room['kitchen_studio'] is not none %}<li><strong>Кухня студия:</strong> {{ 'Да' if room['kitchen_studio'] else 'Нет' }}</li>{% endif %}
+                {% if room['price_per_night'] is not none %}<li><strong>Цена:</strong> {{ room['price_per_night'] }} ₸/сутки</li>{% endif %}
+                {% if room['country'] or room['city'] or room['street'] or room['house_number'] %}
+                  <li><strong>Адрес:</strong>
+                    {{ room['country'] or '' }}{% if room['city'] %}, {{ room['city'] }}{% endif %}{% if room['street'] %}, {{ room['street'] }}{% endif %}{% if room['house_number'] %}, {{ room['house_number'] }}{% endif %}
+                  </li>
+                {% endif %}
+                {% if room['residential_complex'] %}<li><strong>ЖК:</strong> {{ room['residential_complex'] }}</li>{% endif %}
+              </ul>
               {% if room['listing_url'] %}
               <a href="{{ room['listing_url'] }}" class="btn btn-sm btn-outline-primary" target="_blank">Подробнее</a>
               {% endif %}

@@ -1,14 +1,92 @@
 {% extends "base.html" %}
 {% block title %}Редактировать квартиру{% endblock %}
 {% block content %}
-  <div class="mx-auto" style="max-width: 600px;">
-    <h2 class="text-center text-primary fw-bold fs-4">Редактировать квартиру</h2>
-    <form method="post" class="needs-validation" novalidate>
+  <div class="mx-auto" style="max-width: 700px;">
+    <h2 class="text-center text-primary fw-bold fs-4">Редактировать объект</h2>
+    <!-- Форма редактирования всех свойств квартиры. Используем те же поля, что и при добавлении -->
+    <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate>
+      <!-- Название объекта -->
       <div class="mb-3">
-        <label for="room_number" class="form-label">Название квартиры</label>
+        <label for="room_number" class="form-label">Название объекта</label>
         <input type="text" class="form-control" id="room_number" name="room_number" value="{{ room['room_number'] }}" required>
-        <div class="invalid-feedback">Введите название квартиры.</div>
+        <div class="invalid-feedback">Введите название объекта.</div>
       </div>
+      <!-- Количество комнат -->
+      <div class="mb-3">
+        <label for="num_rooms" class="form-label">Количество комнат</label>
+        <input type="number" class="form-control" id="num_rooms" name="num_rooms" min="0" value="{{ room['num_rooms'] if room['num_rooms'] is not none else '' }}" required>
+        <div class="invalid-feedback">Введите количество комнат.</div>
+      </div>
+      <!-- Этаж и общее количество этажей -->
+      <div class="mb-3">
+        <label class="form-label">Этаж</label>
+        <div class="d-flex gap-2">
+          <input type="number" class="form-control" id="floor" name="floor" min="0" placeholder="Этаж" value="{{ room['floor'] if room['floor'] is not none else '' }}" required>
+          <span class="align-self-center">из</span>
+          <input type="number" class="form-control" id="floors_total" name="floors_total" min="0" placeholder="Всего этажей" value="{{ room['floors_total'] if room['floors_total'] is not none else '' }}" required>
+        </div>
+        <div class="invalid-feedback">Введите этаж и общее количество этажей.</div>
+      </div>
+      <!-- Площадь квартиры и кухни -->
+      <div class="mb-3">
+        <label class="form-label">Площадь (м²)</label>
+        <div class="d-flex gap-2">
+          <input type="number" step="0.1" class="form-control" id="area_total" name="area_total" min="0" placeholder="Общая" value="{{ room['area_total'] if room['area_total'] is not none else '' }}" required>
+          <span class="align-self-center">из них кухня</span>
+          <input type="number" step="0.1" class="form-control" id="area_kitchen" name="area_kitchen" min="0" placeholder="Кухня" value="{{ room['area_kitchen'] if room['area_kitchen'] is not none else '' }}" required>
+        </div>
+        <div class="invalid-feedback">Введите общую площадь и площадь кухни.</div>
+      </div>
+      <!-- Состояние квартиры -->
+      <div class="mb-3">
+        <label for="condition" class="form-label">Состояние квартиры</label>
+        <select id="condition" name="condition" class="form-select" required>
+          <option value="" {% if not room['condition'] %}selected{% endif %}>Выберите состояние</option>
+          <option value="fresh" {% if room['condition'] == 'fresh' %}selected{% endif %}>Свежий ремонт, новая мебель</option>
+          <option value="good" {% if room['condition'] == 'good' %}selected{% endif %}>Не свежий, но аккуратный ремонт</option>
+          <option value="none" {% if room['condition'] == 'none' %}selected{% endif %}>Без ремонта</option>
+        </select>
+        <div class="invalid-feedback">Выберите состояние.</div>
+      </div>
+      <!-- Кухня студия -->
+      <div class="mb-3">
+        <label class="form-label">Кухня студия</label>
+        <div class="form-check">
+          <input class="form-check-input" type="radio" name="kitchen_studio" id="kitchen_yes" value="yes" {% if room['kitchen_studio'] %}checked{% endif %} required>
+          <label class="form-check-label" for="kitchen_yes">Да</label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input" type="radio" name="kitchen_studio" id="kitchen_no" value="no" {% if not room['kitchen_studio'] %}checked{% endif %}>
+          <label class="form-check-label" for="kitchen_no">Нет</label>
+        </div>
+        <div class="invalid-feedback">Укажите, является ли кухня студией.</div>
+      </div>
+      <!-- Адрес с подсказками -->
+      <div class="mb-3 position-relative">
+        <label for="address" class="form-label">Расположение (введите страну, город, улицу, дом)</label>
+        <input type="text" class="form-control" id="address" name="address" autocomplete="off" placeholder="Например: Казахстан, Алматы, Абая 10" value="{{ address_display }}" required>
+        <ul id="suggestions-list" class="list-group position-absolute w-100" style="z-index: 1000;"></ul>
+        <div class="invalid-feedback">Введите адрес.</div>
+      </div>
+      <!-- Скрытые поля для частей адреса и координат -->
+      <input type="hidden" id="country" name="country" value="{{ room['country'] or '' }}">
+      <input type="hidden" id="city" name="city" value="{{ room['city'] or '' }}">
+      <input type="hidden" id="street" name="street" value="{{ room['street'] or '' }}">
+      <input type="hidden" id="house_number" name="house_number" value="{{ room['house_number'] or '' }}">
+      <input type="hidden" id="latitude" name="latitude" value="{{ room['latitude'] or '' }}">
+      <input type="hidden" id="longitude" name="longitude" value="{{ room['longitude'] or '' }}">
+      <!-- Карта для выбора координат -->
+      <div class="mb-3">
+        <label class="form-label">Выберите расположение на карте</label>
+        <div id="mapid" style="height: 300px;"></div>
+      </div>
+      <!-- Цена за сутки аренды -->
+      <div class="mb-3">
+        <label for="price_per_night" class="form-label">Цена за 1 сутки аренды</label>
+        <input type="number" step="0.01" class="form-control" id="price_per_night" name="price_per_night" value="{{ room['price_per_night'] if room['price_per_night'] is not none else '' }}" required>
+        <div class="invalid-feedback">Укажите цену за сутки.</div>
+      </div>
+      <!-- Жилой комплекс -->
       <div class="mb-3">
         <label for="residential_complex" class="form-label">Жилой комплекс</label>
         <select class="form-select" id="residential_complex" name="residential_complex">
@@ -19,32 +97,108 @@
         </select>
         <div class="form-text">Выберите жилой комплекс, если применимо.</div>
       </div>
+      <!-- Ссылка на объявление (опционально) -->
       <div class="mb-3">
         <label for="listing_url" class="form-label">Ссылка на объявление (URL)</label>
         <input type="url" class="form-control" id="listing_url" name="listing_url" value="{{ room['listing_url'] or '' }}">
         <div class="form-text">Опционально: укажите ссылку на размещение объекта на стороннем сайте.</div>
       </div>
+      <!-- Кнопки сохранения и отмены -->
       <div class="text-center">
         <button type="submit" class="btn btn-primary me-2">Сохранить</button>
         <a href="{{ url_for('list_rooms') }}" class="btn btn-soft-danger">Отмена</a>
       </div>
     </form>
   </div>
+  <!-- Подключаем Leaflet для карты -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" integrity="" crossorigin=""/>
+  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js" integrity="" crossorigin=""></script>
   <script>
-    // Bootstrap validation script remains unchanged
+  // Инициализация карты и установка исходного местоположения. Если существуют сохранённые
+  // координаты, используем их для позиционирования и установки маркера.
+  document.addEventListener('DOMContentLoaded', function() {
+    var lat = parseFloat(document.getElementById('latitude').value) || 43.238949;
+    var lon = parseFloat(document.getElementById('longitude').value) || 76.889709;
+    var map = L.map('mapid').setView([lat, lon], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
+    var marker;
+    if (document.getElementById('latitude').value && document.getElementById('longitude').value) {
+      marker = L.marker([lat, lon]).addTo(map);
+    }
+    map.on('click', function(e) {
+      var latlng = e.latlng;
+      document.getElementById('latitude').value = latlng.lat;
+      document.getElementById('longitude').value = latlng.lng;
+      if (marker) {
+        marker.setLatLng(latlng);
+      } else {
+        marker = L.marker(latlng).addTo(map);
+      }
+    });
+    // Подсказки по адресу
+    var addressInput = document.getElementById('address');
+    var suggestionsList = document.getElementById('suggestions-list');
+    addressInput.addEventListener('input', function() {
+      var query = addressInput.value.trim();
+      if (query.length < 3) {
+        suggestionsList.innerHTML = '';
+        return;
+      }
+      fetch('/address_suggestions?q=' + encodeURIComponent(query))
+        .then(function(resp) { return resp.json(); })
+        .then(function(data) {
+          suggestionsList.innerHTML = '';
+          data.forEach(function(item) {
+            var li = document.createElement('li');
+            li.classList.add('list-group-item', 'list-group-item-action');
+            li.textContent = item.display_name;
+            li.dataset.lat = item.lat;
+            li.dataset.lon = item.lon;
+            li.dataset.country = item.country || '';
+            li.dataset.city = item.city || '';
+            li.dataset.street = item.street || '';
+            li.dataset.house_number = item.house_number || '';
+            suggestionsList.appendChild(li);
+          });
+        });
+    });
+    suggestionsList.addEventListener('click', function(e) {
+      if (e.target && e.target.nodeName === 'LI') {
+        addressInput.value = e.target.textContent;
+        document.getElementById('latitude').value = e.target.dataset.lat;
+        document.getElementById('longitude').value = e.target.dataset.lon;
+        document.getElementById('country').value = e.target.dataset.country;
+        document.getElementById('city').value = e.target.dataset.city;
+        document.getElementById('street').value = e.target.dataset.street;
+        document.getElementById('house_number').value = e.target.dataset.house_number;
+        suggestionsList.innerHTML = '';
+        var latf = parseFloat(e.target.dataset.lat);
+        var lonf = parseFloat(e.target.dataset.lon);
+        map.setView([latf, lonf], 16);
+        if (marker) {
+          marker.setLatLng([latf, lonf]);
+        } else {
+          marker = L.marker([latf, lonf]).addTo(map);
+        }
+      }
+    });
+  });
+  </script>
+  <script>
+    // Bootstrap валидация форм
     (function () {
       'use strict'
-      var forms = document.querySelectorAll('.needs-validation')
+      var forms = document.querySelectorAll('.needs-validation');
       Array.prototype.slice.call(forms)
         .forEach(function (form) {
           form.addEventListener('submit', function (event) {
             if (!form.checkValidity()) {
-              event.preventDefault()
-              event.stopPropagation()
+              event.preventDefault();
+              event.stopPropagation();
             }
-            form.classList.add('was-validated')
-          }, false)
-        })
-    })()
+            form.classList.add('was-validated');
+          }, false);
+        });
+    })();
   </script>
 {% endblock %}
