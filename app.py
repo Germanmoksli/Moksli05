@@ -83,8 +83,25 @@ except Exception:
 # filenames containing subdirectories (if ever used) are handled safely.
 @app.route('/uploads/rooms/<path:filename>')
 def uploaded_room_image(filename: str):
-    """Serve an uploaded apartment photo from the uploads folder."""
-    return send_from_directory(UPLOAD_ROOMS_FOLDER, filename)
+    """Serve an uploaded apartment photo from the uploads folder.
+
+    First attempt to serve the file from the dedicated ``UPLOAD_ROOMS_FOLDER``.
+    If the file does not exist there (e.g. because it was uploaded before
+    migrating to the new folder), fall back to the legacy static directory
+    ``static/uploads/rooms``.  This ensures backward compatibility for
+    photos uploaded prior to introducing the ``image_data`` field and
+    the new uploads directory.
+    """
+    # Attempt to serve from the new uploads directory
+    file_path = os.path.join(UPLOAD_ROOMS_FOLDER, filename)
+    try:
+        if os.path.exists(file_path):
+            return send_from_directory(UPLOAD_ROOMS_FOLDER, filename)
+    except Exception:
+        pass
+    # Fallback: serve from static/uploads/rooms
+    fallback_dir = os.path.join(app.static_folder, 'uploads', 'rooms')
+    return send_from_directory(fallback_dir, filename)
 app.secret_key = "change_this_secret_key"  # Needed for flashing messages
 
 # -----------------------------------------------------------------------------
