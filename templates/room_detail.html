@@ -4,7 +4,36 @@
   <div class="container mt-4">
     <h2 class="text-primary fw-bold fs-3 mb-3">{{ room['room_number'] }}</h2>
     <div class="row">
-      <div class="col-md-8">
+      <!-- Left column: photo gallery and map -->
+      <div class="col-md-6 mb-4">
+        {% if photos and photos|length > 0 %}
+        <div class="gallery-container">
+          <div class="main-image-container position-relative">
+            {# Display the first photo as the main image.  Will be swapped via JS. #}
+            <img id="mainImage" src="{{ photos[0] }}" class="img-fluid rounded" alt="Фото квартиры" style="width: 100%; height: 300px; object-fit: cover;">
+            <!-- Navigation arrows overlay -->
+            <button type="button" id="prevBtn" class="btn btn-light position-absolute top-50 start-0 translate-middle-y shadow-sm" style="opacity: 0.7;">
+              &lsaquo;
+            </button>
+            <button type="button" id="nextBtn" class="btn btn-light position-absolute top-50 end-0 translate-middle-y shadow-sm" style="opacity: 0.7;">
+              &rsaquo;
+            </button>
+          </div>
+          <!-- Thumbnails -->
+          <div class="thumbs d-flex flex-wrap mt-2">
+            {% for photo_src in photos %}
+              <img src="{{ photo_src }}" class="img-thumbnail me-2 mb-2" alt="Превью фото" style="width: 60px; height: 60px; object-fit: cover; cursor: pointer;">
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+        {% if room['latitude'] and room['longitude'] %}
+        <!-- Map underneath the gallery -->
+        <div id="mapid" class="rounded mt-3" style="height: 300px;"></div>
+        {% endif %}
+      </div>
+      <!-- Right column: apartment details -->
+      <div class="col-md-6">
         <ul class="list-unstyled mb-3">
           {% if room['num_rooms'] %}<li><strong>Количество комнат:</strong> {{ room['num_rooms'] }}</li>{% endif %}
           {% if room['floor'] is not none %}
@@ -32,27 +61,8 @@
           {% if room['listing_url'] %}<li><strong>Ссылка на объявление:</strong> <a href="{{ room['listing_url'] }}" target="_blank">Перейти</a></li>{% endif %}
         </ul>
       </div>
-      <div class="col-md-4">
-        {% if room['latitude'] and room['longitude'] %}
-        <div id="mapid" style="height: 250px;"></div>
-        {% endif %}
-      </div>
     </div>
-    {% if photos and photos|length > 0 %}
-    <h4 class="mt-4">Фотографии</h4>
-    <div class="row row-cols-2 row-cols-md-3 g-2">
-      {# Iterate through the list of photo sources prepared in the view.  Each
-         element in ``photos`` is a complete src attribute: either a data URI
-         containing base64-encoded JPEG data or a URL served by the
-         ``uploaded_room_image`` route. #}
-      {% for photo_src in photos %}
-        <div class="col">
-          <img src="{{ photo_src }}" class="img-fluid rounded" alt="Фото квартиры">
-        </div>
-      {% endfor %}
-    </div>
-    {% endif %}
-    <a href="{{ url_for('public_listings') }}" class="btn btn-secondary mt-4">Назад в каталог</a>
+    <a href="{{ url_for('public_listings') }}" class="btn btn-secondary mt-2">Назад в каталог</a>
   </div>
   {% if room['latitude'] and room['longitude'] %}
   <!-- Подключение Leaflet для отображения карты -->
@@ -68,4 +78,41 @@
     });
   </script>
   {% endif %}
+  <!-- Галерея фотографий: навигация между изображениями -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      var thumbnails = Array.from(document.querySelectorAll('.thumbs img'));
+      var mainImage = document.getElementById('mainImage');
+      var prevBtn = document.getElementById('prevBtn');
+      var nextBtn = document.getElementById('nextBtn');
+      var currentIndex = 0;
+      function showImage(index) {
+        if (!thumbnails.length) return;
+        if (index < 0 || index >= thumbnails.length) return;
+        currentIndex = index;
+        if (mainImage) {
+          mainImage.src = thumbnails[index].src;
+        }
+      }
+      if (prevBtn) {
+        prevBtn.addEventListener('click', function() {
+          if (!thumbnails.length) return;
+          var newIndex = (currentIndex - 1 + thumbnails.length) % thumbnails.length;
+          showImage(newIndex);
+        });
+      }
+      if (nextBtn) {
+        nextBtn.addEventListener('click', function() {
+          if (!thumbnails.length) return;
+          var newIndex = (currentIndex + 1) % thumbnails.length;
+          showImage(newIndex);
+        });
+      }
+      thumbnails.forEach(function(thumb, index) {
+        thumb.addEventListener('click', function() {
+          showImage(index);
+        });
+      });
+    });
+  </script>
 {% endblock %}
