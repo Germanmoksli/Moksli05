@@ -58,55 +58,86 @@
         </div>
       </form>
       {% if rooms %}
-      <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+      {#
+        На странице каталога отображаем карточки квартир в две колонки для
+        любых разрешений шире мобильных. Используем класс row-cols-md-2
+        без row-cols-lg-3, чтобы даже на больших экранах оставалось по две
+        карточки в строке.
+      #}
+      <div class="row row-cols-1 row-cols-md-2 g-4">
         {% set condition_map = {'fresh': 'Свежий ремонт, новая мебель', 'good': 'Не свежий, но аккуратный ремонт', 'none': 'Без ремонта'} %}
         {% for room in rooms %}
         <div class="col">
-          <div class="card h-100 shadow-sm">
-            {# Показываем превью фотографии, если она была загружена.  Файл хранится
-               в папке static/uploads/rooms.  Если изображения нет, блок
-               пропускается. #}
-            {% if room['photo_src'] %}
-            <!-- Показываем изображение в квадратном контейнере. Свойство aspect-ratio
-                 удерживает квадрат, а object-fit: cover обрезает изображение, не
-                 искажая пропорции. ``photo_src`` содержит либо data URI с
-                 base64-кодированными данными, либо fallback URL для загрузки
-                 фото через маршрут ``uploaded_room_image``. -->
-            <img src="{{ room['photo_src'] }}"
-                 class="card-img-top"
-                 alt="Фото квартиры"
-                 style="aspect-ratio: 1 / 1; width: 100%; object-fit: cover; object-position: center;">
+          {#
+            Каждая карточка имеет скруглённые углы и небольшую тень. Внутри
+            используется горизонтальный layout: слева фотография, справа
+            информация. Вся карточка кликабельна благодаря классу
+            ``stretched-link``. Кнопка избранного в виде сердца находится
+            в правом верхнем углу.
+          #}
+          <div class="card shadow-sm position-relative" style="border-radius: 10px;">
+            {# Кнопка избранного: сердце в правом верхнем углу. Используем
+               символы ♡ и ♥ для отображения пустого и заполненного сердца.
+               Цвет задаём через text-danger. #}
+            {% if session.get('user_id') %}
+            <a href="{{ url_for('toggle_favorite', room_id=room['id']) }}"
+               class="position-absolute top-0 end-0 m-2"
+               style="font-size: 1.5rem; z-index: 2;">
+              {% if room['id'] in favorite_ids %}
+                <span class="text-danger">&#9829;</span>
+              {% else %}
+                <span class="text-danger">&#9825;</span>
+              {% endif %}
+            </a>
             {% endif %}
-            <div class="card-body">
-              <h5 class="card-title">{{ room['room_number'] }}</h5>
-              <ul class="list-unstyled mb-2">
-                {% if room['num_rooms'] %}<li><strong>Комнат:</strong> {{ room['num_rooms'] }}</li>{% endif %}
-                {% if room['floor'] is not none %}<li><strong>Этаж:</strong> {{ room['floor'] }}{% if room['floors_total'] is not none %}/{{ room['floors_total'] }}{% endif %}</li>{% endif %}
-                {% if room['area_total'] is not none %}<li><strong>Площадь:</strong> {{ room['area_total'] }}{% if room['area_kitchen'] is not none %} (кухня {{ room['area_kitchen'] }}){% endif %} м²</li>{% endif %}
-                {% if room['condition'] %}<li><strong>Состояние:</strong> {{ condition_map.get(room['condition'], room['condition']) }}</li>{% endif %}
-                {% if room['kitchen_studio'] is not none %}<li><strong>Кухня студия:</strong> {{ 'Да' if room['kitchen_studio'] else 'Нет' }}</li>{% endif %}
-                {% if room['price_per_night'] is not none %}<li><strong>Цена:</strong> {{ room['price_per_night'] }} ₸/сутки</li>{% endif %}
+            <div class="d-flex">
+              {% if room['photo_src'] %}
+              <div class="p-2">
+                <img src="{{ room['photo_src'] }}"
+                     alt="Фото квартиры"
+                     class="img-fluid"
+                     style="max-width: 200px; object-fit: cover; height: 100%; border-top-left-radius: 10px; border-bottom-left-radius: 10px;">
+              </div>
+              {% endif %}
+              <div class="flex-grow-1 p-3 d-flex flex-column">
+                {# Первая строка: количество комнат, площадь и цена. Вся строка жирная,
+                   цена выделена чуть большими размерами. #}
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <div class="fw-bold">
+                    {% if room['num_rooms'] %}{{ room['num_rooms'] }} комн.{% if room['area_total'] is not none %}, {% endif %}{% endif %}
+                    {% if room['area_total'] is not none %}{{ room['area_total'] }} м²{% endif %}
+                  </div>
+                  {% if room['price_per_night'] is not none %}
+                    <div class="fw-bold fs-5 text-end">{{ room['price_per_night'] }} ₸/сутки</div>
+                  {% endif %}
+                </div>
+                {# Вторая строка: адрес, полужирным шрифтом #}
                 {% if room['country'] or room['city'] or room['street'] or room['house_number'] %}
-                  <li><strong>Адрес:</strong>
-                    {{ room['country'] or '' }}{% if room['city'] %}, {{ room['city'] }}{% endif %}{% if room['street'] %}, {{ room['street'] }}{% endif %}{% if room['house_number'] %}, {{ room['house_number'] }}{% endif %}
-                  </li>
+                <div class="fw-semibold mb-1">
+                  {{ room['country'] or '' }}{% if room['city'] %}, {{ room['city'] }}{% endif %}{% if room['street'] %}, {{ room['street'] }}{% endif %}{% if room['house_number'] %}, {{ room['house_number'] }}{% endif %}
+                </div>
                 {% endif %}
-                {% if room['residential_complex'] %}<li><strong>ЖК:</strong> {{ room['residential_complex'] }}</li>{% endif %}
-              </ul>
-              <!-- Кнопки подробнее и внешней ссылки. Всегда показываем кнопку «Подробнее» для перехода на страницу
-                   подробной информации внутри приложения. Если указана внешняя ссылка, добавляем вторую кнопку -->
-              <a href="{{ url_for('view_room_public', room_id=room['id']) }}" class="btn btn-sm btn-outline-primary">Подробнее</a>
-              {% if room['listing_url'] %}
-                <a href="{{ room['listing_url'] }}" class="btn btn-sm btn-outline-secondary ms-2" target="_blank">На объявление</a>
-              {% endif %}
-              <!-- Кнопка добавления/удаления из избранного для авторизованных пользователей -->
-              {% if session.get('user_id') %}
-                {% if room['id'] in favorite_ids %}
-                  <a href="{{ url_for('toggle_favorite', room_id=room['id']) }}" class="btn btn-sm btn-danger ms-2">Убрать</a>
-                {% else %}
-                  <a href="{{ url_for('toggle_favorite', room_id=room['id']) }}" class="btn btn-sm btn-outline-danger ms-2">В избранное</a>
-                {% endif %}
-              {% endif %}
+                {# Остальная информация — обычный текст меньшего размера #}
+                <div class="small">
+                  {% if room['floor'] is not none %}
+                    <div>Этаж: {{ room['floor'] }}{% if room['floors_total'] is not none %}/{{ room['floors_total'] }}{% endif %}</div>
+                  {% endif %}
+                  {% if room['area_kitchen'] is not none and room['area_total'] is not none %}
+                    <div>Кухня: {{ room['area_kitchen'] }} м²</div>
+                  {% endif %}
+                  {% if room['condition'] %}
+                    <div>Состояние: {{ condition_map.get(room['condition'], room['condition']) }}</div>
+                  {% endif %}
+                  {% if room['kitchen_studio'] is not none %}
+                    <div>Кухня студия: {{ 'Да' if room['kitchen_studio'] else 'Нет' }}</div>
+                  {% endif %}
+                  {% if room['residential_complex'] %}
+                    <div>ЖК: {{ room['residential_complex'] }}</div>
+                  {% endif %}
+                </div>
+                {# Добавляем пустую ссылку со stretched-link, чтобы вся карточка была кликабельна. #}
+                <a href="{{ url_for('view_room_public', room_id=room['id']) }}" class="stretched-link"></a>
+              </div>
             </div>
           </div>
         </div>
