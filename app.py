@@ -3394,6 +3394,62 @@ def edit_room(room_id: int):
                         room_id,
                     ),
                 )
+                # После обновления основных полей обработаем новые загруженные фотографии
+                photos = request.files.getlist("photos")
+                if photos:
+                    # Убедимся, что таблица имеет колонку image_data
+                    try:
+                        ensure_room_photos_image_data_column(conn)
+                    except Exception:
+                        pass
+                    # Посчитаем количество уже сохранённых изображений для этой квартиры
+                    try:
+                        cur = conn.execute("SELECT COUNT(*) FROM room_photos WHERE room_id = ?", (room_id,))
+                        existing_count_row = cur.fetchone()
+                        existing_count = existing_count_row[0] if existing_count_row else 0
+                    except Exception:
+                        existing_count = 0
+                    max_new = 20 - existing_count
+                    # Ограничим количество новых фото
+                    photos_to_save = photos[:max_new]
+                    if len(photos) > max_new:
+                        flash("Количество фотографий ограничено 20. Лишние файлы не были загружены.")
+                    for file in photos_to_save:
+                        if file and file.filename:
+                            original = secure_filename(file.filename)
+                            ext = os.path.splitext(original)[1]
+                            unique_name = f"{uuid.uuid4().hex}{ext}"
+                            image_data_str = None
+                            try:
+                                file_bytes = file.read()
+                                try:
+                                    file.seek(0)
+                                except Exception:
+                                    try:
+                                        file.stream.seek(0)
+                                    except Exception:
+                                        pass
+                                if file_bytes:
+                                    image_data_str = base64.b64encode(file_bytes).decode("utf-8")
+                            except Exception:
+                                image_data_str = None
+                            # Попробуем сохранить файл на диск
+                            try:
+                                os.makedirs(UPLOAD_ROOMS_FOLDER, exist_ok=True)
+                            except Exception:
+                                pass
+                            try:
+                                file.save(os.path.join(UPLOAD_ROOMS_FOLDER, unique_name))
+                            except Exception:
+                                pass
+                            # Сохраним запись в базе
+                            try:
+                                conn.execute(
+                                    "INSERT INTO room_photos (room_id, file_name, image_data) VALUES (?, ?, ?)",
+                                    (room_id, unique_name, image_data_str),
+                                )
+                            except Exception:
+                                pass
         except Exception as e:
             try:
                 conn.rollback()

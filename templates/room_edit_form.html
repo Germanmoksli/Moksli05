@@ -103,6 +103,13 @@
         <input type="url" class="form-control" id="listing_url" name="listing_url" value="{{ room['listing_url'] or '' }}">
         <div class="form-text">Опционально: укажите ссылку на размещение объекта на стороннем сайте.</div>
       </div>
+
+      <!-- Добавить новые фотографии -->
+      <div class="mb-3">
+        <label for="photos" class="form-label">Добавить фотографии (до 20 изображений)</label>
+        <input type="file" class="form-control" id="photos" name="photos" accept="image/*" multiple>
+        <div class="form-text">Вы можете выбрать несколько файлов. Общий лимит фотографий для объекта — 20&nbsp;шт.</div>
+      </div>
       <!-- Кнопки сохранения и отмены -->
       <div class="text-center">
         <button type="submit" class="btn btn-primary me-2">Сохранить</button>
