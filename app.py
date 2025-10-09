@@ -3041,43 +3041,124 @@ def add_room():
     """
     if request.method == "POST":
         # Fetch and sanitize the room name (object name)
-        room_number = request.form.get("room_number", "").strip()
+        room_number = (request.form.get("room_number") or "").strip()
         # Optional external listing URL
-        listing_url = request.form.get("listing_url", "").strip() or None
-        # Residential complex (ЖК). None if not selected or blank.
+        listing_url = (request.form.get("listing_url") or "").strip() or None
+        # Residential complex (ЖК)
         residential_complex = request.form.get("residential_complex")
         residential_complex = residential_complex.strip() if residential_complex else None
         # Ensure a name was provided
         if not room_number:
             flash("Название квартиры обязательно.")
             return redirect(url_for("add_room"))
+        # Helper converters to coerce numeric fields or return None
+        def _to_int(val):
+            try:
+                return int(val) if val else None
+            except Exception:
+                return None
+        def _to_float(val):
+            try:
+                return float(val) if val else None
+            except Exception:
+                return None
+        # Extract additional fields from the form
+        num_rooms = _to_int(request.form.get("num_rooms"))
+        floor = _to_int(request.form.get("floor"))
+        floors_total = _to_int(request.form.get("floors_total"))
+        area_total = _to_float(request.form.get("area_total"))
+        area_kitchen = _to_float(request.form.get("area_kitchen"))
+        price_per_night = _to_float(request.form.get("price_per_night"))
+        condition = request.form.get("condition") or None
+        # Convert kitchen studio radio button to boolean
+        kitchen_studio = True if request.form.get("kitchen_studio") == "yes" else False
+        # Address components
+        country = request.form.get("country") or None
+        city = request.form.get("city") or None
+        street = request.form.get("street") or None
+        house_number = request.form.get("house_number") or None
+        latitude = _to_float(request.form.get("latitude"))
+        longitude = _to_float(request.form.get("longitude"))
+        # Handle photo uploads.  Use secure filenames and generate a unique name for each file.
+        saved_photos = []
+        if 'photos' in request.files:
+            photos = request.files.getlist('photos')
+            for photo in photos:
+                if photo and photo.filename:
+                    filename = secure_filename(photo.filename)
+                    ext = os.path.splitext(filename)[1]
+                    unique_name = f"{uuid.uuid4().hex}{ext}"
+                    upload_dir = os.path.join(app.root_path, 'static', 'uploads', 'rooms')
+                    try:
+                        os.makedirs(upload_dir, exist_ok=True)
+                    except Exception:
+                        pass
+                    file_path = os.path.join(upload_dir, unique_name)
+                    try:
+                        photo.save(file_path)
+                        saved_photos.append(unique_name)
+                    except Exception:
+                        # Skip files that cannot be saved
+                        continue
+        # Insert the new room record with all collected fields
         conn = get_db_connection()
-        # Ensure extended columns exist on the rooms table before inserting.
         try:
-            ensure_rooms_additional_columns(conn)
+            # Ensure extended columns and the room_photos table exist
+            try:
+                ensure_rooms_additional_columns(conn)
+            except Exception:
+                pass
+            cur = conn.cursor()
+            cur.execute(
+                "INSERT INTO rooms (room_number, listing_url, residential_complex, owner_id, num_rooms, floor, floors_total, area_total, area_kitchen, condition, kitchen_studio, country, city, street, house_number, latitude, longitude, price_per_night) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    room_number,
+                    listing_url,
+                    residential_complex,
+                    session.get('user_id'),
+                    num_rooms,
+                    floor,
+                    floors_total,
+                    area_total,
+                    area_kitchen,
+                    condition,
+                    kitchen_studio,
+                    country,
+                    city,
+                    street,
+                    house_number,
+                    latitude,
+                    longitude,
+                    price_per_night,
+                ),
+            )
+            new_room_id = cur.lastrowid
+            # Insert photo records for each uploaded file
+            for fname in saved_photos:
+                try:
+                    cur.execute(
+                        "INSERT INTO room_photos (room_id, file_name) VALUES (?, ?)",
+                        (new_room_id, fname),
+                    )
+                except Exception:
+                    # Ignore errors inserting individual photo rows
+                    continue
+            # Commit the transaction if supported
+            try:
+                conn.commit()
+            except Exception:
+                pass
         except Exception:
-            # Ignore schema upgrade errors
-            pass
-        try:
-            with conn:
-                # Insert the room and associate it with the current owner.  The owner_id
-                # column ensures that each owner only sees and manages their own
-                # listings.  Note that we always provide a value for owner_id; the
-                # session is guaranteed to contain user_id due to the @login_required
-                # decorator.
-                conn.execute(
-                    "INSERT INTO rooms (room_number, listing_url, residential_complex, owner_id) VALUES (?, ?, ?, ?)",
-                    (room_number, listing_url, residential_complex, session.get('user_id')),
-                )
-        except Exception:
-            # On any insertion error (e.g. duplicate room number), roll back the
-            # transaction if necessary and inform the user.  When using
-            # PostgreSQL the unique constraint violation is a different
-            # exception type than sqlite3.IntegrityError, so catch all
-            # exceptions here.
+            # On any insertion error (e.g. duplicate room number), roll back and inform the user
+            try:
+                conn.rollback()
+            except Exception:
+                pass
             conn.close()
-            flash("Ошибка: квартира с таким названием уже существует.")
+            flash("Ошибка: квартира с таким названием уже существует или возникла ошибка при сохранении.", "danger")
             return redirect(url_for("add_room"))
+        # Close the connection and notify the user of success
         conn.close()
         flash("Квартира добавлена успешно!")
         return redirect(url_for("list_rooms"))
