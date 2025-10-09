@@ -79,8 +79,25 @@ except Exception:
 # ``UPLOAD_ROOMS_FOLDER`` when clients request ``/uploads/rooms/<filename>``.
 @app.route('/uploads/rooms/<path:filename>')
 def uploaded_room_image(filename: str):
-    """Serve an uploaded apartment photo from the uploads folder."""
-    return send_from_directory(UPLOAD_ROOMS_FOLDER, filename)
+    """Serve an uploaded apartment photo from the uploads folder.
+
+    First attempt to serve the file from the dedicated ``UPLOAD_ROOMS_FOLDER``.
+    If the file does not exist there (e.g. because it was uploaded before
+    migrating to the new folder), fall back to the legacy static directory
+    ``static/uploads/rooms``.  This ensures backward compatibility for
+    photos uploaded prior to introducing the ``image_data`` field and
+    the new uploads directory.
+    """
+    # Attempt to serve from the new uploads directory
+    file_path = os.path.join(UPLOAD_ROOMS_FOLDER, filename)
+    try:
+        if os.path.exists(file_path):
+            return send_from_directory(UPLOAD_ROOMS_FOLDER, filename)
+    except Exception:
+        pass
+    # Fallback: serve from static/uploads/rooms
+    fallback_dir = os.path.join(app.static_folder, 'uploads', 'rooms')
+    return send_from_directory(fallback_dir, filename)
 app.secret_key = "change_this_secret_key"  # Needed for flashing messages
 
 # -----------------------------------------------------------------------------
@@ -6374,7 +6391,19 @@ def public_listings():
                 pass
         photo_src = None
         if image_data:
-            photo_src = f"data:image/jpeg;base64,{image_data}"
+            mime = 'image/jpeg'
+            try:
+                fn = file_name or ''
+                ext = fn.rsplit('.', 1)[-1].lower()
+                if ext == 'png':
+                    mime = 'image/png'
+                elif ext == 'gif':
+                    mime = 'image/gif'
+                elif ext == 'webp':
+                    mime = 'image/webp'
+            except Exception:
+                mime = 'image/jpeg'
+            photo_src = f"data:{mime};base64,{image_data}"
         elif file_name:
             try:
                 photo_src = url_for('uploaded_room_image', filename=file_name)
@@ -6463,7 +6492,19 @@ def view_room_public(room_id: int):
                 img_data = None
         src = None
         if img_data:
-            src = f"data:image/jpeg;base64,{img_data}"
+            mime = 'image/jpeg'
+            try:
+                fn = f_name or ''
+                ext = fn.rsplit('.', 1)[-1].lower()
+                if ext == 'png':
+                    mime = 'image/png'
+                elif ext == 'gif':
+                    mime = 'image/gif'
+                elif ext == 'webp':
+                    mime = 'image/webp'
+            except Exception:
+                mime = 'image/jpeg'
+            src = f"data:{mime};base64,{img_data}"
         elif f_name:
             try:
                 src = url_for('uploaded_room_image', filename=f_name)

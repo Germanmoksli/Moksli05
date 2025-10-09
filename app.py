@@ -6432,10 +6432,24 @@ def public_listings():
             except Exception:
                 pass
         # Compute the photo_src used in the template.  Prefer image_data
-        # because it avoids a filesystem lookup.
+        # because it avoids a filesystem lookup.  Determine MIME type
+        # based on filename extension when available.  Default to
+        # image/jpeg if unknown.
         photo_src = None
         if image_data:
-            photo_src = f"data:image/jpeg;base64,{image_data}"
+            mime = 'image/jpeg'
+            try:
+                fn = file_name or ''
+                ext = fn.rsplit('.', 1)[-1].lower()
+                if ext == 'png':
+                    mime = 'image/png'
+                elif ext == 'gif':
+                    mime = 'image/gif'
+                elif ext == 'webp':
+                    mime = 'image/webp'
+            except Exception:
+                mime = 'image/jpeg'
+            photo_src = f"data:{mime};base64,{image_data}"
         elif file_name:
             # Use the dedicated upload route as fallback
             try:
@@ -6530,7 +6544,19 @@ def view_room_public(room_id: int):
         # Build the photo source string.  Prefer base64-encoded data.
         src = None
         if img_data:
-            src = f"data:image/jpeg;base64,{img_data}"
+            mime = 'image/jpeg'
+            try:
+                fn = f_name or ''
+                ext = fn.rsplit('.', 1)[-1].lower()
+                if ext == 'png':
+                    mime = 'image/png'
+                elif ext == 'gif':
+                    mime = 'image/gif'
+                elif ext == 'webp':
+                    mime = 'image/webp'
+            except Exception:
+                mime = 'image/jpeg'
+            src = f"data:{mime};base64,{img_data}"
         elif f_name:
             try:
                 src = url_for('uploaded_room_image', filename=f_name)
