@@ -63,6 +63,12 @@
         {% for room in rooms %}
         <div class="col">
           <div class="card h-100 shadow-sm">
+            {# Показываем превью фотографии, если она была загружена.  Файл хранится
+               в папке static/uploads/rooms.  Если изображения нет, блок
+               пропускается. #}
+            {% if room['photo'] %}
+            <img src="{{ url_for('static', filename='uploads/rooms/' + room['photo']) }}" class="card-img-top" alt="Фото квартиры">
+            {% endif %}
             <div class="card-body">
               <h5 class="card-title">{{ room['room_number'] }}</h5>
               <ul class="list-unstyled mb-2">

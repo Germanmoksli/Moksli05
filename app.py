@@ -6116,6 +6116,15 @@ def public_listings():
     to a lightweight template designed for unauthenticated users.
     """
     conn = get_db_connection()
+    # Ensure the rooms table has all of the extended columns before querying.  If
+    # the schema upgrade fails we ignore the error so that selection still
+    # proceeds.  Without this call, newly added fields (e.g. num_rooms,
+    # area_total) may not exist on first run which can cause missing key
+    # lookups in templates and incorrect query results.
+    try:
+        ensure_rooms_additional_columns(conn)
+    except Exception:
+        pass
     check_in = request.args.get('check_in', default='', type=str)
     check_out = request.args.get('check_out', default='', type=str)
     rooms = []
@@ -6130,15 +6139,24 @@ def public_listings():
         except Exception:
             valid_dates = False
     if valid_dates:
-        # Exclude rooms that have overlapping bookings
+        # Exclude rooms that have overlapping bookings.  Also include the first
+        # uploaded photo for each room via a correlated subquery.  The photo
+        # column will contain the filename of the earliest uploaded image or
+        # NULL if no images exist.
         query = (
-            "SELECT * FROM rooms WHERE id NOT IN ("
+            "SELECT rooms.*, "
+            "(SELECT file_name FROM room_photos WHERE room_id = rooms.id ORDER BY id LIMIT 1) AS photo "
+            "FROM rooms WHERE id NOT IN ("
             "SELECT room_id FROM bookings WHERE (check_in_date < ? AND check_out_date > ?))"
         )
         rooms = conn.execute(query, (check_out_date, check_in_date)).fetchall()
     else:
-        # Show all rooms if no valid date range is provided
-        rooms = conn.execute('SELECT * FROM rooms').fetchall()
+        # Show all rooms and include the first photo via a subquery
+        rooms = conn.execute(
+            "SELECT rooms.*, "
+            "(SELECT file_name FROM room_photos WHERE room_id = rooms.id ORDER BY id LIMIT 1) AS photo "
+            "FROM rooms"
+        ).fetchall()
     # If the user is logged in, gather their favorite rooms
     favorite_ids = set()
     if session.get('user_id'):
