@@ -3165,58 +3165,57 @@ def add_room():
         # filesystem is read‑only (e.g. on Render).  ``saved_photos`` is a
         # list of tuples (file_name, image_data) so that both values can be
         # inserted later.
-        saved_photos = []  # type: list[tuple[str, typing.Optional[str]]]
-        if 'photos' in request.files:
-            photos = request.files.getlist('photos')
-            for photo in photos:
-                if photo and photo.filename:
-                    filename = secure_filename(photo.filename)
-                    ext = os.path.splitext(filename)[1]
-                    unique_name = f"{uuid.uuid4().hex}{ext}"
-                    # Attempt to read the raw bytes of the uploaded image.
-                    image_data_str: str | None = None
+        # Prepare uploaded photos.  Always obtain the list of files from the
+        # form and limit the total number of saved images to 20.  Each entry in
+        # ``saved_photos`` is a tuple (unique_file_name, base64_data_or_None).
+        # If reading the file fails, image_data will be None and the fallback
+        # URL will be used when serving the photo.
+        saved_photos: list[tuple[str, typing.Optional[str]]] = []
+        try:
+            uploaded_photos = request.files.getlist('photos')
+        except Exception:
+            uploaded_photos = []
+        # Enforce a maximum of 20 photos for new objects
+        if uploaded_photos:
+            photos_to_process = uploaded_photos[:20]
+            if len(uploaded_photos) > 20:
+                flash("Количество фотографий ограничено 20. Лишние файлы не были загружены.")
+            for photo in photos_to_process:
+                # Skip empty uploads
+                if not photo or not getattr(photo, 'filename', None):
+                    continue
+                # Generate a unique filename
+                original = secure_filename(photo.filename)
+                ext = os.path.splitext(original)[1]
+                unique_name = f"{uuid.uuid4().hex}{ext}"
+                image_data_str: typing.Optional[str] = None
+                # Try reading the photo into memory and encoding it
+                try:
+                    file_bytes = photo.read()
+                    # Reset the stream so that save() still writes the contents
                     try:
-                        # Read the file contents into bytes.  The FileStorage
-                        # object's read() may exhaust the stream; reset the
-                        # stream afterwards so that save() still writes the
-                        # data to disk.
-                        file_bytes = photo.read()
+                        photo.seek(0)
+                    except Exception:
                         try:
-                            photo.seek(0)
+                            photo.stream.seek(0)  # type: ignore[attr-defined]
                         except Exception:
-                            try:
-                                photo.stream.seek(0)
-                            except Exception:
-                                pass
-                        if file_bytes:
-                            image_data_str = base64.b64encode(file_bytes).decode('utf-8')
-                    except Exception:
-                        image_data_str = None
-                    # Save uploaded photos into the dedicated uploads folder.  We
-                    # deliberately avoid using the ``static`` directory for
-                    # user uploads because it may be read‑only.  The
-                    # ``UPLOAD_ROOMS_FOLDER`` directory is created on app
-                    # startup and is writable at runtime.  We generate a unique
-                    # filename to avoid collisions and record only the name
-                    # (not the full path) in the database.  If saving fails,
-                    # we ignore the error; the photo will still be stored
-                    # within the database.
-                    upload_dir = UPLOAD_ROOMS_FOLDER
-                    try:
-                        os.makedirs(upload_dir, exist_ok=True)
-                    except Exception:
-                        pass
-                    file_path = os.path.join(upload_dir, unique_name)
-                    try:
-                        photo.save(file_path)
-                    except Exception:
-                        # Ignore any errors saving to disk; fallback is using
-                        # the database-stored image_data.
-                        pass
-                    # Append the unique filename and base64 image data to the
-                    # saved_photos list.  ``image_data_str`` may be None
-                    # if reading or encoding failed.
-                    saved_photos.append((unique_name, image_data_str))
+                            pass
+                    if file_bytes:
+                        image_data_str = base64.b64encode(file_bytes).decode('utf-8')
+                except Exception:
+                    image_data_str = None
+                # Save the file to the uploads directory.  We ignore any
+                # filesystem errors because the database-stored image data
+                # provides a fallback if saving fails.
+                try:
+                    os.makedirs(UPLOAD_ROOMS_FOLDER, exist_ok=True)
+                except Exception:
+                    pass
+                try:
+                    photo.save(os.path.join(UPLOAD_ROOMS_FOLDER, unique_name))
+                except Exception:
+                    pass
+                saved_photos.append((unique_name, image_data_str))
         # Insert the new room record with all collected fields
         conn = get_db_connection()
         try:
