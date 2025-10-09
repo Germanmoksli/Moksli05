@@ -3224,11 +3224,14 @@ def add_room():
                 ensure_rooms_additional_columns(conn)
             except Exception:
                 pass
-            # Insert the room record and return its ID.  Use RETURNING so
-            # that the inserted ID is available when using PostgreSQL.
+            # Insert the room record.  The SQLiteCompatConnection used on
+            # PostgreSQL automatically appends a RETURNING clause and populates
+            # ``lastrowid`` on the cursor.  Avoid calling fetchone() here
+            # because the SQLiteCompatCursor consumes the returned row to set
+            # lastrowid; fetching again would return None.
             cur = conn.execute(
                 "INSERT INTO rooms (room_number, listing_url, residential_complex, owner_id, num_rooms, floor, floors_total, area_total, area_kitchen, condition, kitchen_studio, country, city, street, house_number, latitude, longitude, price_per_night) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     room_number,
                     listing_url,
@@ -3250,18 +3253,28 @@ def add_room():
                     price_per_night,
                 ),
             )
-            new_id_row = cur.fetchone()
+            # Determine the new room ID using the cursor's lastrowid property.
             new_room_id = None
-            if new_id_row:
-                # When using psycopg2 RealDictRow the row behaves like a dict;
-                # fallback to tuple indexing if dict methods are absent.
+            try:
+                new_room_id = getattr(cur, 'lastrowid', None)
+            except Exception:
+                new_room_id = None
+            if not new_room_id:
+                # Fall back to fetchone() if lastrowid is not available.  This
+                # covers older SQLite versions that return the inserted row
+                # directly when a RETURNING clause is used.
                 try:
-                    new_room_id = new_id_row.get('id')  # type: ignore[attr-defined]
+                    new_id_row = cur.fetchone()
                 except Exception:
+                    new_id_row = None
+                if new_id_row:
                     try:
-                        new_room_id = new_id_row[0]
+                        new_room_id = new_id_row.get('id')  # type: ignore[attr-defined]
                     except Exception:
-                        new_room_id = None
+                        try:
+                            new_room_id = new_id_row[0]
+                        except Exception:
+                            new_room_id = None
             # Insert photo records for each uploaded file if we have a valid room id
             if new_room_id:
                 # Ensure the image_data column exists on room_photos so that
