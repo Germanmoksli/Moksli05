@@ -40,6 +40,8 @@ from datetime import date, timedelta
 from datetime import datetime  # For timestamp handling and filters
 import re
 import uuid  # For generating unique payment identifiers
+import base64  # For encoding uploaded photos into base64 strings
+import typing  # For type annotations (e.g., Optional)
 
 # Standard library imports used for address autocompletion.  We avoid a
 # dependency on the third‑party requests library to simplify deployment on
@@ -3050,6 +3052,35 @@ def ensure_rooms_additional_columns(conn) -> None:
         pass
 
 
+# -----------------------------------------------------------------------------
+# Ensure the room_photos table has an image_data column for base64-encoded
+# photo data.  Older deployments may lack this column.  The function
+# attempts to add the column and ignores any errors (e.g., if the column
+# already exists or the database does not support ALTER TABLE).  The column
+# stores the base64-encoded JPEG (or other supported image format) of each
+# uploaded photo.  Storing images in the database ensures that photos
+# persist on platforms with a read-only filesystem (such as Render's
+# deployment environment).
+def ensure_room_photos_image_data_column(conn) -> None:
+    """
+    Ensure that the room_photos table contains an image_data column.  This
+    helper attempts to add the column and silently ignores any errors.  The
+    column is defined as TEXT so that it can store arbitrarily long base64
+    strings representing image data.  When the column already exists, the
+    database will raise an exception which is ignored.
+
+    Args:
+        conn: A database connection or compatibility wrapper.
+    """
+    try:
+        # Attempt to add the image_data column; if it exists, an exception
+        # will be raised and ignored.  The syntax without IF NOT EXISTS is
+        # used because not all SQL dialects support it uniformly.
+        conn.execute("ALTER TABLE room_photos ADD COLUMN image_data TEXT")
+    except Exception:
+        pass
+
+
 # Add room
 @app.route("/rooms/add", methods=["GET", "POST"])
 @login_required
@@ -3107,8 +3138,17 @@ def add_room():
         house_number = request.form.get("house_number") or None
         latitude = _to_float(request.form.get("latitude"))
         longitude = _to_float(request.form.get("longitude"))
-        # Handle photo uploads.  Use secure filenames and generate a unique name for each file.
-        saved_photos = []
+        # Handle photo uploads.  Use secure filenames and generate a unique
+        # name for each file.  For each uploaded photo we read its bytes
+        # into memory (if possible), encode them using base64 and store
+        # the resulting string into the ``image_data`` field of the
+        # room_photos table.  We still attempt to save the file to the
+        # uploads directory for backward compatibility, but storing the
+        # image in the database ensures the photo persists even when the
+        # filesystem is read‑only (e.g. on Render).  ``saved_photos`` is a
+        # list of tuples (file_name, image_data) so that both values can be
+        # inserted later.
+        saved_photos = []  # type: list[tuple[str, typing.Optional[str]]]
         if 'photos' in request.files:
             photos = request.files.getlist('photos')
             for photo in photos:
@@ -3116,6 +3156,25 @@ def add_room():
                     filename = secure_filename(photo.filename)
                     ext = os.path.splitext(filename)[1]
                     unique_name = f"{uuid.uuid4().hex}{ext}"
+                    # Attempt to read the raw bytes of the uploaded image.
+                    image_data_str: str | None = None
+                    try:
+                        # Read the file contents into bytes.  The FileStorage
+                        # object's read() may exhaust the stream; reset the
+                        # stream afterwards so that save() still writes the
+                        # data to disk.
+                        file_bytes = photo.read()
+                        try:
+                            photo.seek(0)
+                        except Exception:
+                            try:
+                                photo.stream.seek(0)
+                            except Exception:
+                                pass
+                        if file_bytes:
+                            image_data_str = base64.b64encode(file_bytes).decode('utf-8')
+                    except Exception:
+                        image_data_str = None
                     # Save uploaded photos into the dedicated uploads folder.  We
                     # deliberately avoid using the ``static`` directory for
                     # user uploads because it may be read‑only.  The
@@ -3123,7 +3182,8 @@ def add_room():
                     # startup and is writable at runtime.  We generate a unique
                     # filename to avoid collisions and record only the name
                     # (not the full path) in the database.  If saving fails,
-                    # we skip that file.
+                    # we ignore the error; the photo will still be stored
+                    # within the database.
                     upload_dir = UPLOAD_ROOMS_FOLDER
                     try:
                         os.makedirs(upload_dir, exist_ok=True)
@@ -3132,10 +3192,14 @@ def add_room():
                     file_path = os.path.join(upload_dir, unique_name)
                     try:
                         photo.save(file_path)
-                        saved_photos.append(unique_name)
                     except Exception:
-                        # Skip files that cannot be saved
-                        continue
+                        # Ignore any errors saving to disk; fallback is using
+                        # the database-stored image_data.
+                        pass
+                    # Append the unique filename and base64 image data to the
+                    # saved_photos list.  ``image_data_str`` may be None
+                    # if reading or encoding failed.
+                    saved_photos.append((unique_name, image_data_str))
         # Insert the new room record with all collected fields
         conn = get_db_connection()
         try:
@@ -3184,11 +3248,20 @@ def add_room():
                         new_room_id = None
             # Insert photo records for each uploaded file if we have a valid room id
             if new_room_id:
-                for fname in saved_photos:
+                # Ensure the image_data column exists on room_photos so that
+                # base64 strings can be stored.  Ignore errors if it
+                # already exists.
+                try:
+                    ensure_room_photos_image_data_column(conn)
+                except Exception:
+                    pass
+                for fname, img_data in saved_photos:
                     try:
+                        # Insert both the filename and the base64 image data.  If
+                        # img_data is None, the column will receive NULL.
                         conn.execute(
-                            "INSERT INTO room_photos (room_id, file_name) VALUES (?, ?)",
-                            (new_room_id, fname),
+                            "INSERT INTO room_photos (room_id, file_name, image_data) VALUES (?, ?, ?)",
+                            (new_room_id, fname, img_data),
                         )
                     except Exception:
                         # Ignore errors inserting individual photo rows
@@ -6268,25 +6341,92 @@ def public_listings():
                 valid_dates = True
         except Exception:
             valid_dates = False
+    # Ensure the room_photos table has an image_data column before selecting
+    # photo content.  This call is safe to run multiple times and will be
+    # ignored if the column already exists.
+    try:
+        ensure_room_photos_image_data_column(conn)
+    except Exception:
+        pass
     if valid_dates:
         # Exclude rooms that have overlapping bookings.  Also include the first
-        # uploaded photo for each room via a correlated subquery.  The photo
-        # column will contain the filename of the earliest uploaded image or
-        # NULL if no images exist.
+        # uploaded photo for each room via correlated subqueries.  We
+        # retrieve both the filename and the base64 image data so that the
+        # image can be displayed even if the filesystem is read-only.  Each
+        # subquery orders by id to ensure deterministic selection of the
+        # earliest uploaded photo.
         query = (
             "SELECT rooms.*, "
-            "(SELECT file_name FROM room_photos WHERE room_id = rooms.id ORDER BY id LIMIT 1) AS photo "
+            "(SELECT file_name FROM room_photos WHERE room_id = rooms.id ORDER BY id LIMIT 1) AS photo_file_name, "
+            "(SELECT image_data FROM room_photos WHERE room_id = rooms.id ORDER BY id LIMIT 1) AS photo_image_data "
             "FROM rooms WHERE id NOT IN ("
             "SELECT room_id FROM bookings WHERE (check_in_date < ? AND check_out_date > ?))"
         )
-        rooms = conn.execute(query, (check_out_date, check_in_date)).fetchall()
+        rows = conn.execute(query, (check_out_date, check_in_date)).fetchall()
     else:
         # Show all rooms and include the first photo via a subquery
-        rooms = conn.execute(
+        rows = conn.execute(
             "SELECT rooms.*, "
-            "(SELECT file_name FROM room_photos WHERE room_id = rooms.id ORDER BY id LIMIT 1) AS photo "
+            "(SELECT file_name FROM room_photos WHERE room_id = rooms.id ORDER BY id LIMIT 1) AS photo_file_name, "
+            "(SELECT image_data FROM room_photos WHERE room_id = rooms.id ORDER BY id LIMIT 1) AS photo_image_data "
             "FROM rooms"
         ).fetchall()
+    # Build a list of dict-like rooms and compute a photo_src for each entry.
+    rooms = []
+    for row in rows:
+        # Convert row to a dictionary.  sqlite3.Row supports keys(); other
+        # row-like objects (e.g. tuples from psycopg2) can be converted
+        # manually.  If conversion fails, fallback to using attribute access.
+        try:
+            room_dict = dict(row)
+        except Exception:
+            room_dict = {}
+            # If the row supports keys() (sqlite3.Row), iterate through keys
+            if hasattr(row, 'keys'):
+                for key in row.keys():
+                    try:
+                        room_dict[key] = row[key]
+                    except Exception:
+                        pass
+            else:
+                # Fallback: assign numeric indices (unused).  Without column
+                # names it is difficult to build a dict; skip in this case.
+                pass
+        # Determine the first photo's filename and image data from the row.
+        file_name = None
+        image_data = None
+        # Attempt dict-style access first
+        try:
+            file_name = room_dict.get('photo_file_name')  # type: ignore[attr-defined]
+            image_data = room_dict.get('photo_image_data')  # type: ignore[attr-defined]
+        except Exception:
+            # Fallback: try attribute or index access
+            try:
+                file_name = row['photo_file_name']  # type: ignore[index]
+            except Exception:
+                try:
+                    # If row is a tuple and we know the position of the
+                    # columns, we can't reliably retrieve them; skip.
+                    pass
+                except Exception:
+                    pass
+            try:
+                image_data = row['photo_image_data']  # type: ignore[index]
+            except Exception:
+                pass
+        # Compute the photo_src used in the template.  Prefer image_data
+        # because it avoids a filesystem lookup.
+        photo_src = None
+        if image_data:
+            photo_src = f"data:image/jpeg;base64,{image_data}"
+        elif file_name:
+            # Use the dedicated upload route as fallback
+            try:
+                photo_src = url_for('uploaded_room_image', filename=file_name)
+            except Exception:
+                photo_src = None
+        room_dict['photo_src'] = photo_src
+        rooms.append(room_dict)
     # If the user is logged in, gather their favorite rooms
     favorite_ids = set()
     if session.get('user_id'):
@@ -6320,11 +6460,67 @@ def view_room_public(room_id: int):
         ensure_rooms_additional_columns(conn)
     except Exception:
         pass
-    room = conn.execute("SELECT * FROM rooms WHERE id = ?", (room_id,)).fetchone()
-    if not room:
+    # Fetch the room record; convert to a dictionary for template rendering.
+    room_row = conn.execute("SELECT * FROM rooms WHERE id = ?", (room_id,)).fetchone()
+    if not room_row:
         conn.close()
         abort(404)
-    photos = conn.execute("SELECT file_name FROM room_photos WHERE room_id = ?", (room_id,)).fetchall()
+    # Ensure extended columns and the image_data column exist before selecting
+    try:
+        ensure_rooms_additional_columns(conn)
+    except Exception:
+        pass
+    try:
+        ensure_room_photos_image_data_column(conn)
+    except Exception:
+        pass
+    # Convert room_row to a dict for easier access in Jinja templates.
+    try:
+        room = dict(room_row)
+    except Exception:
+        room = {}
+        if hasattr(room_row, 'keys'):
+            for key in room_row.keys():
+                try:
+                    room[key] = room_row[key]
+                except Exception:
+                    pass
+    # Load all photos for the room; fetch both filename and base64 data.
+    photo_rows = conn.execute(
+        "SELECT file_name, image_data FROM room_photos WHERE room_id = ? ORDER BY id",
+        (room_id,)
+    ).fetchall()
+    photos: list[str] = []
+    for r in photo_rows:
+        # Extract filename and image_data from the row.  Dict-like access
+        # preferred; fallback to index access.
+        f_name = None
+        img_data = None
+        try:
+            f_name = r['file_name']  # type: ignore[index]
+        except Exception:
+            try:
+                f_name = r[0]
+            except Exception:
+                f_name = None
+        try:
+            img_data = r['image_data']  # type: ignore[index]
+        except Exception:
+            try:
+                img_data = r[1]
+            except Exception:
+                img_data = None
+        # Build the photo source string.  Prefer base64-encoded data.
+        src = None
+        if img_data:
+            src = f"data:image/jpeg;base64,{img_data}"
+        elif f_name:
+            try:
+                src = url_for('uploaded_room_image', filename=f_name)
+            except Exception:
+                src = None
+        if src:
+            photos.append(src)
     conn.close()
     return render_template('room_detail.html', room=room, photos=photos)
 

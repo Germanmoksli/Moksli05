@@ -41,9 +41,13 @@
     {% if photos and photos|length > 0 %}
     <h4 class="mt-4">Фотографии</h4>
     <div class="row row-cols-2 row-cols-md-3 g-2">
-      {% for photo in photos %}
+      {# Iterate through the list of photo sources prepared in the view.  Each
+         element in ``photos`` is a complete src attribute: either a data URI
+         containing base64-encoded JPEG data or a URL served by the
+         ``uploaded_room_image`` route. #}
+      {% for photo_src in photos %}
         <div class="col">
-          <img src="{{ url_for('static', filename='uploads/rooms/' + (photo['file_name'] if photo['file_name'] is not none else photo[0])) }}" class="img-fluid rounded" alt="Фото квартиры">
+          <img src="{{ photo_src }}" class="img-fluid rounded" alt="Фото квартиры">
         </div>
       {% endfor %}
     </div>

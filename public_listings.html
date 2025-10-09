@@ -66,8 +66,9 @@
             {# Показываем превью фотографии, если она была загружена.  Файл хранится
                в папке static/uploads/rooms.  Если изображения нет, блок
                пропускается. #}
-            {% if room['photo'] %}
-            <img src="{{ url_for('static', filename='uploads/rooms/' + room['photo']) }}" class="card-img-top" alt="Фото квартиры">
+            {% if room['photo_src'] %}
+            <!-- Фото превью: используем data URI или fallback URL. -->
+            <img src="{{ room['photo_src'] }}" class="card-img-top" alt="Фото квартиры" style="aspect-ratio: 1 / 1; width: 100%; object-fit: cover; object-position: center;">
             {% endif %}
             <div class="card-body">
               <h5 class="card-title">{{ room['room_number'] }}</h5>
