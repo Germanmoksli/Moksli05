@@ -3113,6 +3113,8 @@ def ensure_rooms_additional_columns(conn) -> None:
                     col_names.append(row['name'])
         expected = [
             ("owner_id", "INTEGER"),
+            ("housing_type", "TEXT"),
+            ("description", "TEXT"),
             ("num_rooms", "INTEGER"),
             ("floor", "INTEGER"),
             ("floors_total", "INTEGER"),
@@ -3120,6 +3122,24 @@ def ensure_rooms_additional_columns(conn) -> None:
             ("area_kitchen", "REAL"),
             ("condition", "TEXT"),
             ("kitchen_studio", "BOOLEAN"),
+            ("discount", "TEXT"),
+            ("deposit", "REAL"),
+            ("min_rent_days", "INTEGER"),
+            ("max_rent_days", "INTEGER"),
+            ("extra_charges", "TEXT"),
+            ("max_guests", "INTEGER"),
+            ("allow_children", "BOOLEAN"),
+            ("allow_pets", "BOOLEAN"),
+            ("smoking_policy", "TEXT"),
+            ("parties_policy", "TEXT"),
+            ("checkin_time", "TEXT"),
+            ("checkout_time", "TEXT"),
+            ("amenities", "TEXT"),
+            ("features", "TEXT"),
+            ("owner_name", "TEXT"),
+            ("owner_phone", "TEXT"),
+            ("owner_messenger", "TEXT"),
+            ("owner_email", "TEXT"),
             ("country", "TEXT"),
             ("city", "TEXT"),
             ("street", "TEXT"),
@@ -3127,6 +3147,9 @@ def ensure_rooms_additional_columns(conn) -> None:
             ("latitude", "REAL"),
             ("longitude", "REAL"),
             ("price_per_night", "REAL"),
+            ("unavailable_dates", "TEXT"),
+            ("min_notice_days", "INTEGER"),
+            ("booking_method", "TEXT"),
         ]
         for col, coltype in expected:
             if col not in col_names:
@@ -3229,9 +3252,49 @@ def add_room():
         condition = request.form.get("condition") or None
         # Convert kitchen studio radio button to boolean
         kitchen_studio = True if request.form.get("kitchen_studio") == "yes" else False
+        # Housing type and description
+        housing_type = request.form.get("housing_type") or None
+        description = request.form.get("description") or None
+        # Pricing details
+        discount = request.form.get("discount") or None
+        deposit = _to_float(request.form.get("deposit"))
+        min_rent_days = _to_int(request.form.get("min_rent_days"))
+        max_rent_days = _to_int(request.form.get("max_rent_days"))
+        extra_charges = request.form.get("extra_charges") or None
+        # Capacity and rules
+        max_guests = _to_int(request.form.get("max_guests"))
+        allow_children = True if request.form.get("allow_children") else False
+        allow_pets = True if request.form.get("allow_pets") else False
+        smoking_policy = request.form.get("smoking_policy") or None
+        parties_policy = request.form.get("parties_policy") or None
+        checkin_time = request.form.get("checkin_time") or None
+        checkout_time = request.form.get("checkout_time") or None
+        # Amenities and features (multi-select)
+        try:
+            amenities_list = request.form.getlist("amenities")
+        except Exception:
+            amenities_list = []
+        amenities = ",".join(amenities_list) if amenities_list else None
+        try:
+            features_list = request.form.getlist("features")
+        except Exception:
+            features_list = []
+        features = ",".join(features_list) if features_list else None
+        # Owner contact
+        owner_name = request.form.get("owner_name") or None
+        owner_phone = request.form.get("owner_phone") or None
+        owner_messenger = request.form.get("owner_messenger") or None
+        owner_email = request.form.get("owner_email") or None
+        # Availability and booking
+        unavailable_dates = request.form.get("unavailable_dates") or None
+        min_notice_days = _to_int(request.form.get("min_notice_days"))
+        booking_method = request.form.get("booking_method") or None
         # Address components
         country = request.form.get("country") or None
-        city = request.form.get("city") or None
+        # Use selected city if hidden city field is blank
+        city_field = request.form.get("city") or None
+        city_select = request.form.get("city_select") or None
+        city = city_field or city_select or None
         street = request.form.get("street") or None
         house_number = request.form.get("house_number") or None
         latitude = _to_float(request.form.get("latitude"))
@@ -3321,13 +3384,19 @@ def add_room():
             # because the SQLiteCompatCursor consumes the returned row to set
             # lastrowid; fetching again would return None.
             cur = conn.execute(
-                "INSERT INTO rooms (room_number, listing_url, residential_complex, owner_id, num_rooms, floor, floors_total, area_total, area_kitchen, condition, kitchen_studio, country, city, street, house_number, latitude, longitude, price_per_night) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO rooms (room_number, listing_url, residential_complex, owner_id, "
+                "housing_type, description, num_rooms, floor, floors_total, area_total, area_kitchen, condition, kitchen_studio, "
+                "discount, deposit, min_rent_days, max_rent_days, extra_charges, max_guests, allow_children, allow_pets, smoking_policy, parties_policy, "
+                "checkin_time, checkout_time, amenities, features, owner_name, owner_phone, owner_messenger, owner_email, "
+                "country, city, street, house_number, latitude, longitude, price_per_night, unavailable_dates, min_notice_days, booking_method) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     room_number,
                     listing_url,
                     residential_complex,
                     session.get('user_id'),
+                    housing_type,
+                    description,
                     num_rooms,
                     floor,
                     floors_total,
@@ -3335,6 +3404,24 @@ def add_room():
                     area_kitchen,
                     condition,
                     kitchen_studio,
+                    discount,
+                    deposit,
+                    min_rent_days,
+                    max_rent_days,
+                    extra_charges,
+                    max_guests,
+                    allow_children,
+                    allow_pets,
+                    smoking_policy,
+                    parties_policy,
+                    checkin_time,
+                    checkout_time,
+                    amenities,
+                    features,
+                    owner_name,
+                    owner_phone,
+                    owner_messenger,
+                    owner_email,
                     country,
                     city,
                     street,
@@ -3342,6 +3429,9 @@ def add_room():
                     latitude,
                     longitude,
                     price_per_night,
+                    unavailable_dates,
+                    min_notice_days,
+                    booking_method,
                 ),
             )
             # Determine the new room ID using the cursor's lastrowid property.

@@ -30,6 +30,11 @@
       <!-- Правая колонка: детали о квартире -->
       <div class="col-md-5">
         <ul class="list-unstyled mb-3">
+          {# Тип жилья, если указан #}
+          {% if room['housing_type'] %}
+            {% set type_map = {'flat': 'Квартира', 'studio': 'Студия', 'house': 'Дом', 'apartment': 'Апартаменты', 'room': 'Комната'} %}
+            <li><strong>Тип жилья:</strong> {{ type_map.get(room['housing_type'], room['housing_type']) }}</li>
+          {% endif %}
           {% if room['num_rooms'] %}<li><strong>Количество комнат:</strong> {{ room['num_rooms'] }}</li>{% endif %}
           {% if room['floor'] is not none %}
             <li><strong>Этаж:</strong> {{ room['floor'] }}{% if room['floors_total'] is not none %}/{{ room['floors_total'] }}{% endif %}</li>
@@ -47,6 +52,34 @@
           {% if room['price_per_night'] is not none %}
             <li><strong>Цена за сутки:</strong> {{ room['price_per_night'] }} ₸</li>
           {% endif %}
+          {% if room['discount'] %}<li><strong>Скидки:</strong> {{ room['discount'] }}</li>{% endif %}
+          {% if room['deposit'] is not none %}<li><strong>Залог:</strong> {{ room['deposit'] }} ₸</li>{% endif %}
+          {% if room['min_rent_days'] %}<li><strong>Минимальный срок аренды:</strong> {{ room['min_rent_days'] }} суток</li>{% endif %}
+          {% if room['max_rent_days'] %}<li><strong>Максимальный срок аренды:</strong> {{ room['max_rent_days'] }} суток</li>{% endif %}
+          {% if room['extra_charges'] %}<li><strong>Дополнительные расходы:</strong> {{ room['extra_charges'] }}</li>{% endif %}
+          {% if room['max_guests'] %}<li><strong>Максимум гостей:</strong> {{ room['max_guests'] }}</li>{% endif %}
+          {% if room['allow_children'] is not none %}<li><strong>С детьми:</strong> {{ 'Да' if room['allow_children'] else 'Нет' }}</li>{% endif %}
+          {% if room['allow_pets'] is not none %}<li><strong>С животными:</strong> {{ 'Да' if room['allow_pets'] else 'Нет' }}</li>{% endif %}
+          {% if room['smoking_policy'] %}
+            {% set smoke_map = {'allowed': 'Разрешено', 'forbidden': 'Запрещено', 'balcony': 'Только на балконе'} %}
+            <li><strong>Курение:</strong> {{ smoke_map.get(room['smoking_policy'], room['smoking_policy']) }}</li>
+          {% endif %}
+          {% if room['parties_policy'] %}
+            {% set party_map = {'allowed': 'Разрешены', 'not_allowed': 'Не разрешены'} %}
+            <li><strong>Вечеринки:</strong> {{ party_map.get(room['parties_policy'], room['parties_policy']) }}</li>
+          {% endif %}
+          {% if room['checkin_time'] %}<li><strong>Чек‑ин:</strong> {{ room['checkin_time'] }}</li>{% endif %}
+          {% if room['checkout_time'] %}<li><strong>Чек‑аут:</strong> {{ room['checkout_time'] }}</li>{% endif %}
+          {% if room['amenities'] %}
+            <li><strong>Удобства:</strong> {{ room['amenities'].replace(',', ', ') }}</li>
+          {% endif %}
+          {% if room['features'] %}
+            <li><strong>Особенности:</strong> {{ room['features'].replace(',', ', ') }}</li>
+          {% endif %}
+          {% if room['owner_name'] %}<li><strong>Имя владельца:</strong> {{ room['owner_name'] }}</li>{% endif %}
+          {% if room['owner_phone'] %}<li><strong>Телефон:</strong> {{ room['owner_phone'] }}</li>{% endif %}
+          {% if room['owner_messenger'] %}<li><strong>WhatsApp/Telegram:</strong> {{ room['owner_messenger'] }}</li>{% endif %}
+          {% if room['owner_email'] %}<li><strong>Email:</strong> {{ room['owner_email'] }}</li>{% endif %}
           {% if room['country'] or room['city'] or room['street'] or room['house_number'] %}
             <li><strong>Адрес:</strong>
               {{ room['country'] or '' }}{% if room['city'] %}, {{ room['city'] }}{% endif %}{% if room['street'] %}, {{ room['street'] }}{% endif %}{% if room['house_number'] %}, {{ room['house_number'] }}{% endif %}
@@ -54,7 +87,19 @@
           {% endif %}
           {% if room['residential_complex'] %}<li><strong>Жилой комплекс:</strong> {{ room['residential_complex'] }}</li>{% endif %}
           {% if room['listing_url'] %}<li><strong>Ссылка на объявление:</strong> <a href="{{ room['listing_url'] }}" target="_blank">Перейти</a></li>{% endif %}
+          {% if room['unavailable_dates'] %}<li><strong>Занятые даты:</strong> {{ room['unavailable_dates'].replace(',', ', ') }}</li>{% endif %}
+          {% if room['min_notice_days'] %}<li><strong>Минимальный срок до бронирования:</strong> {{ room['min_notice_days'] }} дней</li>{% endif %}
+          {% if room['booking_method'] %}
+            {% set book_map = {'auto': 'Автоматическое подтверждение', 'manual': 'Только после одобрения владельца'} %}
+            <li><strong>Способ бронирования:</strong> {{ book_map.get(room['booking_method'], room['booking_method']) }}</li>
+          {% endif %}
         </ul>
+        {% if room['description'] %}
+          <div class="mb-3">
+            <h5 class="fw-bold">Описание</h5>
+            <p>{{ room['description'] }}</p>
+          </div>
+        {% endif %}
       </div>
     </div>
     <a href="{{ url_for('public_listings') }}" class="btn btn-secondary mt-4">Назад в каталог</a>
