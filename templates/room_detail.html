@@ -16,9 +16,9 @@
         </div>
         {# Миниатюры. Каждая миниатюра содержит data-index для JS. #}
         <div class="d-flex flex-wrap gap-2 mb-3">
-          {% for idx, photo_src in enumerate(photos) %}
+          {% for photo_src in photos %}
           <div class="position-relative image-container" style="width: 100px; height: 100px; cursor:pointer;">
-            <img src="{{ photo_src }}" class="img-fluid rounded border thumbnail-img w-100 h-100" data-index="{{ idx }}" style="object-fit: cover;" alt="Миниатюра">
+            <img src="{{ photo_src }}" class="img-fluid rounded border thumbnail-img w-100 h-100" data-index="{{ loop.index0 }}" style="object-fit: cover;" alt="Миниатюра">
           </div>
           {% endfor %}
         </div>
@@ -70,9 +70,9 @@
           <button id="fsCloseBtn" type="button" class="btn btn-light btn-sm position-absolute top-0 end-0 m-3">&times;</button>
         </div>
         <div class="d-flex flex-wrap gap-2 mt-3 justify-content-center" style="max-width: 90%;">
-          {% for idx, photo_src in enumerate(photos) %}
+          {% for photo_src in photos %}
           <div class="position-relative image-container" style="width: 80px; height: 80px; cursor:pointer;">
-            <img src="{{ photo_src }}" class="img-fluid rounded border fs-thumbnail w-100 h-100" data-index="{{ idx }}" style="object-fit: cover;" alt="Миниатюра">
+            <img src="{{ photo_src }}" class="img-fluid rounded border fs-thumbnail w-100 h-100" data-index="{{ loop.index0 }}" style="object-fit: cover;" alt="Миниатюра">
           </div>
           {% endfor %}
         </div>
