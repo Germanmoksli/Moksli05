@@ -234,21 +234,23 @@ def apply_watermark_to_image_data(image_bytes: bytes) -> bytes:
         except Exception:
             # Fallback to default font
             font = ImageFont.load_default()
-        # Measure text size to position the watermark.  We will place it in
-        # the bottom‑right corner with a small margin so it is always
-        # visible and does not interfere with important image content.
+        # Measure the text size
         text_width, text_height = draw.textsize(text, font=font)
-        margin = max(10, text_height // 5)
-        x = max(0, img.size[0] - text_width - margin)
-        y = max(0, img.size[1] - text_height - margin)
+        # Randomly choose a position for the watermark ensuring it fits within
+        # the image.  This prevents overlapping on edges and makes each
+        # watermark appear at a different spot.
+        max_x = max(0, img.size[0] - text_width)
+        max_y = max(0, img.size[1] - text_height)
+        x = random.randint(0, max_x) if max_x > 0 else 0
+        y = random.randint(0, max_y) if max_y > 0 else 0
         # Draw a thick black shadow around the text for contrast
-        for dx in [-3, -2, -1, 0, 1, 2, 3]:
-            for dy in [-3, -2, -1, 0, 1, 2, 3]:
+        for dx in [-2, -1, 0, 1, 2]:
+            for dy in [-2, -1, 0, 1, 2]:
                 if dx != 0 or dy != 0:
-                    draw.text((x + dx, y + dy), text, font=font, fill=(0, 0, 0, 200))
-        # Draw the main watermark text in red with slight transparency.  The
-        # semi‑transparent fill ensures the underlying image remains visible.
-        draw.text((x, y), text, font=font, fill=(255, 0, 0, 180))
+                    draw.text((x + dx, y + dy), text, font=font, fill=(0, 0, 0, 160))
+        # Draw the watermark text with 50% transparency (alpha 128).  Using
+        # white ensures the watermark remains visible on dark backgrounds.
+        draw.text((x, y), text, font=font, fill=(255, 255, 255, 128))
         # Composite the overlay onto the image
         watermarked = Image.alpha_composite(img, overlay)
         # Convert back to original mode if the format does not support alpha
