@@ -3495,7 +3495,9 @@ def add_room():
         flash("Квартира добавлена успешно!")
         return redirect(url_for("list_rooms"))
     # Render the form for GET requests
-    return render_template("room_form.html")
+    # Pass Google Maps API key (if defined) to the template for map integration
+    google_maps_api_key = os.environ.get("GOOGLE_MAPS_API_KEY")
+    return render_template("room_form.html", google_maps_api_key=google_maps_api_key)
 
 # Edit existing room (update all details)
 @app.route("/rooms/<int:room_id>/edit", methods=["GET", "POST"])
