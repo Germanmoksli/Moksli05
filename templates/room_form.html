@@ -86,36 +86,27 @@
           <input type="number" class="form-control" id="floors_total" name="floors_total" min="0" required>
         </div>
       </div>
-      <div class="mb-3 position-relative">
-        <label for="country_input" class="form-label">Страна</label>
-        <input type="text" class="form-control" id="country_input" autocomplete="off" placeholder="Начните вводить страну" required>
-        <div class="invalid-feedback">Введите страну.</div>
+      <!-- Поле ввода полного адреса. Пользователь вводит адрес одной строкой, подсказки отображаются автоматически.
+           Точное расположение дома определяется маркером на карте. -->
+      <div class="mb-3">
+        <label for="address_input" class="form-label">Адрес</label>
+        <input type="text" class="form-control" id="address_input" autocomplete="off" placeholder="Введите полный адрес" required>
+        <div class="invalid-feedback">Введите адрес.</div>
       </div>
-      <div class="mb-3 position-relative">
-        <label for="city_input" class="form-label">Город</label>
-        <input type="text" class="form-control" id="city_input" autocomplete="off" placeholder="Начните вводить город" required>
-        <div class="invalid-feedback">Введите город.</div>
-      </div>
-      <div class="mb-3 position-relative">
-        <label for="street_input" class="form-label">Улица</label>
-        <input type="text" class="form-control" id="street_input" autocomplete="off" placeholder="Начните вводить улицу" required>
-        <div class="invalid-feedback">Введите улицу.</div>
-      </div>
-      <div class="mb-3 position-relative">
-        <label for="house_input" class="form-label">Номер дома</label>
-        <input type="text" class="form-control" id="house_input" autocomplete="off" placeholder="Номер дома" required>
-        <div class="invalid-feedback">Введите номер дома.</div>
+      <div class="mb-3">
+        <small class="text-muted">После выбора адреса поставьте маркер на карте, чтобы указать точное расположение дома.</small>
       </div>
       <!-- Карта для отображения местоположения -->
       <div class="mb-3">
         <label class="form-label">Карта</label>
         <div id="mapid-step1" style="height: 300px;"></div>
       </div>
-      <!-- скрытые поля для компонентов адреса и координат -->
+      <!-- Скрытые поля для компонентов адреса и координат -->
       <input type="hidden" id="country" name="country" value="">
       <input type="hidden" id="city" name="city" value="">
       <input type="hidden" id="street" name="street" value="">
       <input type="hidden" id="house_number" name="house_number" value="">
+      <input type="hidden" id="address" name="address" value="">
       <input type="hidden" id="latitude" name="latitude">
       <input type="hidden" id="longitude" name="longitude">
       <div class="mb-3">
@@ -429,29 +420,24 @@ function initMap() {
     marker.setPosition(e.latLng);
     updateLatLng(e.latLng.lat(), e.latLng.lng());
   });
-  // Настройка автодополнения для каждого поля. Используем Google Places.
-  function setupAutocomplete(inputId, types) {
-    var inputEl = document.getElementById(inputId);
-    if (!inputEl) return null;
-    var options = {};
-    if (types) {
-      options.types = types;
-    }
-    var autocomplete = new google.maps.places.Autocomplete(inputEl, options);
+  // Настройка автодополнения полного адреса
+  var addressInput = document.getElementById('address_input');
+  if (addressInput) {
+    var autocomplete = new google.maps.places.Autocomplete(addressInput, { types: ['geocode'] });
     autocomplete.addListener('place_changed', function() {
       var place = autocomplete.getPlace();
       if (!place || !place.geometry) return;
-      var components = place.address_components || [];
-      // Обновляем скрытые поля в зависимости от типа поля
-      var countryVal = document.getElementById('country').value;
-      var cityVal = document.getElementById('city').value;
-      var streetVal = document.getElementById('street').value;
-      var houseVal = document.getElementById('house_number').value;
-      components.forEach(function(comp) {
+      // Полный адрес
+      document.getElementById('address').value = addressInput.value;
+      var countryVal = '';
+      var cityVal = '';
+      var streetVal = '';
+      var houseVal = '';
+      (place.address_components || []).forEach(function(comp) {
         if (comp.types.includes('country')) {
           countryVal = comp.long_name;
         }
-        if (comp.types.includes('locality') || comp.types.includes('administrative_area_level_1')) {
+        if (comp.types.includes('locality') || comp.types.includes('administrative_area_level_1') || comp.types.includes('administrative_area_level_2')) {
           cityVal = comp.long_name;
         }
         if (comp.types.includes('route')) {
@@ -465,21 +451,8 @@ function initMap() {
       document.getElementById('city').value = cityVal;
       document.getElementById('street').value = streetVal;
       document.getElementById('house_number').value = houseVal;
-      // Отображаем заполненные значения в полях ввода, если они существуют
-      if (document.getElementById('country_input') && countryVal && inputId !== 'country_input') {
-        document.getElementById('country_input').value = countryVal;
-      }
-      if (document.getElementById('city_input') && cityVal && inputId !== 'city_input') {
-        document.getElementById('city_input').value = cityVal;
-      }
-      if (document.getElementById('street_input') && streetVal && inputId !== 'street_input') {
-        document.getElementById('street_input').value = streetVal;
-      }
-      if (document.getElementById('house_input') && houseVal && inputId !== 'house_input') {
-        document.getElementById('house_input').value = houseVal;
-      }
-      // Центрируем карту и маркер на выбранный адрес
-      if (place.geometry && place.geometry.location) {
+      // Перемещаем карту и маркер
+      if (place.geometry.location) {
         var lat = place.geometry.location.lat();
         var lng = place.geometry.location.lng();
         map.setCenter({ lat: lat, lng: lng });
@@ -488,13 +461,7 @@ function initMap() {
         updateLatLng(lat, lng);
       }
     });
-    return autocomplete;
   }
-  // Настраиваем автодополнение для каждого поля: страна, город, улица, дом
-  setupAutocomplete('country_input', ['(regions)']);
-  setupAutocomplete('city_input', ['(cities)']);
-  setupAutocomplete('street_input', ['address']);
-  setupAutocomplete('house_input', ['address']);
 }
 </script>
 
