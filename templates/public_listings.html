@@ -22,7 +22,6 @@
         text-shadow: 0 0 4px rgba(0, 0, 0, 0.7);
         pointer-events: none;
         z-index: 1;
-        white-space: nowrap;
       }
     </style>
   </head>
@@ -94,10 +93,10 @@
           <div class="card shadow-sm position-relative" style="border-radius: 10px; overflow: hidden;">
             <div class="d-flex">
               {% if room['photo_src'] %}
-              <div class="p-2 position-relative image-container" style="width: 200px; height: 200px;">
+              <div class="p-2 position-relative image-container" style="width: 200px; height: 200px; border-radius: 10px; overflow: hidden;">
                 <img src="{{ room['photo_src'] }}" alt="Фото квартиры"
                      class="img-fluid w-100 h-100"
-                     style="object-fit: cover; border-top-left-radius: 10px; border-bottom-left-radius: 10px;">
+                     style="object-fit: cover;">
                 <span class="watermark">moksli.com</span>
               </div>
               {% endif %}
@@ -164,10 +163,9 @@
       document.addEventListener('DOMContentLoaded', function() {
         const watermarks = document.querySelectorAll('.image-container .watermark');
         watermarks.forEach(function(wm) {
-          // Генерируем случайные координаты в пределах 0–50% по горизонтали и вертикали,
-          // чтобы водяной знак всегда находился внутри рамки и не выходил за край.
-          const x = Math.random() * 50;
-          const y = Math.random() * 50;
+          // Генерируем случайные координаты в пределах 0–60% по горизонтали и вертикали
+          const x = Math.random() * 60;
+          const y = Math.random() * 60;
           wm.style.left = x + '%';
           wm.style.top = y + '%';
         });
