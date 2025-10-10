@@ -90,10 +90,10 @@
             Каждая карточка: два элемента (фото и инфо) и кнопка‑сердце. Используем
             stretched-link, чтобы по клику на карточку перейти на страницу комнаты.
           #}
-          <div class="card shadow-sm position-relative" style="border-radius: 10px; overflow: hidden;">
+          <div class="card shadow-sm position-relative" style="border-radius: 20px; overflow: hidden;">
             <div class="d-flex">
               {% if room['photo_src'] %}
-              <div class="p-2 position-relative image-container" style="width: 200px; height: 200px; border-radius: 10px; overflow: hidden;">
+              <div class="p-2 position-relative image-container" style="width: 200px; height: 200px; border-radius: 20px; overflow: hidden;">
                 <img src="{{ room['photo_src'] }}" alt="Фото квартиры"
                      class="img-fluid w-100 h-100"
                      style="object-fit: cover;">
