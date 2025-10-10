@@ -44,9 +44,32 @@
         <div class="invalid-feedback">Выберите тип жилья.</div>
       </div>
       <div class="mb-3">
-        <label for="num_rooms" class="form-label">Количество комнат</label>
-        <input type="number" class="form-control" id="num_rooms" name="num_rooms" min="0" placeholder="1, 2, 3, 4+" required>
-        <div class="invalid-feedback">Введите количество комнат.</div>
+        <label class="form-label">Количество комнат</label>
+        {#
+          Группа вариантов выбора количества комнат. Используем радиокнопки с классом
+          ``btn-check`` и соответствующими метками, стилизованными под квадратные
+          чекбоксы. Пользователь может выбрать только один вариант, но внешний
+          вид напоминает набор чекбоксов с цифрами 1; 2; 3; 4; 5+. Чтобы настроить
+          размер и форму элементов, ниже добавлены CSS‑стили для класса
+          .room-option.
+        #}
+        <div class="btn-group" role="group" aria-label="Количество комнат">
+          <input type="radio" class="btn-check" name="num_rooms" id="rooms1" value="1" autocomplete="off" required>
+          <label class="btn btn-outline-secondary room-option" for="rooms1">1</label>
+
+          <input type="radio" class="btn-check" name="num_rooms" id="rooms2" value="2" autocomplete="off">
+          <label class="btn btn-outline-secondary room-option" for="rooms2">2</label>
+
+          <input type="radio" class="btn-check" name="num_rooms" id="rooms3" value="3" autocomplete="off">
+          <label class="btn btn-outline-secondary room-option" for="rooms3">3</label>
+
+          <input type="radio" class="btn-check" name="num_rooms" id="rooms4" value="4" autocomplete="off">
+          <label class="btn btn-outline-secondary room-option" for="rooms4">4</label>
+
+          <input type="radio" class="btn-check" name="num_rooms" id="rooms5" value="5" autocomplete="off">
+          <label class="btn btn-outline-secondary room-option" for="rooms5">5+</label>
+        </div>
+        <div class="invalid-feedback">Выберите количество комнат.</div>
       </div>
       <div class="mb-3">
         <label for="area_total" class="form-label">Площадь (м²)</label>
@@ -63,11 +86,42 @@
           <input type="number" class="form-control" id="floors_total" name="floors_total" min="0" required>
         </div>
       </div>
-      <div class="mb-3">
-        <label for="address" class="form-label">Адрес</label>
-        <input type="text" class="form-control" id="address" name="address" placeholder="Полный адрес" required>
-        <div class="invalid-feedback">Введите адрес.</div>
+      <div class="mb-3 position-relative">
+        <label for="country_input" class="form-label">Страна</label>
+        <input type="text" class="form-control" id="country_input" autocomplete="off" placeholder="Начните вводить страну" required>
+        <ul id="country_suggestions" class="list-group position-absolute w-100" style="z-index: 1000;"></ul>
+        <div class="invalid-feedback">Введите страну.</div>
       </div>
+      <div class="mb-3 position-relative">
+        <label for="city_input" class="form-label">Город</label>
+        <input type="text" class="form-control" id="city_input" autocomplete="off" placeholder="Начните вводить город" required>
+        <ul id="city_suggestions" class="list-group position-absolute w-100" style="z-index: 1000;"></ul>
+        <div class="invalid-feedback">Введите город.</div>
+      </div>
+      <div class="mb-3 position-relative">
+        <label for="street_input" class="form-label">Улица</label>
+        <input type="text" class="form-control" id="street_input" autocomplete="off" placeholder="Начните вводить улицу" required>
+        <ul id="street_suggestions" class="list-group position-absolute w-100" style="z-index: 1000;"></ul>
+        <div class="invalid-feedback">Введите улицу.</div>
+      </div>
+      <div class="mb-3 position-relative">
+        <label for="house_input" class="form-label">Номер дома</label>
+        <input type="text" class="form-control" id="house_input" autocomplete="off" placeholder="Номер дома" required>
+        <ul id="house_suggestions" class="list-group position-absolute w-100" style="z-index: 1000;"></ul>
+        <div class="invalid-feedback">Введите номер дома.</div>
+      </div>
+      <!-- Карта для отображения местоположения -->
+      <div class="mb-3">
+        <label class="form-label">Карта</label>
+        <div id="mapid-step1" style="height: 300px;"></div>
+      </div>
+      <!-- скрытые поля для компонентов адреса и координат -->
+      <input type="hidden" id="country" name="country" value="">
+      <input type="hidden" id="city" name="city" value="">
+      <input type="hidden" id="street" name="street" value="">
+      <input type="hidden" id="house_number" name="house_number" value="">
+      <input type="hidden" id="latitude" name="latitude">
+      <input type="hidden" id="longitude" name="longitude">
       <div class="mb-3">
         <label for="description" class="form-label">Описание</label>
         <textarea id="description" name="description" class="form-control" rows="4" placeholder="Подробное описание квартиры, особенности и условия" required></textarea>
@@ -288,41 +342,9 @@
         <button type="button" class="btn btn-primary next-btn">Далее</button>
       </div>
     </div>
-    <!-- Шаг 8. Локация и карта -->
+    <!-- Шаг 8. Предпросмотр и публикация -->
     <div class="step d-none" id="step8">
-      <h3 class="fw-bold mb-3">8. Локация и карта</h3>
-      <div class="mb-3">
-        <label for="city_select" class="form-label">Город / Район</label>
-        <select id="city_select" name="city_select" class="form-select" required>
-          <option value="">Выберите город или район</option>
-          <option value="Алматы">Алматы</option>
-          <option value="Астана">Астана</option>
-          <option value="Шымкент">Шымкент</option>
-          <option value="Караганда">Караганда</option>
-          <option value="Костанай">Костанай</option>
-        </select>
-      </div>
-      <!-- скрытое поле city для совместимости -->
-      <input type="hidden" id="city" name="city" value="">
-      <div class="mb-3">
-        <label class="form-label">Карта</label>
-        <div id="mapid" style="height: 300px;"></div>
-        <!-- скрытые поля для широты и долготы -->
-        <input type="hidden" id="latitude" name="latitude">
-        <input type="hidden" id="longitude" name="longitude">
-        <!-- скрытые поля страны, улицы и дома, заполняются пустыми значениями -->
-        <input type="hidden" id="country" name="country" value="">
-        <input type="hidden" id="street" name="street" value="">
-        <input type="hidden" id="house_number" name="house_number" value="">
-      </div>
-      <div class="d-flex justify-content-between">
-        <button type="button" class="btn btn-secondary prev-btn">Назад</button>
-        <button type="button" class="btn btn-primary next-btn">Далее</button>
-      </div>
-    </div>
-    <!-- Шаг 9. Предпросмотр и публикация -->
-    <div class="step d-none" id="step9">
-      <h3 class="fw-bold mb-3">9. Предпросмотр и публикация</h3>
+      <h3 class="fw-bold mb-3">8. Предпросмотр и публикация</h3>
       <p>Вы можете сохранить объявление как черновик, опубликовать его или предварительно просмотреть, как оно будет выглядеть для гостей.</p>
       <div class="d-flex flex-wrap gap-2">
         <button type="button" class="btn btn-secondary prev-btn">Назад</button>
@@ -392,13 +414,15 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <script>
-// Инициализация карты и установка маркера для шага 8
+// Инициализация карты и подсказок адреса для первого шага
 document.addEventListener('DOMContentLoaded', function() {
-  var mapContainer = document.getElementById('mapid');
+  var mapContainer = document.getElementById('mapid-step1');
   if (!mapContainer) return;
-  var map = L.map('mapid').setView([43.238949, 76.889709], 12);
+  // Создаём карту и устанавливаем начальный центр
+  var map = L.map('mapid-step1').setView([43.238949, 76.889709], 12);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
   var marker;
+  // При клике по карте перемещаем маркер и сохраняем координаты
   map.on('click', function(e) {
     var lat = e.latlng.lat;
     var lon = e.latlng.lng;
@@ -410,14 +434,64 @@ document.addEventListener('DOMContentLoaded', function() {
       marker = L.marker(e.latlng).addTo(map);
     }
   });
-  // Обновление скрытого поля city при выборе города
-  var citySelectEl = document.getElementById('city_select');
-  var cityHiddenEl = document.getElementById('city');
-  if (citySelectEl && cityHiddenEl) {
-    citySelectEl.addEventListener('change', function() {
-      cityHiddenEl.value = citySelectEl.value || '';
+  // Функция для настройки подсказок на полях ввода (страна, город, улица, дом)
+  function setupSuggestions(inputId, listId) {
+    var inputEl = document.getElementById(inputId);
+    var listEl = document.getElementById(listId);
+    if (!inputEl || !listEl) return;
+    inputEl.addEventListener('input', function() {
+      var query = inputEl.value.trim();
+      if (query.length < 3) {
+        listEl.innerHTML = '';
+        return;
+      }
+      fetch('/address_suggestions?q=' + encodeURIComponent(query))
+        .then(function(resp) { return resp.json(); })
+        .then(function(data) {
+          listEl.innerHTML = '';
+          data.forEach(function(item) {
+            var li = document.createElement('li');
+            li.classList.add('list-group-item', 'list-group-item-action');
+            li.textContent = item.display_name;
+            li.dataset.lat = item.lat;
+            li.dataset.lon = item.lon;
+            li.dataset.country = item.country || '';
+            li.dataset.city = item.city || '';
+            li.dataset.street = item.street || '';
+            li.dataset.house_number = item.house_number || '';
+            li.addEventListener('click', function() {
+              // Заполняем все скрытые поля и соответствующие input'ы
+              document.getElementById('country').value = li.dataset.country;
+              document.getElementById('city').value = li.dataset.city;
+              document.getElementById('street').value = li.dataset.street;
+              document.getElementById('house_number').value = li.dataset.house_number;
+              if (document.getElementById('country_input')) document.getElementById('country_input').value = li.dataset.country;
+              if (document.getElementById('city_input')) document.getElementById('city_input').value = li.dataset.city;
+              if (document.getElementById('street_input')) document.getElementById('street_input').value = li.dataset.street;
+              if (document.getElementById('house_input')) document.getElementById('house_input').value = li.dataset.house_number;
+              document.getElementById('latitude').value = li.dataset.lat;
+              document.getElementById('longitude').value = li.dataset.lon;
+              // Обновляем маркер на карте
+              var latf = parseFloat(li.dataset.lat);
+              var lonf = parseFloat(li.dataset.lon);
+              map.setView([latf, lonf], 16);
+              if (marker) {
+                marker.setLatLng([latf, lonf]);
+              } else {
+                marker = L.marker([latf, lonf]).addTo(map);
+              }
+              listEl.innerHTML = '';
+            });
+            listEl.appendChild(li);
+          });
+        });
     });
   }
+  // Настраиваем подсказки для каждого поля
+  setupSuggestions('country_input', 'country_suggestions');
+  setupSuggestions('city_input', 'city_suggestions');
+  setupSuggestions('street_input', 'street_suggestions');
+  setupSuggestions('house_input', 'house_suggestions');
 });
 </script>
 
@@ -439,3 +513,27 @@ document.addEventListener('DOMContentLoaded', function() {
 })();
 </script>
 {% endblock %}
+
+{#
+  Дополнительные стили для элементов формы.
+  Объявляем после всех блоков, чтобы они могли переопределять
+  стандартные стили Bootstrap при необходимости.
+#}
+<style>
+  /* Стилизуем варианты выбора количества комнат как квадратные кнопки */
+  .room-option {
+    width: 48px;
+    height: 48px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 1rem;
+    padding: 0;
+  }
+  /* Добавляем небольшой отступ между элементами, чтобы они не слипались */
+  .btn-group .room-option + input + .room-option {
+    margin-left: 0.5rem;
+  }
+</style>
