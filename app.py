@@ -225,38 +225,30 @@ def apply_watermark_to_image_data(image_bytes: bytes) -> bytes:
         overlay = Image.new("RGBA", img.size, (255, 255, 255, 0))
         draw = ImageDraw.Draw(overlay)
         text = "moksli.com"
-        # Compute font size relative to the smaller image dimension.  Use 30% of
-        # the smaller side to make the watermark very large and prominent on
-        # high‑resolution images.
-        font_size = max(20, int(min(img.size) * 0.3))
+        # Compute font size relative to the smaller image dimension (20%) for a very bold watermark
+        # This ensures the watermark text is large and clearly visible even on high‑resolution images
+        font_size = max(12, int(min(img.size) * 0.2))
         try:
-            # Attempt to load the DejaVuSans bold font from the system path.  This
-            # font is usually available on Linux distributions.  Using an
-            # absolute path avoids issues where PIL cannot find the file in
-            # the current working directory.
-            font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_size)
+            # Attempt to load a bold TrueType font if available
+            font = ImageFont.truetype("DejaVuSans-Bold.ttf", font_size)
         except Exception:
-            try:
-                font = ImageFont.truetype("DejaVuSans-Bold.ttf", font_size)
-            except Exception:
-                # Fallback to default font; size may not respect font_size, but
-                # repeated shadow drawing below will help make it visible.
-                font = ImageFont.load_default()
-        # Measure the size of the text
+            # Fallback to default font
+            font = ImageFont.load_default()
+        # Measure text size to position the watermark.  We will place it in
+        # the bottom‑right corner with a small margin so it is always
+        # visible and does not interfere with important image content.
         text_width, text_height = draw.textsize(text, font=font)
-        # Select a random position for the watermark ensuring it fits
-        max_x = max(0, img.size[0] - text_width)
-        max_y = max(0, img.size[1] - text_height)
-        x = random.randint(0, max_x) if max_x > 0 else 0
-        y = random.randint(0, max_y) if max_y > 0 else 0
-        # Draw a thick shadow and outlines to simulate a very bold font
-        # Multiple offsets produce a thicker appearance.  Use full opacity for the main text.
-        for dx in [-2, -1, 0, 1, 2]:
-            for dy in [-2, -1, 0, 1, 2]:
+        margin = max(10, text_height // 5)
+        x = max(0, img.size[0] - text_width - margin)
+        y = max(0, img.size[1] - text_height - margin)
+        # Draw a thick black shadow around the text for contrast
+        for dx in [-3, -2, -1, 0, 1, 2, 3]:
+            for dy in [-3, -2, -1, 0, 1, 2, 3]:
                 if dx != 0 or dy != 0:
                     draw.text((x + dx, y + dy), text, font=font, fill=(0, 0, 0, 200))
-        # Draw the main white text on top
-        draw.text((x, y), text, font=font, fill=(255, 255, 255, 255))
+        # Draw the main watermark text in red with slight transparency.  The
+        # semi‑transparent fill ensures the underlying image remains visible.
+        draw.text((x, y), text, font=font, fill=(255, 0, 0, 180))
         # Composite the overlay onto the image
         watermarked = Image.alpha_composite(img, overlay)
         # Convert back to original mode if the format does not support alpha
