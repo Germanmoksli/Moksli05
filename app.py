@@ -3111,6 +3111,15 @@ def ensure_rooms_additional_columns(conn) -> None:
             except Exception:
                 if isinstance(row, dict) and 'name' in row:
                     col_names.append(row['name'])
+        # Extend the list of expected columns with new fields.  "is_published"
+        # indicates whether a listing is visible to the public.  It is
+        # initialized to false for drafts and set to true when the owner
+        # explicitly publishes the apartment.  Without this column new
+        # apartments were always visible and the publish button in the form
+        # had no effect.  This column uses BOOLEAN so that PostgreSQL stores
+        # true/false values appropriately.  On SQLite (if enabled) BOOLEAN
+        # resolves to an integer, which still behaves correctly for truthy
+        # checks.
         expected = [
             ("owner_id", "INTEGER"),
             ("housing_type", "TEXT"),
@@ -3150,6 +3159,7 @@ def ensure_rooms_additional_columns(conn) -> None:
             ("unavailable_dates", "TEXT"),
             ("min_notice_days", "INTEGER"),
             ("booking_method", "TEXT"),
+            ("is_published", "BOOLEAN"),
         ]
         for col, coltype in expected:
             if col not in col_names:
@@ -3289,6 +3299,16 @@ def add_room():
         unavailable_dates = request.form.get("unavailable_dates") or None
         min_notice_days = _to_int(request.form.get("min_notice_days"))
         booking_method = request.form.get("booking_method") or None
+        # Determine the desired publish action.  The multi-step form uses
+        # different submit buttons with a ``name="action"`` attribute.  If
+        # the owner clicks "Опубликовать", the value will be "publish".
+        # Otherwise (preview or draft) we treat the listing as a draft.  This
+        # value controls the ``is_published`` flag stored on the rooms
+        # table.  Without this logic, all apartments were saved without
+        # considering the chosen action, leaving the publish button without
+        # effect.
+        action = request.form.get("action") or None
+        is_published = True if action == "publish" else False
         # Address components
         country = request.form.get("country") or None
         # Use selected city if hidden city field is blank
@@ -3388,8 +3408,8 @@ def add_room():
                 "housing_type, description, num_rooms, floor, floors_total, area_total, area_kitchen, condition, kitchen_studio, "
                 "discount, deposit, min_rent_days, max_rent_days, extra_charges, max_guests, allow_children, allow_pets, smoking_policy, parties_policy, "
                 "checkin_time, checkout_time, amenities, features, owner_name, owner_phone, owner_messenger, owner_email, "
-                "country, city, street, house_number, latitude, longitude, price_per_night, unavailable_dates, min_notice_days, booking_method) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "country, city, street, house_number, latitude, longitude, price_per_night, unavailable_dates, min_notice_days, booking_method, is_published) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     room_number,
                     listing_url,
@@ -3432,6 +3452,7 @@ def add_room():
                     unavailable_dates,
                     min_notice_days,
                     booking_method,
+                    is_published,
                 ),
             )
             # Determine the new room ID using the cursor's lastrowid property.
@@ -3490,9 +3511,36 @@ def add_room():
             conn.close()
             flash("Ошибка: квартира с таким названием уже существует или возникла ошибка при сохранении.", "danger")
             return redirect(url_for("add_room"))
-        # Close the connection and notify the user of success
+        # Close the connection and notify the user based on the chosen action.
+        # Redirect owners appropriately: published listings open in the public
+        # detail view, drafts return to the edit screen (so owners can
+        # continue editing), and previews behave like publish but do not set
+        # is_published to true.
         conn.close()
-        flash("Квартира добавлена успешно!")
+        # Determine redirect behaviour.  Use the same action value captured
+        # earlier.  At this point ``new_room_id`` contains the ID of the
+        # newly inserted record or None if insertion somehow failed.  If
+        # insertion failed, fall back to the room list.
+        try:
+            room_id_for_redirect = int(new_room_id) if new_room_id is not None else None
+        except Exception:
+            room_id_for_redirect = None
+        # Publish action: mark success and open the public page
+        if action == "publish":
+            flash("Квартира опубликована успешно!", "success")
+            if room_id_for_redirect:
+                return redirect(url_for("view_room_public", room_id=room_id_for_redirect))
+            return redirect(url_for("list_rooms"))
+        # Preview action: show the public page but note that the listing is not yet published
+        if action == "preview":
+            flash("Предпросмотр объявления", "info")
+            if room_id_for_redirect:
+                return redirect(url_for("view_room_public", room_id=room_id_for_redirect))
+            return redirect(url_for("list_rooms"))
+        # Draft or unspecified action: simply save as draft and return to editing/list
+        flash("Черновик сохранён успешно!", "success")
+        if room_id_for_redirect:
+            return redirect(url_for("edit_room", room_id=room_id_for_redirect))
         return redirect(url_for("list_rooms"))
     # Render the form for GET requests
     # Pass Google Maps API key (if defined) to the template for map integration
@@ -6638,7 +6686,8 @@ def public_listings():
             "SELECT rooms.*, "
             "(SELECT file_name FROM room_photos WHERE room_id = rooms.id ORDER BY id LIMIT 1) AS photo_file_name, "
             "(SELECT image_data FROM room_photos WHERE room_id = rooms.id ORDER BY id LIMIT 1) AS photo_image_data "
-            "FROM rooms WHERE id NOT IN ("
+            "FROM rooms "
+            "WHERE is_published = TRUE AND id NOT IN ("
             "SELECT room_id FROM bookings WHERE (check_in_date < ? AND check_out_date > ?))"
         )
         rows = conn.execute(query, (check_out_date, check_in_date)).fetchall()
@@ -6648,7 +6697,8 @@ def public_listings():
             "SELECT rooms.*, "
             "(SELECT file_name FROM room_photos WHERE room_id = rooms.id ORDER BY id LIMIT 1) AS photo_file_name, "
             "(SELECT image_data FROM room_photos WHERE room_id = rooms.id ORDER BY id LIMIT 1) AS photo_image_data "
-            "FROM rooms"
+            "FROM rooms "
+            "WHERE is_published = TRUE"
         ).fetchall()
     # Build a list of dict-like rooms and compute a photo_src for each entry.
     rooms = []

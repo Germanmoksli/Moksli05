@@ -105,7 +105,11 @@ def create_tables(connection) -> None:
             -- URL of the external listing/advertisement for this object (optional)
             listing_url TEXT,
             -- Residential complex (ЖК) identifier or name for filtering
-            residential_complex TEXT
+            residential_complex TEXT,
+            -- Publication flag: when true the apartment is visible to guests on
+            -- the public listings page.  Drafts and previews remain hidden
+            -- until this flag is set to true.
+            is_published BOOLEAN DEFAULT FALSE
             -- Additional columns are added below using ALTER TABLE to
             -- support upgrades to existing databases.
         );
