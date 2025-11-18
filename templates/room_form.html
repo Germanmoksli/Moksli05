@@ -3,20 +3,13 @@
 {% block title %}Добавить квартиру{% endblock %}
 
 {#
-  Многошаговая форма создания нового объекта. Каждый шаг соответствует
-  отдельному пункту на отправленных скриншотах. Пользователь заполняет
-  информацию шаг за шагом, нажимая кнопку «Далее» для перехода на
-  следующий раздел или «Назад» для возврата. На последнем шаге есть
-  кнопки для предпросмотра, публикации или сохранения в черновик.
-  Содержимое каждой секции обёрнуто в элемент с классом .step. Все
-  элементы .step кроме первого скрываются с помощью класса d-none.
-  Навигация между шагами реализована внизу шаблона через небольшой
-  скрипт JavaScript, который показывает или скрывает нужный блок.
-
-  Некоторые поля не используются в текущей реализации backend, но
-  предусмотрены для расширяемости (например, min/max аренды, список
-  удобств). Вы можете адаптировать обработку этих полей в app.py по
-  необходимости.  Карта Leaflet загружается только на шаге 8.
+  Единая форма для создания нового объекта.
+  Все поля отображаются сразу на одной странице, сгруппированные в блоки .step для удобства структуры,
+  но эти блоки больше не скрываются и кнопки навигации между шагами удалены.
+  Пользователь заполняет информацию и затем выбирает действие: предпросмотр, публикация
+  или сохранение в черновик.  Некоторые поля не используются в текущей реализации backend, но
+  предусмотрены для расширяемости (например, min/max аренды, список удобств). Вы можете адаптировать
+  обработку этих полей в app.py по необходимости.  Карта Google Maps отображается для ввода адреса.
 #}
 
 {% block content %}
@@ -114,12 +107,9 @@
         <textarea id="description" name="description" class="form-control" rows="4" placeholder="Подробное описание квартиры, особенности и условия" required></textarea>
         <div class="invalid-feedback">Введите описание.</div>
       </div>
-      <div class="text-end">
-        <button type="button" class="btn btn-primary next-btn">Далее</button>
-      </div>
     </div>
     <!-- Шаг 2. Фотографии -->
-    <div class="step d-none" id="step2">
+    <div class="step" id="step2">
       <h3 class="fw-bold mb-3">2. Фотографии</h3>
       <div class="mb-3">
         <label for="photos" class="form-label">Загрузить фото</label>
@@ -147,13 +137,9 @@
         </select>
         <div class="form-text">Одно из загруженных фото будет отображаться первым</div>
       </div>
-      <div class="d-flex justify-content-between">
-        <button type="button" class="btn btn-secondary prev-btn">Назад</button>
-        <button type="button" class="btn btn-primary next-btn">Далее</button>
-      </div>
     </div>
     <!-- Шаг 3. Стоимость и условия -->
-    <div class="step d-none" id="step3">
+    <div class="step" id="step3">
       <h3 class="fw-bold mb-3">3. Стоимость и условия</h3>
       <div class="mb-3">
         <label for="price_per_night" class="form-label">Цена за сутки (₸)</label>
@@ -197,13 +183,9 @@
         <label for="extra_charges" class="form-label">Дополнительные расходы</label>
         <textarea id="extra_charges" name="extra_charges" class="form-control" rows="3" placeholder="Например, уборка, парковка и т. п."></textarea>
       </div>
-      <div class="d-flex justify-content-between">
-        <button type="button" class="btn btn-secondary prev-btn">Назад</button>
-        <button type="button" class="btn btn-primary next-btn">Далее</button>
-      </div>
     </div>
     <!-- Шаг 4. Вместимость и правила -->
-    <div class="step d-none" id="step4">
+    <div class="step" id="step4">
       <h3 class="fw-bold mb-3">4. Вместимость и правила</h3>
       <div class="mb-3">
         <label for="max_guests" class="form-label">Максимум гостей</label>
@@ -243,13 +225,9 @@
           <input type="time" class="form-control" id="checkout_time" name="checkout_time" required>
         </div>
       </div>
-      <div class="d-flex justify-content-between">
-        <button type="button" class="btn btn-secondary prev-btn">Назад</button>
-        <button type="button" class="btn btn-primary next-btn">Далее</button>
-      </div>
     </div>
     <!-- Шаг 5. Удобства -->
-    <div class="step d-none" id="step5">
+    <div class="step" id="step5">
       <h3 class="fw-bold mb-3">5. Удобства</h3>
       <div class="mb-3">
         <label for="amenities" class="form-label">Список удобств</label>
@@ -274,13 +252,9 @@
           <option value="pool">Бассейн</option>
         </select>
       </div>
-      <div class="d-flex justify-content-between">
-        <button type="button" class="btn btn-secondary prev-btn">Назад</button>
-        <button type="button" class="btn btn-primary next-btn">Далее</button>
-      </div>
     </div>
     <!-- Шаг 6. Контакты владельца -->
-    <div class="step d-none" id="step6">
+    <div class="step" id="step6">
       <h3 class="fw-bold mb-3">6. Контакты владельца</h3>
       <div class="mb-3">
         <label for="owner_name" class="form-label">Имя владельца</label>
@@ -300,13 +274,9 @@
         <label for="owner_email" class="form-label">Email (опционально)</label>
         <input type="email" class="form-control" id="owner_email" name="owner_email" placeholder="Если используется">
       </div>
-      <div class="d-flex justify-content-between">
-        <button type="button" class="btn btn-secondary prev-btn">Назад</button>
-        <button type="button" class="btn btn-primary next-btn">Далее</button>
-      </div>
     </div>
     <!-- Шаг 7. Доступность и бронирование -->
-    <div class="step d-none" id="step7">
+    <div class="step" id="step7">
       <h3 class="fw-bold mb-3">7. Доступность и бронирование</h3>
       <div class="mb-3">
         <label for="unavailable_dates" class="form-label">Календарь доступности</label>
@@ -324,17 +294,12 @@
           <option value="manual">Только после одобрения владельца</option>
         </select>
       </div>
-      <div class="d-flex justify-content-between">
-        <button type="button" class="btn btn-secondary prev-btn">Назад</button>
-        <button type="button" class="btn btn-primary next-btn">Далее</button>
-      </div>
     </div>
     <!-- Шаг 8. Предпросмотр и публикация -->
-    <div class="step d-none" id="step8">
+    <div class="step" id="step8">
       <h3 class="fw-bold mb-3">8. Предпросмотр и публикация</h3>
       <p>Вы можете сохранить объявление как черновик, опубликовать его или предварительно просмотреть, как оно будет выглядеть для гостей.</p>
       <div class="d-flex flex-wrap gap-2">
-        <button type="button" class="btn btn-secondary prev-btn">Назад</button>
         <button type="submit" name="action" value="preview" class="btn btn-info">Предпросмотр</button>
         <button type="submit" name="action" value="publish" class="btn btn-success">Опубликовать</button>
         <button type="submit" name="action" value="draft" class="btn btn-outline-secondary">Черновик</button>
@@ -359,35 +324,11 @@
 {% endif %}
 
 <script>
-// Многошаговая навигация и ограничения на загрузку фотографий
+// Скрипт ограничения на загрузку фотографий
 document.addEventListener('DOMContentLoaded', function() {
-  var steps = document.querySelectorAll('.step');
-  var currentStep = 0;
-  function showStep(index) {
-    steps.forEach(function(step, idx) {
-      if (idx === index) {
-        step.classList.remove('d-none');
-      } else {
-        step.classList.add('d-none');
-      }
-    });
-    currentStep = index;
-  }
-  document.querySelectorAll('.next-btn').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      if (currentStep < steps.length - 1) {
-        showStep(currentStep + 1);
-      }
-    });
-  });
-  document.querySelectorAll('.prev-btn').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      if (currentStep > 0) {
-        showStep(currentStep - 1);
-      }
-    });
-  });
-  showStep(0);
+  // Форма создания квартиры отображается на одной странице, поэтому логика
+  // многошаговой навигации больше не используется.  Здесь оставляем
+  // ограничение количества загружаемых фотографий: не более 20 файлов.
   var photosInput = document.getElementById('photos');
   if (photosInput) {
     photosInput.addEventListener('change', function() {
