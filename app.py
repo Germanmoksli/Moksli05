@@ -3307,8 +3307,15 @@ def add_room():
         # table.  Without this logic, all apartments were saved without
         # considering the chosen action, leaving the publish button without
         # effect.
-        action = request.form.get("action") or None
-        is_published = True if action == "publish" else False
+        # Determine publish status.  Default to published unless the owner
+        # explicitly chooses a non‑published action (draft or preview).
+        action = request.form.get("action")
+        # If the user clicked "Черновик" or "Предпросмотр", do not publish
+        if action in ("draft", "preview"):
+            is_published = False
+        else:
+            # Publish by default or when action is "publish"
+            is_published = True
         # Address components
         country = request.form.get("country") or None
         # Use selected city if hidden city field is blank
