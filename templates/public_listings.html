@@ -61,18 +61,26 @@
       </div>
     </nav>
     <div class="container mt-4">
-      <!-- Форма фильтрации по датам. Пользователь выбирает даты заезда и выезда -->
-      <form method="get" class="row g-3 mb-4">
-        <div class="col-auto">
-          <label for="check_in" class="form-label">Дата въезда</label>
+      <!-- Поисковая форма в стиле Airbnb -->
+      <form method="get" class="d-flex flex-wrap align-items-end gap-2 mb-4">
+        <div>
+          <label for="location" class="form-label">Где</label>
+          <input type="text" class="form-control" id="location" name="location" placeholder="Поиск направлений" value="{{ location }}">
+        </div>
+        <div>
+          <label for="check_in" class="form-label">Когда</label>
           <input type="date" class="form-control" id="check_in" name="check_in" value="{{ check_in }}">
         </div>
-        <div class="col-auto">
-          <label for="check_out" class="form-label">Дата выезда</label>
+        <div>
+          <label for="check_out" class="form-label">&nbsp;</label>
           <input type="date" class="form-control" id="check_out" name="check_out" value="{{ check_out }}">
         </div>
-        <div class="col-auto d-flex align-items-end">
-          <button type="submit" class="btn btn-primary">Поиск</button>
+        <div>
+          <label for="guests" class="form-label">Кто</label>
+          <input type="number" min="1" class="form-control" id="guests" name="guests" placeholder="Количество гостей" value="{{ guests }}">
+        </div>
+        <div>
+          <button type="submit" class="btn btn-danger" style="height: 58px;">Найти</button>
         </div>
       </form>
       {% if rooms %}
@@ -82,72 +90,42 @@
         без row-cols-lg-3, чтобы даже на больших экранах оставалось по две
         карточки в строке.
       #}
-      <div class="row row-cols-1 row-cols-md-2 g-4">
+      <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
         {% set condition_map = {'fresh': 'Свежий ремонт, новая мебель', 'good': 'Не свежий, но аккуратный ремонт', 'none': 'Без ремонта'} %}
         {% for room in rooms %}
         <div class="col">
-          {#
-            Каждая карточка: два элемента (фото и инфо) и кнопка‑сердце. Используем
-            stretched-link, чтобы по клику на карточку перейти на страницу комнаты.
-          #}
-          <div class="card shadow-sm position-relative" style="border-radius: 20px; overflow: hidden;">
-            <div class="d-flex">
-              {% if room['photo_src'] %}
-              <div class="p-2 position-relative image-container" style="width: 200px; height: 200px; border-radius: 20px; overflow: hidden;">
-                <img src="{{ room['photo_src'] }}" alt="Фото квартиры"
-                     class="img-fluid w-100 h-100"
-                     style="object-fit: cover; border-radius: 20px;">
-                <span class="watermark">moksli.com</span>
-              </div>
+          {# Карточка в стиле Airbnb: вертикальная верстка с крупным изображением и иконкой избранного в углу #}
+          <div class="card border-0 shadow-sm position-relative" style="border-radius: 20px; overflow: hidden;">
+            {% if room['photo_src'] %}
+            <div class="position-relative image-container" style="height: 200px; overflow: hidden;">
+              <img src="{{ room['photo_src'] }}" alt="Фото квартиры" class="img-fluid w-100 h-100" style="object-fit: cover;">
+              <span class="watermark">moksli.com</span>
+              {% if session.get('user_id') %}
+              <a href="{{ url_for('toggle_favorite', room_id=room['id']) }}" class="position-absolute top-0 end-0 m-2" style="z-index:2; color: #ff385c;">
+                {% if room['id'] in favorite_ids %}
+                  <span class="fs-3">&#10084;</span>
+                {% else %}
+                  <span class="fs-3">&#9825;</span>
+                {% endif %}
+              </a>
               {% endif %}
-              <div class="flex-grow-1 p-3">
-                {# Первая строка: количество комнат и площадь слева, цена справа #}
-                <div class="d-flex justify-content-between align-items-start">
-                  <div class="fw-bold" style="font-size: 1.1rem;">
-                    {% if room['num_rooms'] %}{{ room['num_rooms'] }} комн.{% endif %}
-                    {% if room['area_total'] is not none %}, {{ room['area_total'] }} м²{% endif %}
-                  </div>
-                  {% if room['price_per_night'] is not none %}
-                  <div class="fw-bold text-end" style="font-size: 1.2rem;">{{ room['price_per_night'] }} ₸/сутки</div>
-                  {% endif %}
-                </div>
-                {# Вторая строка: адрес #}
-                <div class="fw-semibold mb-1">
-                  {% if room['country'] or room['city'] or room['street'] or room['house_number'] %}
-                    {{ room['country'] or '' }}{% if room['city'] %}, {{ room['city'] }}{% endif %}{% if room['street'] %}, {{ room['street'] }}{% endif %}{% if room['house_number'] %}, {{ room['house_number'] }}{% endif %}
-                  {% endif %}
-                </div>
-                {# Оставшаяся информация объединяется в строку и ограничивается двумя строками с троеточием #}
-                {% set desc_parts = [] %}
-                {% if room['floor'] is not none %}
-                  {% set _ = desc_parts.append('этаж ' ~ room['floor'] ~ (room['floors_total'] is not none and '/' ~ room['floors_total'] or '')) %}
-                {% endif %}
-                {% if room['kitchen_studio'] is not none %}
-                  {% set _ = desc_parts.append('кухня студия ' ~ ('Да' if room['kitchen_studio'] else 'Нет')) %}
-                {% endif %}
-                {% if room['condition'] %}
-                  {% set _ = desc_parts.append(condition_map.get(room['condition'], room['condition'])) %}
-                {% endif %}
-                {% if room['residential_complex'] %}
-                  {% set _ = desc_parts.append('ЖК ' ~ room['residential_complex']) %}
-                {% endif %}
-                <div class="text-muted small" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
-                  {{ desc_parts|join('; ') }}
-                </div>
-              </div>
             </div>
-            {# Сердечко для избранного: в нижнем правом углу #}
-            {% if session.get('user_id') %}
-            <a href="{{ url_for('toggle_favorite', room_id=room['id']) }}" class="position-absolute bottom-0 end-0 m-2" style="z-index:2;">
-              {% if room['id'] in favorite_ids %}
-                <span class="fs-4" style="color: red;">&#10084;</span>
-              {% else %}
-                <span class="fs-4" style="color: red;">&#9825;</span>
-              {% endif %}
-            </a>
             {% endif %}
-            {# Ссылка-растяжка, чтобы вся карточка была кликабельной #}
             <a href="{{ url_for('view_room_public', room_id=room['id']) }}" class="stretched-link"></a>
+            <div class="card-body">
+              <div class="fw-bold small mb-1">
+                {% if room['country'] or room['city'] %}
+                  {{ room['country'] or '' }}{% if room['city'] %}, {{ room['city'] }}{% endif %}
+                {% endif %}
+              </div>
+              <div class="mb-1" style="font-size: 0.95rem; font-weight: 500;">
+                {% if room['num_rooms'] %}{{ room['num_rooms'] }} комн.{% endif %}
+                {% if room['area_total'] is not none %}{% if room['num_rooms'] %}, {% endif %}{{ room['area_total'] }} м²{% endif %}
+              </div>
+              {% if room['price_per_night'] is not none %}
+              <div class="fw-bold">{{ room['price_per_night'] }} ₸/сутки</div>
+              {% endif %}
+            </div>
           </div>
         </div>
         {% endfor %}

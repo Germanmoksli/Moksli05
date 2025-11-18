@@ -6664,6 +6664,13 @@ def public_listings():
         pass
     check_in = request.args.get('check_in', default='', type=str)
     check_out = request.args.get('check_out', default='', type=str)
+    # Дополнительные параметры поиска: место (поиск направления) и количество гостей
+    location = request.args.get('location', default='', type=str)
+    guests_raw = request.args.get('guests', default='', type=str)
+    try:
+        guests = int(guests_raw) if guests_raw else None
+    except Exception:
+        guests = None
     rooms = []
     # Attempt to parse dates
     valid_dates = False
@@ -6682,31 +6689,38 @@ def public_listings():
         ensure_room_photos_image_data_column(conn)
     except Exception:
         pass
+    # Построим базовый запрос для выборки комнат и первой фотографии
+    base_query = (
+        "SELECT rooms.*, "
+        "(SELECT file_name FROM room_photos WHERE room_id = rooms.id ORDER BY id LIMIT 1) AS photo_file_name, "
+        "(SELECT image_data FROM room_photos WHERE room_id = rooms.id ORDER BY id LIMIT 1) AS photo_image_data "
+        "FROM rooms WHERE is_published = TRUE"
+    )
+    conditions = []
+    params = []
+    # Исключаем комнаты с пересечением дат, если задан период
     if valid_dates:
-        # Exclude rooms that have overlapping bookings.  Also include the first
-        # uploaded photo for each room via correlated subqueries.  We
-        # retrieve both the filename and the base64 image data so that the
-        # image can be displayed even if the filesystem is read-only.  Each
-        # subquery orders by id to ensure deterministic selection of the
-        # earliest uploaded photo.
-        query = (
-            "SELECT rooms.*, "
-            "(SELECT file_name FROM room_photos WHERE room_id = rooms.id ORDER BY id LIMIT 1) AS photo_file_name, "
-            "(SELECT image_data FROM room_photos WHERE room_id = rooms.id ORDER BY id LIMIT 1) AS photo_image_data "
-            "FROM rooms "
-            "WHERE is_published = TRUE AND id NOT IN ("
-            "SELECT room_id FROM bookings WHERE (check_in_date < ? AND check_out_date > ?))"
-        )
-        rows = conn.execute(query, (check_out_date, check_in_date)).fetchall()
+        conditions.append("id NOT IN (SELECT room_id FROM bookings WHERE (check_in_date < ? AND check_out_date > ?))")
+        params.extend([check_out_date, check_in_date])
+    # Фильтр по локации: ищем совпадения в стране, городе, улице или названии комнаты
+    if location:
+        like = f"%{location}%"
+        conditions.append("(country LIKE ? OR city LIKE ? OR street LIKE ? OR room_number LIKE ?)")
+        params.extend([like, like, like, like])
+    # Фильтр по количеству гостей: выбираем квартиры, которые могут вместить не меньше указанного числа
+    if guests:
+        conditions.append("(max_guests IS NULL OR max_guests >= ?)")
+        params.append(guests)
+    # Формируем полный запрос, добавляя условия через AND
+    if conditions:
+        query = base_query + " AND " + " AND ".join(conditions)
     else:
-        # Show all rooms and include the first photo via a subquery
-        rows = conn.execute(
-            "SELECT rooms.*, "
-            "(SELECT file_name FROM room_photos WHERE room_id = rooms.id ORDER BY id LIMIT 1) AS photo_file_name, "
-            "(SELECT image_data FROM room_photos WHERE room_id = rooms.id ORDER BY id LIMIT 1) AS photo_image_data "
-            "FROM rooms "
-            "WHERE is_published = TRUE"
-        ).fetchall()
+        query = base_query
+    try:
+        rows = conn.execute(query, params).fetchall()
+    except Exception:
+        # Fallback: без фильтров
+        rows = conn.execute(base_query).fetchall()
     # Build a list of dict-like rooms and compute a photo_src for each entry.
     rooms = []
     for row in rows:
@@ -6791,7 +6805,7 @@ def public_listings():
         except Exception:
             favorite_ids = set()
     conn.close()
-    return render_template('public_listings.html', rooms=rooms, check_in=check_in, check_out=check_out, favorite_ids=favorite_ids)
+    return render_template('public_listings.html', rooms=rooms, check_in=check_in, check_out=check_out, location=location, guests=guests_raw or '', favorite_ids=favorite_ids)
 
 
 # ---------------------------------------------------------------------------
