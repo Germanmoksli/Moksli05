@@ -3,438 +3,357 @@
 {% block title %}Добавить квартиру{% endblock %}
 
 {#
-  Многошаговая форма для создания объявления о сдаче квартиры.
-  Форма разбита на четыре логических шага, повторяя пользовательский
-  опыт Airbnb: сначала расскажите о жилье (тип, размещение, адрес,
-  вместимость), затем выберите удобства, затем загрузите фотографии,
-  и наконец придумайте название и цену.  Навигация между шагами
-  управляется JavaScript, который показывает только активный шаг,
-  скрывая остальные.  В нижней части формы отображается индикатор
-  прогресса и кнопки «Назад» / «Далее».  После заполнения всех полей
-  на последнем шаге пользователь может отправить форму на сервер для
-  предпросмотра, публикации или сохранения в черновик.
-  
-  Поля формы соответствуют модели комнаты в backend, поэтому имена
-  элементов и скрытые поля остаются неизменными.  JavaScript просто
-  собирает данные и отправляет их одной формой при финальной отправке.
+  Единая форма для создания нового объекта.
+  Все поля отображаются сразу на одной странице, сгруппированные в блоки .step для удобства структуры,
+  но эти блоки больше не скрываются и кнопки навигации между шагами удалены.
+  Пользователь заполняет информацию и затем выбирает действие: предпросмотр, публикация
+  или сохранение в черновик.  Некоторые поля не используются в текущей реализации backend, но
+  предусмотрены для расширяемости (например, min/max аренды, список удобств). Вы можете адаптировать
+  обработку этих полей в app.py по необходимости.  Карта Google Maps отображается для ввода адреса.
 #}
 
 {% block content %}
-<div class="container py-4" style="max-width: 960px;">
-  <h2 class="fw-bold fs-4 mb-4">Создание объявления</h2>
-  <form id="addRoomForm" method="post" enctype="multipart/form-data" class="needs-validation" novalidate>
-    {# ------------------ Шаг 1: Расскажите о своем жилье ------------------ #}
-    <section class="step" data-step="1">
-      <h3 class="fw-bold mb-3">Шаг 1. Расскажите о своем жилье</h3>
-      <p class="text-muted mb-4">Заполните основные сведения о типе жилья, расположении и вместимости.</p>
-      <!-- Тип жилья: отображаем как сетку кнопок с иконками -->
-      <div class="mb-4">
-        <label class="form-label mb-2">Выберите тип жилья</label>
-        <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 g-3">
-          {% set type_options = [
-            ('flat', 'Квартира', 'bi-house'),
-            ('studio', 'Студия', 'bi-building'),
-            ('house', 'Дом', 'bi-house-door'),
-            ('apartment', 'Апартаменты', 'bi-building-check'),
-            ('room', 'Комната', 'bi-door-closed')
+<div class="mx-auto" style="max-width: 900px;">
+  <h2 class="text-center text-primary fw-bold fs-4">Добавить объект</h2>
+  <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate>
+    <!-- Шаг 1. Основная информация -->
+    <div class="step" id="step1">
+      <h3 class="fw-bold mb-3">1. Основная информация</h3>
+      <div class="mb-3">
+        <label for="room_number" class="form-label">Заголовок объявления</label>
+        <input type="text" class="form-control" id="room_number" name="room_number" placeholder="Например: 1‑комнатная квартира в центре Алматы" required>
+        <div class="invalid-feedback">Введите заголовок объявления.</div>
+      </div>
+      <div class="mb-3">
+        <label for="housing_type" class="form-label">Тип жилья</label>
+        <select id="housing_type" name="housing_type" class="form-select" required>
+          <option value="" selected>Выберите тип жилья</option>
+          <option value="flat">Квартира</option>
+          <option value="studio">Студия</option>
+          <option value="house">Дом</option>
+          <option value="apartment">Апартаменты</option>
+          <option value="room">Комната</option>
+        </select>
+        <div class="invalid-feedback">Выберите тип жилья.</div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Количество комнат</label>
+        {#
+          Группа вариантов выбора количества комнат. Используем радиокнопки с классом
+          ``btn-check`` и соответствующими метками, стилизованными под квадратные
+          чекбоксы. Пользователь может выбрать только один вариант, но внешний
+          вид напоминает набор чекбоксов с цифрами 1; 2; 3; 4; 5+. Чтобы настроить
+          размер и форму элементов, ниже добавлены CSS‑стили для класса
+          .room-option.
+        #}
+        <div class="btn-group" role="group" aria-label="Количество комнат">
+          <input type="radio" class="btn-check" name="num_rooms" id="rooms1" value="1" autocomplete="off" required>
+          <label class="btn btn-outline-secondary room-option" for="rooms1">1</label>
+
+          <input type="radio" class="btn-check" name="num_rooms" id="rooms2" value="2" autocomplete="off">
+          <label class="btn btn-outline-secondary room-option" for="rooms2">2</label>
+
+          <input type="radio" class="btn-check" name="num_rooms" id="rooms3" value="3" autocomplete="off">
+          <label class="btn btn-outline-secondary room-option" for="rooms3">3</label>
+
+          <input type="radio" class="btn-check" name="num_rooms" id="rooms4" value="4" autocomplete="off">
+          <label class="btn btn-outline-secondary room-option" for="rooms4">4</label>
+
+          <input type="radio" class="btn-check" name="num_rooms" id="rooms5" value="5" autocomplete="off">
+          <label class="btn btn-outline-secondary room-option" for="rooms5">5+</label>
+        </div>
+        <div class="invalid-feedback">Выберите количество комнат.</div>
+      </div>
+      <div class="mb-3">
+        <label for="area_total" class="form-label">Площадь (м²)</label>
+        <input type="number" step="0.1" class="form-control" id="area_total" name="area_total" min="0" placeholder="Общая площадь" required>
+        <div class="invalid-feedback">Введите общую площадь.</div>
+      </div>
+      <div class="mb-3 d-flex gap-2">
+        <div class="flex-grow-1">
+          <label for="floor" class="form-label">Этаж</label>
+          <input type="number" class="form-control" id="floor" name="floor" min="0" required>
+        </div>
+        <div class="flex-grow-1">
+          <label for="floors_total" class="form-label">Всего этажей в доме</label>
+          <input type="number" class="form-control" id="floors_total" name="floors_total" min="0" required>
+        </div>
+      </div>
+      <!-- Выбор города: поле ввода с автодополнением. Пользователь вводит название,
+           и браузер предлагает варианты из списка всех городов Казахстана.
+           Значение записывается в поле name="city", так что сервер получит выбранный город. -->
+      <div class="mb-3">
+        <label for="city" class="form-label">Город</label>
+        <input type="text" class="form-control" id="city" name="city" list="cityList" placeholder="Введите город" required>
+        <datalist id="cityList">
+          {% set city_list = [
+              'Абай','Акколь','Аксай','Аксу','Актау','Актобе','Алга','Алматы','Аральск','Аркалык',
+              'Арыс','Астана','Атбасар','Атырау','Аягоз','Алатау','Байконур','Балхаш','Булаево',
+              'Державинск','Ерейментау','Есик','Есиль','Жанаозен','Жанатас','Жаркент','Жезказган',
+              'Жем','Жетысай','Житикара','Зайсан','Казалинск','Кандыагаш','Капшагай','Конаев',
+              'Караганда','Каражал','Каратау','Каркаралинск','Каскелен','Кентау','Кокшетау',
+              'Костанай','Косшы','Кульсары','Курчатов','Кызылорда','Ленгер','Лисаковск','Макинск',
+              'Мамлютка','Павлодар','Петропавловск','Приозёрск','Риддер','Рудный','Сарань','Сарканд',
+              'Сарыагаш','Сатпаев','Семей','Сергеевка','Серебрянск','Степногорск','Степняк',
+              'Тайынша','Талгар','Талдыкорган','Тараз','Текели','Темир','Темиртау','Тобыл','Туркестан',
+              'Уральск','Усть-Каменогорск','Ушарал','Уштобе','Форт-Шевченко','Хромтау','Шалкар','Шар',
+              'Шардара','Шахтинск','Шемонаиха','Шу','Шымкент','Щучинск','Экибастуз','Эмба'
           ] %}
-          {% for value, label, icon in type_options %}
-          <div class="col">
-            <input type="radio" class="btn-check" name="housing_type" id="htype-{{ value }}" value="{{ value }}" autocomplete="off" required>
-            <label class="btn btn-outline-secondary w-100 py-3 d-flex flex-column align-items-center justify-content-center" for="htype-{{ value }}">
-              <i class="bi {{ icon }} fs-2 mb-2"></i>
-              <span>{{ label }}</span>
-            </label>
-          </div>
+          {% for city_name in city_list %}
+            <option value="{{ city_name }}"></option>
           {% endfor %}
-        </div>
-        <div class="invalid-feedback d-block">Пожалуйста, выберите тип жилья.</div>
+        </datalist>
+        <div class="invalid-feedback">Введите название города.</div>
       </div>
-      <!-- Тип размещения: весь объект / комната / общая комната -->
-      <div class="mb-4">
-        <label class="form-label mb-2">Тип размещения</label>
-        <div class="list-group list-group-flush">
-          <label class="list-group-item d-flex align-items-center" for="entire_place">
-            <input type="radio" class="form-check-input me-3" name="rent_type" id="entire_place" value="entire" checked>
-            <div>
-              <div class="fw-semibold">Жилье целиком</div>
-              <small class="text-muted">Все помещения полностью в распоряжении гостей</small>
-            </div>
-          </label>
-          <label class="list-group-item d-flex align-items-center" for="private_room">
-            <input type="radio" class="form-check-input me-3" name="rent_type" id="private_room" value="private">
-            <div>
-              <div class="fw-semibold">Комната</div>
-              <small class="text-muted">У гостей есть своя комната и доступ к общим помещениям</small>
-            </div>
-          </label>
-          <label class="list-group-item d-flex align-items-center" for="shared_room">
-            <input type="radio" class="form-check-input me-3" name="rent_type" id="shared_room" value="shared">
-            <div>
-              <div class="fw-semibold">Общая комната</div>
-              <small class="text-muted">Гости делят комнату с другими жильцами</small>
-            </div>
-          </label>
-        </div>
-      </div>
-      <!-- Адрес и карта -->
-      <div class="mb-4">
+      <!-- Поле ввода полного адреса. Пользователь вводит адрес одной строкой, подсказки отображаются автоматически.
+           Точное расположение дома определяется маркером на карте. -->
+      <div class="mb-3">
         <label for="address_input" class="form-label">Адрес</label>
         <input type="text" class="form-control" id="address_input" autocomplete="off" placeholder="Введите полный адрес" required>
         <div class="invalid-feedback">Введите адрес.</div>
       </div>
       <div class="mb-3">
-        <small class="text-muted">После выбора адреса поставьте маркер на карте, чтобы указать точное расположение.</small>
+        <small class="text-muted">После выбора адреса поставьте маркер на карте, чтобы указать точное расположение дома.</small>
       </div>
-      <div class="mb-4">
+      <!-- Карта для отображения местоположения -->
+      <div class="mb-3">
+        <label class="form-label">Карта</label>
         <div id="mapid-step1" style="height: 300px;"></div>
       </div>
-      {# Скрытые поля для адреса и координат #}
+      <!-- Скрытые поля для компонентов адреса и координат -->
       <input type="hidden" id="country" name="country" value="">
-      <input type="hidden" id="city" name="city" value="">
       <input type="hidden" id="street" name="street" value="">
       <input type="hidden" id="house_number" name="house_number" value="">
       <input type="hidden" id="address" name="address" value="">
       <input type="hidden" id="latitude" name="latitude">
       <input type="hidden" id="longitude" name="longitude">
-      <!-- Вместимость: количество гостей, спален, кроватей, ванных -->
-      <div class="mb-4">
-        <label class="form-label mb-2">Вместимость</label>
-        <div class="row g-3">
-          <div class="col-6 col-md-3">
-            <label for="max_guests" class="form-label">Гости</label>
-            <input type="number" class="form-control" id="max_guests" name="max_guests" min="1" value="1" required>
-          </div>
-          <div class="col-6 col-md-3">
-            <label for="num_rooms" class="form-label">Спальни</label>
-            <input type="number" class="form-control" id="num_rooms" name="num_rooms" min="0" value="1" required>
-          </div>
-          <div class="col-6 col-md-3">
-            <label for="beds" class="form-label">Кровати</label>
-            <input type="number" class="form-control" id="beds" name="beds" min="0" value="1" required>
-          </div>
-          <div class="col-6 col-md-3">
-            <label for="bathrooms" class="form-label">Ванные</label>
-            <input type="number" step="0.5" class="form-control" id="bathrooms" name="bathrooms" min="0" value="1" required>
-          </div>
-        </div>
-      </div>
-      <!-- Площадь и этажность -->
-      <div class="mb-4">
-        <label class="form-label mb-2">Площадь и этажность</label>
-        <div class="row g-3">
-          <div class="col-6 col-md-3">
-            <label for="area_total" class="form-label">Площадь (м²)</label>
-            <input type="number" step="0.1" class="form-control" id="area_total" name="area_total" min="0" required>
-          </div>
-          <div class="col-6 col-md-3">
-            <label for="floor" class="form-label">Этаж</label>
-            <input type="number" class="form-control" id="floor" name="floor" min="0" required>
-          </div>
-          <div class="col-6 col-md-3">
-            <label for="floors_total" class="form-label">Всего этажей</label>
-            <input type="number" class="form-control" id="floors_total" name="floors_total" min="0" required>
-          </div>
-        </div>
-      </div>
-    </section>
-    {# ------------------ Шаг 2: Удобства и особенности ------------------ #}
-    <section class="step d-none" data-step="2">
-      <h3 class="fw-bold mb-3">Шаг 2. Сделайте объявление привлекательнее</h3>
-      <p class="text-muted mb-4">Выберите удобства и особенности, которыми располагает ваше жилье.</p>
-      <!-- Популярные удобства -->
-      <div class="mb-4">
-        <label class="form-label">Популярные удобства</label>
-        <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 g-3">
-          {% set amenities_list = [
-            ('wifi', 'Wi‑Fi', 'bi-wifi'),
-            ('tv', 'Телевизор', 'bi-tv'),
-            ('kitchen', 'Кухня', 'bi-cup-straw'),
-            ('washing_machine', 'Стиральная машина', 'bi-bucket'),
-            ('ac', 'Кондиционер', 'bi-snow2'),
-            ('parking', 'Парковка', 'bi-car-front'),
-            ('elevator', 'Лифт', 'bi-lift'),
-            ('pool', 'Бассейн', 'bi-droplet')
-          ] %}
-          {% for value, label, icon in amenities_list %}
-          <div class="col">
-            <input type="checkbox" class="btn-check" id="amenity-{{ value }}" name="amenities" value="{{ value }}" autocomplete="off">
-            <label class="btn btn-outline-secondary w-100 py-3 d-flex flex-column align-items-center justify-content-center" for="amenity-{{ value }}">
-              <i class="bi {{ icon }} fs-2 mb-2"></i>
-              <span>{{ label }}</span>
-            </label>
-          </div>
-          {% endfor %}
-        </div>
-      </div>
-      <!-- Особенности жилья -->
-      <div class="mb-4">
-        <label class="form-label">Особенности жилья</label>
-        <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 g-3">
-          {% set features_list = [
-            ('panoramic_view', 'Панорамный вид', 'bi-camera-video'),
-            ('balcony', 'Балкон', 'bi-door-open'),
-            ('jacuzzi', 'Джакузи', 'bi-dropbox'),
-            ('cozy_interior', 'Уютный интерьер', 'bi-cup-hot'),
-            ('fireplace', 'Камин', 'bi-fire'),
-            ('garden', 'Сад', 'bi-tree')
-          ] %}
-          {% for value, label, icon in features_list %}
-          <div class="col">
-            <input type="checkbox" class="btn-check" id="feature-{{ value }}" name="features" value="{{ value }}" autocomplete="off">
-            <label class="btn btn-outline-secondary w-100 py-3 d-flex flex-column align-items-center justify-content-center" for="feature-{{ value }}">
-              <i class="bi {{ icon }} fs-2 mb-2"></i>
-              <span>{{ label }}</span>
-            </label>
-          </div>
-          {% endfor %}
-        </div>
-      </div>
-    </section>
-    {# ------------------ Шаг 3: Фотографии ------------------ #}
-    <section class="step d-none" data-step="3">
-      <h3 class="fw-bold mb-3">Шаг 3. Загрузите фотографии</h3>
-      <p class="text-muted mb-4">Добавьте как минимум 5 фотографий, чтобы гости могли увидеть ваше жилье.</p>
-      <div class="mb-4">
-        <label for="photos" class="form-label">Фотографии</label>
-        <input type="file" class="form-control" id="photos" name="photos" accept="image/*" multiple>
-        <div class="form-text">Загрузите не более 20 файлов. Первое выбранное фото станет основным.</div>
-      </div>
-      <div class="mb-4">
-        <label for="main_photo_index" class="form-label">Главное фото</label>
-        <select class="form-select" id="main_photo_index" name="main_photo_index">
-          {% for i in range(1, 21) %}<option value="{{ i }}" {% if i == 1 %}selected{% endif %}>{{ i }}</option>{% endfor %}
-        </select>
-        <div class="form-text">Выберите номер главного фото из загруженных</div>
-      </div>
-    </section>
-    {# ------------------ Шаг 4: Название, описание и условия ------------------ #}
-    <section class="step d-none" data-step="4">
-      <h3 class="fw-bold mb-3">Шаг 4. Завершите объявление</h3>
-      <p class="text-muted mb-4">Придумайте название, опишите жильё и укажите стоимость и условия.</p>
-      <div class="mb-4">
-        <label for="room_number" class="form-label">Название объявления</label>
-        <input type="text" class="form-control" id="room_number" name="room_number" maxlength="50" placeholder="Например: Уютная квартира в центре" required>
-        <div class="invalid-feedback">Введите название объявления.</div>
-      </div>
-      <div class="mb-4">
+      <div class="mb-3">
         <label for="description" class="form-label">Описание</label>
-        <textarea id="description" name="description" class="form-control" rows="4" placeholder="Подробное описание жилья, его особенностей и условий" required></textarea>
-        <div class="invalid-feedback">Введите описание жилья.</div>
+        <textarea id="description" name="description" class="form-control" rows="4" placeholder="Подробное описание квартиры, особенности и условия" required></textarea>
+        <div class="invalid-feedback">Введите описание.</div>
       </div>
-      <!-- Стоимость и условия -->
-      <div class="mb-4">
-        <label class="form-label">Стоимость и условия</label>
-        <div class="row g-3">
-          <div class="col-md-4">
-            <label for="price_per_night" class="form-label">Цена за сутки (₸)</label>
-            <input type="number" step="0.01" class="form-control" id="price_per_night" name="price_per_night" required>
-            <div class="invalid-feedback">Введите цену за сутки.</div>
-          </div>
-          <div class="col-md-4">
-            <label for="discount" class="form-label">Скидки</label>
-            <input type="text" class="form-control" id="discount" name="discount" placeholder="Например: при брони от 3 суток — 5%">
-          </div>
-          <div class="col-md-4">
-            <label for="deposit" class="form-label">Залог</label>
-            <input type="number" step="0.01" class="form-control" id="deposit" name="deposit" placeholder="Сумма залога или 0">
-          </div>
-        </div>
-        <div class="row g-3 mt-3">
-          <div class="col-md-6">
-            <label for="min_rent_days" class="form-label">Минимальный срок аренды</label>
-            <select id="min_rent_days" name="min_rent_days" class="form-select" required>
-              <option value="1">1 сутки</option>
-              <option value="2">2 суток</option>
-              <option value="3">3 суток</option>
-              <option value="4">4 суток</option>
-              <option value="5">5 суток</option>
-              <option value="6">6 суток</option>
-              <option value="7">7 суток</option>
-            </select>
-          </div>
-          <div class="col-md-6">
-            <label for="max_rent_days" class="form-label">Максимальный срок аренды</label>
-            <select id="max_rent_days" name="max_rent_days" class="form-select">
-              <option value="">Опционально</option>
-              {% for val in [7,14,30,60,90] %}<option value="{{ val }}">{{ val }} суток</option>{% endfor %}
-            </select>
-          </div>
-        </div>
-        <div class="mt-3">
-          <label for="extra_charges" class="form-label">Дополнительные расходы</label>
-          <textarea id="extra_charges" name="extra_charges" class="form-control" rows="2" placeholder="Например: уборка, парковка"></textarea>
-        </div>
+    </div>
+    <!-- Шаг 2. Фотографии -->
+    <div class="step" id="step2">
+      <h3 class="fw-bold mb-3">2. Фотографии</h3>
+      <div class="mb-3">
+        <label for="photos" class="form-label">Загрузить фото</label>
+        <input type="file" class="form-control" id="photos" name="photos" accept="image/*" multiple>
+        <div class="form-text">До 10–15 фото высокого качества</div>
       </div>
-      <!-- Политики и правила -->
-      <div class="mb-4">
-        <label class="form-label">Правила и политика</label>
-        <div class="row g-3">
-          <div class="col-md-6">
-            <label for="allow_children" class="form-label d-block">С детьми</label>
-            <div class="form-check form-switch">
-              <input class="form-check-input" type="checkbox" id="allow_children" name="allow_children">
-              <label class="form-check-label" for="allow_children">Разрешено</label>
-            </div>
-          </div>
-          <div class="col-md-6">
-            <label for="allow_pets" class="form-label d-block">С животными</label>
-            <div class="form-check form-switch">
-              <input class="form-check-input" type="checkbox" id="allow_pets" name="allow_pets">
-              <label class="form-check-label" for="allow_pets">Разрешено</label>
-            </div>
-          </div>
+      <div class="mb-3">
+        <label for="main_photo_index" class="form-label">Главное фото (номер из загруженных)</label>
+        <select class="form-select" id="main_photo_index" name="main_photo_index">
+          <option value="1" selected>1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+          <option value="5">5</option>
+          <option value="6">6</option>
+          <option value="7">7</option>
+          <option value="8">8</option>
+          <option value="9">9</option>
+          <option value="10">10</option>
+          <option value="11">11</option>
+          <option value="12">12</option>
+          <option value="13">13</option>
+          <option value="14">14</option>
+          <option value="15">15</option>
+        </select>
+        <div class="form-text">Одно из загруженных фото будет отображаться первым</div>
+      </div>
+    </div>
+    <!-- Шаг 3. Стоимость и условия -->
+    <div class="step" id="step3">
+      <h3 class="fw-bold mb-3">3. Стоимость и условия</h3>
+      <div class="mb-3">
+        <label for="price_per_night" class="form-label">Цена за сутки (₸)</label>
+        <input type="number" step="0.01" class="form-control" id="price_per_night" name="price_per_night" required>
+        <div class="invalid-feedback">Введите цену за сутки.</div>
+      </div>
+      <div class="mb-3">
+        <label for="discount" class="form-label">Скидки</label>
+        <input type="text" class="form-control" id="discount" name="discount" placeholder="Например: при брони от 3 суток — 5%">
+      </div>
+      <div class="mb-3">
+        <label for="deposit" class="form-label">Залог (если есть)</label>
+        <input type="number" step="0.01" class="form-control" id="deposit" name="deposit" placeholder="Сумма залога или 0">
+      </div>
+      <div class="mb-3 d-flex gap-2">
+        <div class="flex-grow-1">
+          <label for="min_rent_days" class="form-label">Минимальный срок аренды</label>
+          <select id="min_rent_days" name="min_rent_days" class="form-select" required>
+            <option value="1">1 сутки</option>
+            <option value="2">2 суток</option>
+            <option value="3">3 суток</option>
+            <option value="4">4 суток</option>
+            <option value="5">5 суток</option>
+            <option value="6">6 суток</option>
+            <option value="7">7 суток</option>
+          </select>
         </div>
-        <div class="row g-3 mt-3">
-          <div class="col-md-6">
-            <label for="smoking_policy" class="form-label">Курение</label>
-            <select id="smoking_policy" name="smoking_policy" class="form-select" required>
-              <option value="allowed">Разрешено</option>
-              <option value="forbidden">Запрещено</option>
-              <option value="balcony">Только на балконе</option>
-            </select>
-          </div>
-          <div class="col-md-6">
-            <label for="parties_policy" class="form-label">Вечеринки</label>
-            <select id="parties_policy" name="parties_policy" class="form-select" required>
-              <option value="allowed">Разрешены</option>
-              <option value="not_allowed">Запрещены</option>
-            </select>
-          </div>
-        </div>
-        <div class="row g-3 mt-3">
-          <div class="col-md-6">
-            <label for="checkin_time" class="form-label">Чек‑ин</label>
-            <input type="time" class="form-control" id="checkin_time" name="checkin_time" required>
-          </div>
-          <div class="col-md-6">
-            <label for="checkout_time" class="form-label">Чек‑аут</label>
-            <input type="time" class="form-control" id="checkout_time" name="checkout_time" required>
-          </div>
+        <div class="flex-grow-1">
+          <label for="max_rent_days" class="form-label">Максимальный срок аренды</label>
+          <select id="max_rent_days" name="max_rent_days" class="form-select">
+            <option value="">Опционально</option>
+            <option value="7">7 суток</option>
+            <option value="14">14 суток</option>
+            <option value="30">30 суток</option>
+            <option value="60">60 суток</option>
+            <option value="90">90 суток</option>
+          </select>
         </div>
       </div>
-      <!-- Контактные данные владельца -->
-      <div class="mb-4">
-        <label class="form-label">Контактные данные</label>
-        <div class="row g-3">
-          <div class="col-md-6">
-            <label for="owner_name" class="form-label">Имя владельца</label>
-            <input type="text" class="form-control" id="owner_name" name="owner_name" required>
-            <div class="invalid-feedback">Введите имя владельца.</div>
-          </div>
-          <div class="col-md-6">
-            <label for="owner_phone" class="form-label">Телефон</label>
-            <input type="tel" class="form-control" id="owner_phone" name="owner_phone" required>
-            <div class="invalid-feedback">Введите номер телефона.</div>
-          </div>
+      <div class="mb-3">
+        <label for="extra_charges" class="form-label">Дополнительные расходы</label>
+        <textarea id="extra_charges" name="extra_charges" class="form-control" rows="3" placeholder="Например, уборка, парковка и т. п."></textarea>
+      </div>
+    </div>
+    <!-- Шаг 4. Вместимость и правила -->
+    <div class="step" id="step4">
+      <h3 class="fw-bold mb-3">4. Вместимость и правила</h3>
+      <div class="mb-3">
+        <label for="max_guests" class="form-label">Максимум гостей</label>
+        <input type="number" class="form-control" id="max_guests" name="max_guests" min="1" placeholder="Например: до 3 человек" required>
+        <div class="invalid-feedback">Укажите количество гостей.</div>
+      </div>
+      <div class="mb-3 form-check">
+        <input class="form-check-input" type="checkbox" id="allow_children" name="allow_children">
+        <label class="form-check-label" for="allow_children">Разрешено с детьми</label>
+      </div>
+      <div class="mb-3 form-check">
+        <input class="form-check-input" type="checkbox" id="allow_pets" name="allow_pets">
+        <label class="form-check-label" for="allow_pets">Разрешено с животными</label>
+      </div>
+      <div class="mb-3">
+        <label for="smoking_policy" class="form-label">Курение</label>
+        <select id="smoking_policy" name="smoking_policy" class="form-select" required>
+          <option value="allowed">Разрешено</option>
+          <option value="forbidden">Запрещено</option>
+          <option value="balcony">Только на балконе</option>
+        </select>
+      </div>
+      <div class="mb-3">
+        <label for="parties_policy" class="form-label">Вечеринки</label>
+        <select id="parties_policy" name="parties_policy" class="form-select" required>
+          <option value="allowed">Разрешены</option>
+          <option value="not_allowed">Нет</option>
+        </select>
+      </div>
+      <div class="mb-3 d-flex gap-2">
+        <div class="flex-grow-1">
+          <label for="checkin_time" class="form-label">Чек-ин</label>
+          <input type="time" class="form-control" id="checkin_time" name="checkin_time" required>
         </div>
-        <div class="row g-3 mt-3">
-          <div class="col-md-6">
-            <label for="owner_messenger" class="form-label">WhatsApp / Telegram</label>
-            <input type="text" class="form-control" id="owner_messenger" name="owner_messenger" placeholder="Ссылка или номер">
-          </div>
-          <div class="col-md-6">
-            <label for="owner_email" class="form-label">Email (опционально)</label>
-            <input type="email" class="form-control" id="owner_email" name="owner_email">
-          </div>
+        <div class="flex-grow-1">
+          <label for="checkout_time" class="form-label">Чек-аут</label>
+          <input type="time" class="form-control" id="checkout_time" name="checkout_time" required>
         </div>
       </div>
-      <!-- Доступность и бронирование -->
-      <div class="mb-4">
-        <label class="form-label">Доступность и бронирование</label>
-        <div class="mb-3">
-          <label for="unavailable_dates" class="form-label">Недоступные даты</label>
-          <textarea id="unavailable_dates" name="unavailable_dates" class="form-control" rows="2" placeholder="2025-10-10,2025-10-11,..."></textarea>
-          <div class="form-text">Через запятую перечислите даты, когда жильё занято.</div>
-        </div>
-        <div class="row g-3">
-          <div class="col-md-6">
-            <label for="min_notice_days" class="form-label">Минимальное уведомление (дней)</label>
-            <input type="number" class="form-control" id="min_notice_days" name="min_notice_days" required>
-          </div>
-          <div class="col-md-6">
-            <label for="booking_method" class="form-label">Способ бронирования</label>
-            <select id="booking_method" name="booking_method" class="form-select" required>
-              <option value="auto">Автоматическое подтверждение</option>
-              <option value="manual">Только после одобрения</option>
-            </select>
-          </div>
-        </div>
+    </div>
+    <!-- Шаг 5. Удобства -->
+    <div class="step" id="step5">
+      <h3 class="fw-bold mb-3">5. Удобства</h3>
+      <div class="mb-3">
+        <label for="amenities" class="form-label">Список удобств</label>
+        <select id="amenities" name="amenities" class="form-select" multiple size="7">
+          <option value="wifi">Wi‑Fi</option>
+          <option value="ac">Кондиционер</option>
+          <option value="tv">Телевизор</option>
+          <option value="washing_machine">Стиральная машина</option>
+          <option value="kitchen">Кухня</option>
+          <option value="elevator">Лифт</option>
+          <option value="parking">Парковка</option>
+        </select>
       </div>
-      <!-- Кнопки действия: предпросмотр, опубликовать, черновик -->
-      <div class="mb-4 d-flex flex-wrap gap-2">
+      <div class="mb-3">
+        <label for="features" class="form-label">Особенности жилья</label>
+        <select id="features" name="features" class="form-select" multiple size="6">
+          <option value="panoramic_view">Панорамный вид</option>
+          <option value="balcony">Балкон</option>
+          <option value="jacuzzi">Джакузи</option>
+          <option value="cozy_interior">Уютный интерьер</option>
+          <option value="fireplace">Камин</option>
+          <option value="pool">Бассейн</option>
+        </select>
+      </div>
+    </div>
+    <!-- Шаг 6. Контакты владельца -->
+    <div class="step" id="step6">
+      <h3 class="fw-bold mb-3">6. Контакты владельца</h3>
+      <div class="mb-3">
+        <label for="owner_name" class="form-label">Имя владельца</label>
+        <input type="text" class="form-control" id="owner_name" name="owner_name" required>
+        <div class="invalid-feedback">Введите имя владельца.</div>
+      </div>
+      <div class="mb-3">
+        <label for="owner_phone" class="form-label">Номер телефона</label>
+        <input type="tel" class="form-control" id="owner_phone" name="owner_phone" placeholder="Для связи с гостями" required>
+        <div class="invalid-feedback">Введите номер телефона.</div>
+      </div>
+      <div class="mb-3">
+        <label for="owner_messenger" class="form-label">WhatsApp / Telegram</label>
+        <input type="text" class="form-control" id="owner_messenger" name="owner_messenger" placeholder="Ссылка или номер">
+      </div>
+      <div class="mb-3">
+        <label for="owner_email" class="form-label">Email (опционально)</label>
+        <input type="email" class="form-control" id="owner_email" name="owner_email" placeholder="Если используется">
+      </div>
+    </div>
+    <!-- Шаг 7. Доступность и бронирование -->
+    <div class="step" id="step7">
+      <h3 class="fw-bold mb-3">7. Доступность и бронирование</h3>
+      <div class="mb-3">
+        <label for="unavailable_dates" class="form-label">Календарь доступности</label>
+        <textarea id="unavailable_dates" name="unavailable_dates" class="form-control" rows="3" placeholder="Отмечаются занятые и свободные даты (формат: 2025-10-10,2025-10-11,...)"></textarea>
+        <div class="form-text">Через запятую укажите даты, когда жильё занято.</div>
+      </div>
+      <div class="mb-3">
+        <label for="min_notice_days" class="form-label">Минимальный срок до бронирования</label>
+        <input type="number" class="form-control" id="min_notice_days" name="min_notice_days" placeholder="Например: бронирование минимум за 1 день" required>
+      </div>
+      <div class="mb-3">
+        <label for="booking_method" class="form-label">Способ бронирования</label>
+        <select id="booking_method" name="booking_method" class="form-select" required>
+          <option value="auto">Автоматическое подтверждение</option>
+          <option value="manual">Только после одобрения владельца</option>
+        </select>
+      </div>
+    </div>
+    <!-- Шаг 8. Предпросмотр и публикация -->
+    <div class="step" id="step8">
+      <h3 class="fw-bold mb-3">8. Предпросмотр и публикация</h3>
+      <p>Вы можете сохранить объявление как черновик, опубликовать его или предварительно просмотреть, как оно будет выглядеть для гостей.</p>
+      <div class="d-flex flex-wrap gap-2">
         <button type="submit" name="action" value="preview" class="btn btn-info">Предпросмотр</button>
         <button type="submit" name="action" value="publish" class="btn btn-success">Опубликовать</button>
         <button type="submit" name="action" value="draft" class="btn btn-outline-secondary">Черновик</button>
       </div>
-      <!-- Скрытые поля для совместимости с моделью -->
-      <input type="hidden" name="area_kitchen" value="0">
-      <input type="hidden" name="condition" value="good">
-      <input type="hidden" name="kitchen_studio" value="no">
-    </section>
-    {# ------------------ Навигация по шагам ------------------ #}
-    <div class="mt-4">
-      <div class="progress" style="height: 6px;">
-        <div class="progress-bar" id="progressBar" role="progressbar" style="width: 25%;" aria-valuemin="0" aria-valuemax="100"></div>
-      </div>
-      <div class="d-flex justify-content-between align-items-center mt-3">
-        <button type="button" id="prevBtn" class="btn btn-link">Назад</button>
-        <button type="button" id="nextBtn" class="btn btn-primary">Далее</button>
-      </div>
     </div>
+    <!-- скрытые поля для совместимости с существующей моделью -->
+    <!-- Площадь кухни, если не указана, по умолчанию 0 -->
+    <input type="hidden" name="area_kitchen" value="0">
+    <!-- Состояние квартиры: автоматически ставим без ремонта -->
+    <input type="hidden" name="condition" value="good">
+    <!-- Кухня студия: по умолчанию нет -->
+    <input type="hidden" name="kitchen_studio" value="no">
   </form>
 </div>
 
-{# Google Maps JavaScript API #}
+
+{# Подключаем Google Maps JavaScript API вместо Leaflet.  API‑ключ передаётся
+   из Flask через переменную google_maps_api_key.  Мы загружаем библиотеку
+   Places для автодополнения и вызываем функцию initMap как callback. #}
 {% if google_maps_api_key %}
 <script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&libraries=places&callback=initMap" async defer></script>
 {% endif %}
 
 <script>
-// Многошаговая навигация
+// Скрипт ограничения на загрузку фотографий
 document.addEventListener('DOMContentLoaded', function() {
-  const steps = document.querySelectorAll('section.step');
-  const nextBtn = document.getElementById('nextBtn');
-  const prevBtn = document.getElementById('prevBtn');
-  const progressBar = document.getElementById('progressBar');
-  let currentStep = 0;
-
-  function showStep(index) {
-    steps.forEach((el, i) => {
-      el.classList.toggle('d-none', i !== index);
-    });
-    // Кнопка «Назад» видима, кроме первого шага
-    prevBtn.style.visibility = index === 0 ? 'hidden' : 'visible';
-    // На последнем шаге скрываем кнопку «Далее», полагаясь на кнопки действий
-    if (index === steps.length - 1) {
-      nextBtn.style.display = 'none';
-    } else {
-      nextBtn.style.display = 'inline-block';
-      nextBtn.textContent = 'Далее';
-    }
-    // Обновляем progress bar (0..steps-1)
-    const percent = ((index + 1) / steps.length) * 100;
-    progressBar.style.width = percent + '%';
-  }
-  // Начальный показ
-  showStep(currentStep);
-  // Обработчики
-  nextBtn.addEventListener('click', function() {
-    if (currentStep < steps.length - 1) {
-      currentStep++;
-      showStep(currentStep);
-    }
-  });
-  prevBtn.addEventListener('click', function() {
-    if (currentStep > 0) {
-      currentStep--;
-      showStep(currentStep);
-    }
-  });
-});
-
-// Ограничение количества загружаемых фотографий
-document.addEventListener('DOMContentLoaded', function() {
+  // Форма создания квартиры отображается на одной странице, поэтому логика
+  // многошаговой навигации больше не используется.  Здесь оставляем
+  // ограничение количества загружаемых фотографий: не более 20 файлов.
   var photosInput = document.getElementById('photos');
   if (photosInput) {
     photosInput.addEventListener('change', function() {
@@ -446,13 +365,15 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 });
 
-// Инициализация Google Maps для шага 1
+// Инициализация Google Maps и автодополнений адреса для первого шага
 function initMap() {
   var mapContainer = document.getElementById('mapid-step1');
   if (!mapContainer) return;
+  // Начальная точка: Алма‑Ата (можете изменить на нужную)
   var defaultLatLng = { lat: 43.238949, lng: 76.889709 };
   var map = new google.maps.Map(mapContainer, { center: defaultLatLng, zoom: 12 });
   var marker = new google.maps.Marker({ map: map, position: defaultLatLng, draggable: true });
+  // Обновляем скрытые поля при перемещении маркера
   function updateLatLng(lat, lon) {
     document.getElementById('latitude').value = lat;
     document.getElementById('longitude').value = lon;
@@ -465,27 +386,38 @@ function initMap() {
     marker.setPosition(e.latLng);
     updateLatLng(e.latLng.lat(), e.latLng.lng());
   });
+  // Настройка автодополнения полного адреса
   var addressInput = document.getElementById('address_input');
   if (addressInput) {
     var autocomplete = new google.maps.places.Autocomplete(addressInput, { types: ['geocode'] });
     autocomplete.addListener('place_changed', function() {
       var place = autocomplete.getPlace();
       if (!place || !place.geometry) return;
+      // Полный адрес
       document.getElementById('address').value = addressInput.value;
       var countryVal = '';
       var cityVal = '';
       var streetVal = '';
       var houseVal = '';
       (place.address_components || []).forEach(function(comp) {
-        if (comp.types.includes('country')) countryVal = comp.long_name;
-        if (comp.types.includes('locality') || comp.types.includes('administrative_area_level_1') || comp.types.includes('administrative_area_level_2')) cityVal = comp.long_name;
-        if (comp.types.includes('route')) streetVal = comp.long_name;
-        if (comp.types.includes('street_number')) houseVal = comp.long_name;
+        if (comp.types.includes('country')) {
+          countryVal = comp.long_name;
+        }
+        if (comp.types.includes('locality') || comp.types.includes('administrative_area_level_1') || comp.types.includes('administrative_area_level_2')) {
+          cityVal = comp.long_name;
+        }
+        if (comp.types.includes('route')) {
+          streetVal = comp.long_name;
+        }
+        if (comp.types.includes('street_number')) {
+          houseVal = comp.long_name;
+        }
       });
       document.getElementById('country').value = countryVal;
       document.getElementById('city').value = cityVal;
       document.getElementById('street').value = streetVal;
       document.getElementById('house_number').value = houseVal;
+      // Перемещаем карту и маркер
       if (place.geometry.location) {
         var lat = place.geometry.location.lat();
         var lng = place.geometry.location.lng();
@@ -497,24 +429,47 @@ function initMap() {
     });
   }
 }
+</script>
 
-// Bootstrap валидация
+<script>
+// Валидация форм Bootstrap
 (function () {
   'use strict'
   var forms = document.querySelectorAll('.needs-validation');
-  Array.prototype.slice.call(forms).forEach(function (form) {
-    form.addEventListener('submit', function (event) {
-      if (!form.checkValidity()) {
-        event.preventDefault();
-        event.stopPropagation();
-      }
-      form.classList.add('was-validated');
-    }, false);
-  });
+  Array.prototype.slice.call(forms)
+    .forEach(function (form) {
+      form.addEventListener('submit', function (event) {
+        if (!form.checkValidity()) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        form.classList.add('was-validated');
+      }, false);
+    });
 })();
 </script>
-
 {% endblock %}
 
-{# Дополнительные стили #}
-{# Bootstrap Icons are already included in the base template #}
+{#
+  Дополнительные стили для элементов формы.
+  Объявляем после всех блоков, чтобы они могли переопределять
+  стандартные стили Bootstrap при необходимости.
+#}
+<style>
+  /* Стилизуем варианты выбора количества комнат как квадратные кнопки */
+  .room-option {
+    width: 48px;
+    height: 48px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 1rem;
+    padding: 0;
+  }
+  /* Добавляем небольшой отступ между элементами, чтобы они не слипались */
+  .btn-group .room-option + input + .room-option {
+    margin-left: 0.5rem;
+  }
+</style>
