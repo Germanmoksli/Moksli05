@@ -1,212 +1,153 @@
 {% extends "base.html" %}
 {% block title %}{{ room['room_number'] }}{% endblock %}
 {% block content %}
-  <div class="container mt-4">
-    <h2 class="text-primary fw-bold fs-3 mb-3">{{ room['room_number'] }}</h2>
-    <div class="row">
-      <!-- Левая колонка: галерея и карта -->
-      <div class="col-md-7">
-        {% if photos and photos|length > 0 %}
-        {# Основное изображение. Оборачиваем в position-relative контейнер,
-           чтобы разместить стрелки и водяной знак поверх изображения. #}
-        <div class="position-relative image-container mb-2" style="height: 350px;">
-          <img id="mainImage" src="{{ photos[0] }}" class="img-fluid rounded w-100 h-100" style="object-fit: contain;" alt="Фото квартиры">
-          <button id="prevBtn" type="button" class="btn btn-light btn-sm position-absolute top-50 start-0 translate-middle-y">&#x2039;</button>
-          <button id="nextBtn" type="button" class="btn btn-light btn-sm position-absolute top-50 end-0 translate-middle-y">&#x203a;</button>
-        </div>
-        {# Миниатюры. Каждая миниатюра содержит data-index для JS. #}
-        <div class="d-flex flex-wrap gap-2 mb-3">
+<div class="container py-4">
+  <div class="row">
+    <div class="col-lg-8">
+      {% if photos and photos|length > 0 %}
+      <div id="roomCarousel" class="carousel slide mb-3 shadow-sm rounded" data-bs-ride="carousel">
+        <div class="carousel-inner">
           {% for photo_src in photos %}
-          <div class="position-relative image-container" style="width: 100px; height: 100px; cursor:pointer;">
-            <img src="{{ photo_src }}" class="img-fluid rounded border thumbnail-img w-100 h-100" data-index="{{ loop.index0 }}" style="object-fit: cover;" alt="Миниатюра">
+          <div class="carousel-item {% if loop.first %}active{% endif %}">
+            <img src="{{ photo_src }}" class="d-block w-100" alt="Фото квартиры" style="height: 450px; object-fit: cover;">
           </div>
           {% endfor %}
         </div>
+        <button class="carousel-control-prev" type="button" data-bs-target="#roomCarousel" data-bs-slide="prev">
+          <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+          <span class="visually-hidden">Назад</span>
+        </button>
+        <button class="carousel-control-next" type="button" data-bs-target="#roomCarousel" data-bs-slide="next">
+          <span class="carousel-control-next-icon" aria-hidden="true"></span>
+          <span class="visually-hidden">Вперед</span>
+        </button>
+      </div>
+      {% endif %}
+      <div class="d-flex flex-wrap gap-2 mb-3">
+        {% if room['housing_type'] %}
+        {% set type_map = {'flat': 'Квартира', 'studio': 'Студия', 'house': 'Дом', 'apartment': 'Апартаменты', 'room': 'Комната'} %}
+        <span class="badge bg-light text-dark border">{{ type_map.get(room['housing_type'], room['housing_type']) }}</span>
         {% endif %}
-        {% if room['latitude'] and room['longitude'] %}
-        <div id="mapid" style="height: 250px;"></div>
+        {% if room['num_rooms'] %}
+        <span class="badge bg-light text-dark border">{{ room['num_rooms'] }} комн.</span>
+        {% endif %}
+        {% if room['area_total'] %}
+        <span class="badge bg-light text-dark border">{{ room['area_total'] }} м²</span>
+        {% endif %}
+        {% if room['floor'] is not none %}
+        <span class="badge bg-light text-dark border">{{ room['floor'] }}{% if room['floors_total'] %}/{{ room['floors_total'] }}{% endif %} эт.</span>
+        {% endif %}
+        {% if room['max_guests'] %}
+        <span class="badge bg-light text-dark border">до {{ room['max_guests'] }} гостей</span>
         {% endif %}
       </div>
-      <!-- Правая колонка: детали о квартире -->
-      <div class="col-md-5">
-        <ul class="list-unstyled mb-3">
-          {# Тип жилья, если указан #}
-          {% if room['housing_type'] %}
-            {% set type_map = {'flat': 'Квартира', 'studio': 'Студия', 'house': 'Дом', 'apartment': 'Апартаменты', 'room': 'Комната'} %}
-            <li><strong>Тип жилья:</strong> {{ type_map.get(room['housing_type'], room['housing_type']) }}</li>
+    </div>
+    <div class="col-lg-4">
+      <div class="card shadow-sm mb-3">
+        <div class="card-body">
+          <h5 class="fw-bold mb-2">{{ room['room_number'] }}</h5>
+          {% if room['price_per_night'] %}
+          <h3 class="fw-bold text-success mb-3">{{ room['price_per_night'] }} ₸/сутки</h3>
           {% endif %}
-          {% if room['num_rooms'] %}<li><strong>Количество комнат:</strong> {{ room['num_rooms'] }}</li>{% endif %}
-          {% if room['floor'] is not none %}
-            <li><strong>Этаж:</strong> {{ room['floor'] }}{% if room['floors_total'] is not none %}/{{ room['floors_total'] }}{% endif %}</li>
+          {% if room['owner_phone'] %}
+          <a href="tel:{{ room['owner_phone'] }}" class="btn btn-success w-100 mb-2">Позвонить</a>
           {% endif %}
-          {% if room['area_total'] is not none %}
-            <li><strong>Площадь:</strong> {{ room['area_total'] }} м²{% if room['area_kitchen'] is not none %} (кухня {{ room['area_kitchen'] }} м²){% endif %}</li>
+          {% if room['owner_messenger'] %}
+          <a href="{{ room['owner_messenger'] }}" class="btn btn-outline-secondary w-100 mb-2">Написать</a>
           {% endif %}
-          {% if room['condition'] %}
-            {% set condition_map = {'fresh': 'Свежий ремонт, новая мебель', 'good': 'Не свежий, но аккуратный ремонт', 'none': 'Без ремонта'} %}
-            <li><strong>Состояние:</strong> {{ condition_map.get(room['condition'], room['condition']) }}</li>
+        </div>
+      </div>
+      {% if room['owner_name'] or room['owner_phone'] or room['owner_messenger'] or room['owner_email'] %}
+      <div class="card shadow-sm mb-3">
+        <div class="card-body">
+          <h6 class="fw-bold mb-2">Контакты владельца</h6>
+          {% if room['owner_name'] %}<p class="mb-1"><strong>Имя:</strong> {{ room['owner_name'] }}</p>{% endif %}
+          {% if room['owner_phone'] %}<p class="mb-1"><strong>Телефон:</strong> {{ room['owner_phone'] }}</p>{% endif %}
+          {% if room['owner_messenger'] %}<p class="mb-1"><strong>Связь:</strong> {{ room['owner_messenger'] }}</p>{% endif %}
+          {% if room['owner_email'] %}<p class="mb-0"><strong>Email:</strong> {{ room['owner_email'] }}</p>{% endif %}
+        </div>
+      </div>
+      {% endif %}
+      {% if room['country'] or room['city'] or room['street'] or room['house_number'] %}
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h6 class="fw-bold mb-2">Местоположение</h6>
+          <p class="mb-2">
+            {{ room['country'] or '' }}{% if room['city'] %}, {{ room['city'] }}{% endif %}{% if room['street'] %}, {{ room['street'] }}{% endif %}{% if room['house_number'] %}, {{ room['house_number'] }}{% endif %}
+          </p>
+          {% if room['latitude'] and room['longitude'] %}
+          <div id="mapid" style="height: 200px;"></div>
           {% endif %}
-          {% if room['kitchen_studio'] is not none %}
-            <li><strong>Кухня студия:</strong> {{ 'Да' if room['kitchen_studio'] else 'Нет' }}</li>
-          {% endif %}
-          {% if room['price_per_night'] is not none %}
-            <li><strong>Цена за сутки:</strong> {{ room['price_per_night'] }} ₸</li>
-          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  <div class="row mt-4">
+    <div class="col-lg-8">
+      {% if room['description'] %}
+      <div class="mb-4">
+        <h5 class="fw-bold">Описание</h5>
+        <p>{{ room['description'] }}</p>
+      </div>
+      {% endif %}
+      <div class="mb-4">
+        <h5 class="fw-bold">Дополнительная информация</h5>
+        <ul class="list-unstyled">
           {% if room['discount'] %}<li><strong>Скидки:</strong> {{ room['discount'] }}</li>{% endif %}
           {% if room['deposit'] is not none %}<li><strong>Залог:</strong> {{ room['deposit'] }} ₸</li>{% endif %}
           {% if room['min_rent_days'] %}<li><strong>Минимальный срок аренды:</strong> {{ room['min_rent_days'] }} суток</li>{% endif %}
           {% if room['max_rent_days'] %}<li><strong>Максимальный срок аренды:</strong> {{ room['max_rent_days'] }} суток</li>{% endif %}
           {% if room['extra_charges'] %}<li><strong>Дополнительные расходы:</strong> {{ room['extra_charges'] }}</li>{% endif %}
-          {% if room['max_guests'] %}<li><strong>Максимум гостей:</strong> {{ room['max_guests'] }}</li>{% endif %}
-          {% if room['allow_children'] is not none %}<li><strong>С детьми:</strong> {{ 'Да' if room['allow_children'] else 'Нет' }}</li>{% endif %}
-          {% if room['allow_pets'] is not none %}<li><strong>С животными:</strong> {{ 'Да' if room['allow_pets'] else 'Нет' }}</li>{% endif %}
+          {% if room['allow_children'] is not none %}<li><strong>Разрешено с детьми:</strong> {{ 'Да' if room['allow_children'] else 'Нет' }}</li>{% endif %}
+          {% if room['allow_pets'] is not none %}<li><strong>Разрешено с животными:</strong> {{ 'Да' if room['allow_pets'] else 'Нет' }}</li>{% endif %}
           {% if room['smoking_policy'] %}
-            {% set smoke_map = {'allowed': 'Разрешено', 'forbidden': 'Запрещено', 'balcony': 'Только на балконе'} %}
+            {% set smoke_map = {'allowed': 'Разрешено курить', 'forbidden': 'Курение запрещено', 'balcony': 'Курить только на балконе'} %}
             <li><strong>Курение:</strong> {{ smoke_map.get(room['smoking_policy'], room['smoking_policy']) }}</li>
           {% endif %}
           {% if room['parties_policy'] %}
-            {% set party_map = {'allowed': 'Разрешены', 'not_allowed': 'Не разрешены'} %}
+            {% set party_map = {'allowed': 'Вечеринки разрешены', 'not_allowed': 'Вечеринки не разрешены'} %}
             <li><strong>Вечеринки:</strong> {{ party_map.get(room['parties_policy'], room['parties_policy']) }}</li>
           {% endif %}
-          {% if room['checkin_time'] %}<li><strong>Чек‑ин:</strong> {{ room['checkin_time'] }}</li>{% endif %}
-          {% if room['checkout_time'] %}<li><strong>Чек‑аут:</strong> {{ room['checkout_time'] }}</li>{% endif %}
+          {% if room['checkin_time'] %}<li><strong>Время заезда:</strong> {{ room['checkin_time'] }}</li>{% endif %}
+          {% if room['checkout_time'] %}<li><strong>Время выезда:</strong> {{ room['checkout_time'] }}</li>{% endif %}
           {% if room['amenities'] %}
             <li><strong>Удобства:</strong> {{ room['amenities'].replace(',', ', ') }}</li>
           {% endif %}
           {% if room['features'] %}
             <li><strong>Особенности:</strong> {{ room['features'].replace(',', ', ') }}</li>
           {% endif %}
-          {% if room['owner_name'] %}<li><strong>Имя владельца:</strong> {{ room['owner_name'] }}</li>{% endif %}
-          {% if room['owner_phone'] %}<li><strong>Телефон:</strong> {{ room['owner_phone'] }}</li>{% endif %}
-          {% if room['owner_messenger'] %}<li><strong>WhatsApp/Telegram:</strong> {{ room['owner_messenger'] }}</li>{% endif %}
-          {% if room['owner_email'] %}<li><strong>Email:</strong> {{ room['owner_email'] }}</li>{% endif %}
-          {% if room['country'] or room['city'] or room['street'] or room['house_number'] %}
-            <li><strong>Адрес:</strong>
-              {{ room['country'] or '' }}{% if room['city'] %}, {{ room['city'] }}{% endif %}{% if room['street'] %}, {{ room['street'] }}{% endif %}{% if room['house_number'] %}, {{ room['house_number'] }}{% endif %}
-            </li>
+          {% if room['unavailable_dates'] %}
+            <li><strong>Недоступные даты:</strong> {{ room['unavailable_dates'].replace(',', ', ') }}</li>
           {% endif %}
-          {% if room['residential_complex'] %}<li><strong>Жилой комплекс:</strong> {{ room['residential_complex'] }}</li>{% endif %}
-          {% if room['listing_url'] %}<li><strong>Ссылка на объявление:</strong> <a href="{{ room['listing_url'] }}" target="_blank">Перейти</a></li>{% endif %}
-          {% if room['unavailable_dates'] %}<li><strong>Занятые даты:</strong> {{ room['unavailable_dates'].replace(',', ', ') }}</li>{% endif %}
-          {% if room['min_notice_days'] %}<li><strong>Минимальный срок до бронирования:</strong> {{ room['min_notice_days'] }} дней</li>{% endif %}
+          {% if room['min_notice_days'] %}
+            <li><strong>Минимальный срок до бронирования:</strong> {{ room['min_notice_days'] }} дней</li>
+          {% endif %}
           {% if room['booking_method'] %}
             {% set book_map = {'auto': 'Автоматическое подтверждение', 'manual': 'Только после одобрения владельца'} %}
             <li><strong>Способ бронирования:</strong> {{ book_map.get(room['booking_method'], room['booking_method']) }}</li>
           {% endif %}
         </ul>
-        {% if room['description'] %}
-          <div class="mb-3">
-            <h5 class="fw-bold">Описание</h5>
-            <p>{{ room['description'] }}</p>
-          </div>
-        {% endif %}
       </div>
     </div>
-    <a href="{{ url_for('public_listings') }}" class="btn btn-secondary mt-4">Назад в каталог</a>
-
-    {# Полноэкранный просмотр галереи: появляется при клике на основное изображение #}
-    {% if photos and photos|length > 0 %}
-    <div id="fullscreenOverlay" class="d-none position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-75" style="z-index: 1050;">
-      <div class="d-flex flex-column h-100 align-items-center justify-content-center">
-        <div class="position-relative w-75" style="max-height: 80%;">
-          <img id="fsMainImage" src="{{ photos[0] }}" class="img-fluid w-100 h-100" style="object-fit: contain;" alt="Фото квартиры">
-          <button id="fsPrevBtn" type="button" class="btn btn-light btn-sm position-absolute top-50 start-0 translate-middle-y">&#x2039;</button>
-          <button id="fsNextBtn" type="button" class="btn btn-light btn-sm position-absolute top-50 end-0 translate-middle-y">&#x203a;</button>
-          <button id="fsCloseBtn" type="button" class="btn btn-light btn-sm position-absolute top-0 end-0 m-3">&times;</button>
-        </div>
-        <div class="d-flex flex-wrap gap-2 mt-3 justify-content-center" style="max-width: 90%;">
-          {% for photo_src in photos %}
-          <div class="position-relative image-container" style="width: 80px; height: 80px; cursor:pointer;">
-            <img src="{{ photo_src }}" class="img-fluid rounded border fs-thumbnail w-100 h-100" data-index="{{ loop.index0 }}" style="object-fit: cover;" alt="Миниатюра">
-          </div>
-          {% endfor %}
-        </div>
-      </div>
-    </div>
-    {% endif %}
   </div>
-
-  <!-- Подключаем Leaflet только если есть координаты -->
-  {% if room['latitude'] and room['longitude'] %}
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
-  {% endif %}
-  <!-- Стили для контейнеров изображений -->
-  <style>
-    .image-container { position: relative; overflow: hidden; }
-  </style>
-  <!-- Скрипты для галереи, карты и водяных знаков -->
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      // Инициализация карты при наличии координат
-      {% if room['latitude'] and room['longitude'] %}
-      var lat = {{ room['latitude'] }};
-      var lon = {{ room['longitude'] }};
-      var map = L.map('mapid').setView([lat, lon], 15);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
-      L.marker([lat, lon]).addTo(map);
-      {% endif %}
-
-      // Галерея: основное изображение и миниатюры
-      const mainImage = document.getElementById('mainImage');
-      const thumbnails = document.querySelectorAll('.thumbnail-img');
-      let currentIndex = 0;
-      function showImage(idx) {
-        if (!thumbnails.length) return;
-        if (idx < 0) idx = thumbnails.length - 1;
-        if (idx >= thumbnails.length) idx = 0;
-        currentIndex = idx;
-        mainImage.src = thumbnails[idx].src;
-        // Синхронизируем полноэкранный режим, если он открыт
-        const fsMain = document.getElementById('fsMainImage');
-        if (fsMain) {
-          fsMain.src = thumbnails[idx].src;
-        }
-      }
-      // События для стрелок
-      const prevBtn = document.getElementById('prevBtn');
-      const nextBtn = document.getElementById('nextBtn');
-      if (prevBtn && nextBtn) {
-        prevBtn.addEventListener('click', function() { showImage(currentIndex - 1); });
-        nextBtn.addEventListener('click', function() { showImage(currentIndex + 1); });
-      }
-      // События для миниатюр
-      thumbnails.forEach(function(thumb, index) {
-        thumb.addEventListener('click', function() { showImage(index); });
-      });
-
-      // Полноэкранный режим
-      const overlay = document.getElementById('fullscreenOverlay');
-      const fsPrevBtn = document.getElementById('fsPrevBtn');
-      const fsNextBtn = document.getElementById('fsNextBtn');
-      const fsCloseBtn = document.getElementById('fsCloseBtn');
-      const fsThumbnails = document.querySelectorAll('.fs-thumbnail');
-      // Показать полноэкранный режим при клике на основное изображение
-      if (overlay) {
-        mainImage.addEventListener('click', function() {
-          overlay.classList.remove('d-none');
-          // Устанавливаем полноэкранное изображение на текущее
-          const fsMain = document.getElementById('fsMainImage');
-          fsMain.src = mainImage.src;
-        });
-        // Закрыть полноэкранный режим
-        fsCloseBtn.addEventListener('click', function() {
-          overlay.classList.add('d-none');
-        });
-        // Навигация в полноэкранном режиме
-        fsPrevBtn.addEventListener('click', function() { showImage(currentIndex - 1); });
-        fsNextBtn.addEventListener('click', function() { showImage(currentIndex + 1); });
-        // Миниатюры в полноэкранном режиме
-        fsThumbnails.forEach(function(thumb, index) {
-          thumb.addEventListener('click', function() { showImage(index); });
-        });
-        // Закрытие по клику вне изображения
-        overlay.addEventListener('click', function(event) {
-          if (event.target === overlay) {
-            overlay.classList.add('d-none');
-          }
-        });
-      }
-    });
-  </script>
+  <div class="row mt-3">
+    <div class="col-lg-8">
+      <a href="{{ url_for('public_listings') }}" class="btn btn-outline-secondary">&larr; Назад в каталог</a>
+    </div>
+  </div>
+</div>
+{% if room['latitude'] and room['longitude'] %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  var lat = {{ room['latitude'] }};
+  var lon = {{ room['longitude'] }};
+  var map = L.map('mapid').setView([lat, lon], 15);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
+  L.marker([lat, lon]).addTo(map);
+});
+</script>
+{% endif %}
 {% endblock %}
