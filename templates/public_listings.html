@@ -52,8 +52,20 @@
       <!-- Поисковая форма в стиле Airbnb -->
       <form method="get" class="d-flex flex-wrap align-items-end gap-2 mb-4">
         <div>
-          <label for="location" class="form-label">Где</label>
-          <input type="text" class="form-control" id="location" name="location" placeholder="Поиск направлений" value="{{ location }}">
+          <label for="location" class="form-label">Город</label>
+          <select class="form-select" id="location" name="location">
+            <option value="">Выберите город</option>
+            {% set city_list = [
+              'Akkol','Aksai','Aktau','Aktobe','Almaty','Aralsk','Arkalyk','Astana','Atyrau',
+              'Baikonur','Balkhash','Beyneu','Ekibastuz','Karaganda','Kentau','Kokshetau',
+              'Kostanay','Kyzylorda','Pavlodar','Petropavl','Ridder','Rudniy','Saran',
+              'Satpaev','Sayram','Semey','Shakhtinsk','Shymkent','Taldykorgan','Talgar',
+              'Taraz','Turkestan','Uralsk','Ust-Kamenogorsk'
+            ] %}
+            {% for city_name in city_list %}
+              <option value="{{ city_name }}" {% if location == city_name %}selected{% endif %}>{{ city_name }}</option>
+            {% endfor %}
+          </select>
         </div>
         <div>
           <label for="check_in" class="form-label">Когда</label>
