@@ -53,8 +53,12 @@
       <form method="get" class="d-flex flex-wrap align-items-end gap-2 mb-4">
         <div>
           <label for="location" class="form-label">Город</label>
-          <select class="form-select" id="location" name="location">
-            <option value="">Выберите город</option>
+          {# Поле ввода города с автодополнением через HTML5 datalist. Пользователь вводит
+             название, и браузер предлагает варианты из списка city_list. Значение
+             сохраняется в поле name="location", так что фильтр в запросе работает без
+             дополнительного JavaScript. #}
+          <input type="text" class="form-control" id="location" name="location" list="cityList" placeholder="Введите город" value="{{ location }}">
+          <datalist id="cityList">
             {% set city_list = [
                 'Абай','Акколь','Аксай','Аксу','Актау','Актобе','Алга','Алматы','Аральск','Аркалык',
                 'Арыс','Астана','Атбасар','Атырау','Аягоз','Алатау','Байконур','Балхаш','Булаево',
@@ -69,9 +73,9 @@
                 'Шардара','Шахтинск','Шемонаиха','Шу','Шымкент','Щучинск','Экибастуз','Эмба'
             ] %}
             {% for city_name in city_list %}
-              <option value="{{ city_name }}" {% if location == city_name %}selected{% endif %}>{{ city_name }}</option>
+              <option value="{{ city_name }}"></option>
             {% endfor %}
-          </select>
+          </datalist>
         </div>
         <div>
           <label for="check_in" class="form-label">Когда</label>
