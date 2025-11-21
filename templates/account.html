@@ -44,7 +44,7 @@
       </p>
       <!-- Сетка с пунктами профиля -->
       <div class="row row-cols-1 row-cols-md-2 g-2 g-md-3 profile-grid">
-        <a href="#" class="profile-item d-flex align-items-center p-3">
+        <a href="#" class="profile-item d-flex align-items-center p-3" data-bs-toggle="modal" data-bs-target="#jobModal">
           <i class="bi bi-briefcase-fill profile-icon me-3"></i>
           <span>Моя работа</span>
         </a>
@@ -56,7 +56,7 @@
           <i class="bi bi-music-note-beamed profile-icon me-3"></i>
           <span>Любимая песня в школе</span>
         </a>
-        <a href="#" class="profile-item d-flex align-items-center p-3">
+        <a href="#" class="profile-item d-flex align-items-center p-3" data-bs-toggle="modal" data-bs-target="#petsModal">
           <i class="bi bi-paw-fill profile-icon me-3"></i>
           <span>Питомцы</span>
         </a>
@@ -110,5 +110,53 @@
       <button type="submit" class="btn btn-primary px-4">Готово</button>
     </div>
   </form>
+
+  <!-- Модальное окно для поля "Моя работа" -->
+  <div class="modal fade" id="jobModal" tabindex="-1" aria-labelledby="jobModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content rounded-4">
+        <form method="post" action="{{ url_for('account') }}">
+          <div class="modal-header border-0">
+            <h5 class="modal-title" id="jobModalLabel">Моя работа</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label for="jobInput" class="form-label">Укажите вашу работу</label>
+              <input type="text" class="form-control" id="jobInput" name="job" placeholder="Например: преподаватель">
+            </div>
+          </div>
+          <div class="modal-footer border-0">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+            <button type="submit" class="btn btn-primary">Сохранить</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модальное окно для поля "Питомцы" -->
+  <div class="modal fade" id="petsModal" tabindex="-1" aria-labelledby="petsModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content rounded-4">
+        <form method="post" action="{{ url_for('account') }}">
+          <div class="modal-header border-0">
+            <h5 class="modal-title" id="petsModalLabel">Питомцы</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label for="petsInput" class="form-label">Расскажите о своих питомцах</label>
+              <input type="text" class="form-control" id="petsInput" name="pets" placeholder="Например: кошка, собака">
+            </div>
+          </div>
+          <div class="modal-footer border-0">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+            <button type="submit" class="btn btn-primary">Сохранить</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
 </div>
 {% endblock %}
