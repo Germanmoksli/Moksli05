@@ -420,96 +420,134 @@
         </button>
         <div class="collapse navbar-collapse" id="mainNavbar">
           <!-- Левая часть меню: ссылки в зависимости от роли -->
-          <!-- Верхняя панель без пунктов меню: оставляем только логотип и имя пользователя. -->
+          <!-- Левый блок навигации. Для гостей пунктов меню нет, для владельцев и менеджеров отображаются
+               основные разделы (Календарь, Дашборд, Гости, Квартиры, Сотрудники, Подписка). -->
           <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-            {# Никаких пунктов навигации в верхнем меню. Навигация доступна через выпадающее меню аккаунта. #}
+            {% if session.get('user_role') == 'owner' %}
+              <li class="nav-item">
+                <a href="{{ url_for('calendar_view') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('calendar') %}active{% endif %}">Календарь</a>
+              </li>
+              <li class="nav-item">
+                <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">Дашборд</a>
+              </li>
+              <li class="nav-item">
+                <a href="{{ url_for('list_guests') }}" class="nav-link {% if request.endpoint == 'list_guests' %}active{% endif %}">Гости</a>
+              </li>
+              <li class="nav-item">
+                <a href="{{ url_for('list_rooms') }}" class="nav-link {% if request.endpoint == 'list_rooms' %}active{% endif %}">Квартиры</a>
+              </li>
+              <li class="nav-item">
+                <a href="{{ url_for('list_employees') }}" class="nav-link {% if request.endpoint == 'list_employees' %}active{% endif %}">
+                  Сотрудники
+                  {% if session.get('user_role') == 'owner' and pending_request_count %}
+                    <span class="badge bg-primary ms-1">{{ pending_request_count }}</span>
+                  {% endif %}
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="{{ url_for('subscribe') }}" class="nav-link {% if request.endpoint == 'subscribe' %}active{% endif %}">Подписка</a>
+              </li>
+            {% elif session.get('user_role') == 'manager' %}
+              <li class="nav-item">
+                <a href="{{ url_for('calendar_view') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('calendar') %}active{% endif %}">Календарь</a>
+              </li>
+              <li class="nav-item">
+                <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">Дашборд</a>
+              </li>
+              <li class="nav-item">
+                <a href="{{ url_for('list_guests') }}" class="nav-link {% if request.endpoint == 'list_guests' %}active{% endif %}">Гости</a>
+              </li>
+              <li class="nav-item">
+                <a href="{{ url_for('list_employees') }}" class="nav-link {% if request.endpoint == 'list_employees' %}active{% endif %}">Сотрудники</a>
+              </li>
+            {% else %}
+              {# Для гостей навигационные элементы скрыты. #}
+            {% endif %}
           </ul>
           <!-- Правая часть: аккаунт или кнопки входа/регистрации -->
           <div class="d-flex align-items-center">
             {% if session.get('user_id') %}
-              <div class="dropdown me-3">
-                <a href="#" class="d-flex align-items-center text-decoration-none dropdown-toggle" id="accountMenu" data-bs-toggle="dropdown" aria-expanded="false">
-                  {% if user_photo %}
-                    <img src="{{ url_for('static', filename=user_photo) }}" class="rounded-circle me-2" width="32" height="32" style="object-fit: cover;">
-                  {% else %}
-                    <img src="{{ url_for('static', filename='default_avatar.png') }}" class="rounded-circle me-2" width="32" height="32" style="object-fit: cover;">
-                  {% endif %}
-                  <span>{{ current_user_name or current_username }}</span>
-                </a>
-                <!--
-                  Раскрывающееся меню аккаунта. В нём мы отображаем
-                  имя текущего пользователя и предоставляем список
-                  ссылок на основные разделы профиля. Каждая строка
-                  снабжена иконкой из набора Bootstrap Icons для
-                  наглядности. Пункты меню:
-                  1. Имя и фамилия пользователя (не кликабельный заголовок).
-                  2. «Избранное» — список понравившихся квартир.
-                  3. «Сообщения» — страница со всеми чатами пользователя.
-                  4. «История» — страница со списком бронирований.
-                  5. «Профиль» — редактирование профиля.
-                  6. «Настройки» — настройки аккаунта (сейчас ведёт на страницу профиля).
-                  7. «Мои объявления/В режим гостя» — переключение роли, только для владельцев.
-                  8. «Выход» — завершение сессии.
-                -->
-                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="accountMenu">
-                  <!-- Заголовок с именем пользователя -->
-                  <li class="px-3 py-2 d-flex align-items-center fw-semibold">
-                    <i class="bi bi-person-circle me-2"></i>
+              {% if session.get('user_role') == 'guest' %}
+                <!-- Гость: отображаем меню аккаунта в виде выпадающего списка -->
+                <div class="dropdown me-3">
+                  <a href="#" class="d-flex align-items-center text-decoration-none dropdown-toggle" id="accountMenu" data-bs-toggle="dropdown" aria-expanded="false">
+                    {% if user_photo %}
+                      <img src="{{ url_for('static', filename=user_photo) }}" class="rounded-circle me-2" width="32" height="32" style="object-fit: cover;">
+                    {% else %}
+                      <img src="{{ url_for('static', filename='default_avatar.png') }}" class="rounded-circle me-2" width="32" height="32" style="object-fit: cover;">
+                    {% endif %}
                     <span>{{ current_user_name or current_username }}</span>
-                  </li>
-                  <li><hr class="dropdown-divider"></li>
-                  <!-- Избранное -->
-                  <li>
-                    <a class="dropdown-item d-flex align-items-center" href="{{ url_for('favorites') }}">
-                      <i class="bi bi-heart-fill me-2"></i>Избранное
-                    </a>
-                  </li>
-                  <!-- Сообщения -->
-                  <li>
-                    <a class="dropdown-item d-flex align-items-center" href="{{ url_for('chat_rooms') }}">
-                      <i class="bi bi-chat-dots-fill me-2"></i>Сообщения
-                    </a>
-                  </li>
-                  <!-- История бронирований -->
-                  <li>
-                    <a class="dropdown-item d-flex align-items-center" href="{{ url_for('user_bookings') }}">
-                      <i class="bi bi-clock-history me-2"></i>История
-                    </a>
-                  </li>
-                  <!-- Профиль -->
-                  <li>
-                    <a class="dropdown-item d-flex align-items-center" href="{{ url_for('account') }}">
-                      <i class="bi bi-person-fill me-2"></i>Профиль
-                    </a>
-                  </li>
-                  <!-- Настройки (пока ссылается на профиль) -->
-                  <li>
-                    <a class="dropdown-item d-flex align-items-center" href="{{ url_for('account') }}">
-                      <i class="bi bi-gear-fill me-2"></i>Настройки
-                    </a>
-                  </li>
-                  <!-- Мои объявления / переключение роли (только для владельцев) -->
-                  {% if session.get('original_user_role') == 'owner' %}
-                  <li>
-                    <a class="dropdown-item d-flex align-items-center" href="{{ url_for('switch_role') }}">
-                      <i class="bi bi-house-door-fill me-2"></i>
-                      {% if session.get('user_role') == 'guest' %}
-                        Мои объявления
-                      {% else %}
-                        В режим гостя
-                      {% endif %}
-                    </a>
-                  </li>
-                  {% endif %}
-                  <li><hr class="dropdown-divider"></li>
-                  <!-- Выход -->
-                  <li>
-                    <a class="dropdown-item d-flex align-items-center" href="{{ url_for('logout') }}">
-                      <i class="bi bi-box-arrow-right me-2"></i>Выход
-                    </a>
-                  </li>
-                </ul>
-              </div>
+                  </a>
+                  <!-- Меню аккаунта для гостя -->
+                  <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="accountMenu">
+                    <!-- Заголовок с именем пользователя -->
+                    <li class="px-3 py-2 d-flex align-items-center fw-semibold">
+                      <i class="bi bi-person-circle me-2"></i>
+                      <span>{{ current_user_name or current_username }}</span>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <!-- Избранное -->
+                    <li>
+                      <a class="dropdown-item d-flex align-items-center" href="{{ url_for('favorites') }}">
+                        <i class="bi bi-heart-fill me-2"></i>Избранное
+                      </a>
+                    </li>
+                    <!-- Сообщения -->
+                    <li>
+                      <a class="dropdown-item d-flex align-items-center" href="{{ url_for('chat_rooms') }}">
+                        <i class="bi bi-chat-dots-fill me-2"></i>Сообщения
+                      </a>
+                    </li>
+                    <!-- История бронирований -->
+                    <li>
+                      <a class="dropdown-item d-flex align-items-center" href="{{ url_for('user_bookings') }}">
+                        <i class="bi bi-clock-history me-2"></i>История
+                      </a>
+                    </li>
+                    <!-- Профиль -->
+                    <li>
+                      <a class="dropdown-item d-flex align-items-center" href="{{ url_for('account') }}">
+                        <i class="bi bi-person-fill me-2"></i>Профиль
+                      </a>
+                    </li>
+                    <!-- Настройки (ссылается на профиль) -->
+                    <li>
+                      <a class="dropdown-item d-flex align-items-center" href="{{ url_for('account') }}">
+                        <i class="bi bi-gear-fill me-2"></i>Настройки
+                      </a>
+                    </li>
+                    <!-- Мои объявления / переключение роли (для владельцев) -->
+                    {% if session.get('original_user_role') == 'owner' %}
+                    <li>
+                      <a class="dropdown-item d-flex align-items-center" href="{{ url_for('switch_role') }}">
+                        <i class="bi bi-house-door-fill me-2"></i>
+                        {% if session.get('user_role') == 'guest' %}
+                          Мои объявления
+                        {% else %}
+                          В режим гостя
+                        {% endif %}
+                      </a>
+                    </li>
+                    {% endif %}
+                    <li><hr class="dropdown-divider"></li>
+                    <!-- Выход -->
+                    <li>
+                      <a class="dropdown-item d-flex align-items-center" href="{{ url_for('logout') }}">
+                        <i class="bi bi-box-arrow-right me-2"></i>Выход
+                      </a>
+                    </li>
+                  </ul>
+                </div>
+              {% else %}
+                <!-- Владельцы и менеджеры: показываем аватар, имя и ссылку для выхода без выпадающего меню -->
+                {% if user_photo %}
+                  <img src="{{ url_for('static', filename=user_photo) }}" class="rounded-circle me-2" width="32" height="32" style="object-fit: cover;">
+                {% else %}
+                  <img src="{{ url_for('static', filename='default_avatar.png') }}" class="rounded-circle me-2" width="32" height="32" style="object-fit: cover;">
+                {% endif %}
+                <span class="me-3">{{ current_user_name or current_username }}</span>
+                <a href="{{ url_for('logout') }}" class="btn btn-outline-secondary">Выход</a>
+              {% endif %}
             {% else %}
               <a href="{{ url_for('login') }}" class="btn btn-primary me-2">Войти</a>
               <a href="{{ url_for('register') }}" class="btn btn-outline-secondary">Регистрация</a>

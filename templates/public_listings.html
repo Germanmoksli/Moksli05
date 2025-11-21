@@ -85,6 +85,44 @@
           <img src="{{ url_for('static', filename='uploads/logo.png') }}" alt="Moksli logo" height="48" class="me-2">
           <span class="logo-text" style="color: var(--bs-primary); font-size: 0.9rem;">moksli</span>
         </a>
+    {# Для владельцев и менеджеров отображаем навигационные пункты в верхнем меню #}
+    {% if session.get('user_role') == 'owner' %}
+    <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+      <li class="nav-item">
+        <a href="{{ url_for('calendar_view') }}" class="nav-link">Календарь</a>
+      </li>
+      <li class="nav-item">
+        <a href="{{ url_for('dashboard') }}" class="nav-link">Дашборд</a>
+      </li>
+      <li class="nav-item">
+        <a href="{{ url_for('list_guests') }}" class="nav-link">Гости</a>
+      </li>
+      <li class="nav-item">
+        <a href="{{ url_for('list_rooms') }}" class="nav-link">Квартиры</a>
+      </li>
+      <li class="nav-item">
+        <a href="{{ url_for('list_employees') }}" class="nav-link">Сотрудники</a>
+      </li>
+      <li class="nav-item">
+        <a href="{{ url_for('subscribe') }}" class="nav-link">Подписка</a>
+      </li>
+    </ul>
+    {% elif session.get('user_role') == 'manager' %}
+    <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+      <li class="nav-item">
+        <a href="{{ url_for('calendar_view') }}" class="nav-link">Календарь</a>
+      </li>
+      <li class="nav-item">
+        <a href="{{ url_for('dashboard') }}" class="nav-link">Дашборд</a>
+      </li>
+      <li class="nav-item">
+        <a href="{{ url_for('list_guests') }}" class="nav-link">Гости</a>
+      </li>
+      <li class="nav-item">
+        <a href="{{ url_for('list_employees') }}" class="nav-link">Сотрудники</a>
+      </li>
+    </ul>
+    {% endif %}
         <!-- Навигация: для гостей отображаем кнопки регистрации и входа.  Для
              авторизованных пользователей показываем меню с аватаром и именем -->
         <div class="d-flex gap-2">
@@ -92,79 +130,81 @@
             <a href="{{ url_for('register_guest') }}" class="btn btn-primary">Зарегистрироваться</a>
             <a href="{{ url_for('login') }}" class="btn btn-outline-secondary">Войти</a>
           {% else %}
-            <div class="dropdown">
-              <a href="#" class="d-flex align-items-center text-decoration-none dropdown-toggle" id="userMenu" data-bs-toggle="dropdown" aria-expanded="false">
-                {# Показываем фотографию пользователя, если она есть; иначе используем заглушку #}
-                {% set avatar = user_photo if user_photo else 'default_avatar.png' %}
-                <img src="{{ url_for('static', filename=avatar) }}" alt="avatar" class="rounded-circle me-2" width="32" height="32">
-                <strong>{{ current_user_name or current_username }}</strong>
-              </a>
-              <!--
-                Выпадающее меню пользователя для режима гостя. Повторяем структуру
-                аккаунт-меню из шаблона base.html: показываем имя и фамилию,
-                ссылки на избранное, сообщения, историю, профиль, настройки,
-                переключение роли (только для владельцев) и выход. Каждая
-                строка сопровождается подходящей иконкой.
-              -->
-              <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
-                <!-- Заголовок с именем пользователя -->
-                <li class="px-3 py-2 d-flex align-items-center fw-semibold">
-                  <i class="bi bi-person-circle me-2"></i>
-                  <span>{{ current_user_name or current_username }}</span>
-                </li>
-                <li><hr class="dropdown-divider"></li>
-                <!-- Избранное -->
-                <li>
-                  <a class="dropdown-item d-flex align-items-center" href="{{ url_for('favorites') }}">
-                    <i class="bi bi-heart-fill me-2"></i>Избранное
-                  </a>
-                </li>
-                <!-- Сообщения -->
-                <li>
-                  <a class="dropdown-item d-flex align-items-center" href="{{ url_for('chat_rooms') }}">
-                    <i class="bi bi-chat-dots-fill me-2"></i>Сообщения
-                  </a>
-                </li>
-                <!-- История бронирований -->
-                <li>
-                  <a class="dropdown-item d-flex align-items-center" href="{{ url_for('user_bookings') }}">
-                    <i class="bi bi-clock-history me-2"></i>История
-                  </a>
-                </li>
-                <!-- Профиль -->
-                <li>
-                  <a class="dropdown-item d-flex align-items-center" href="{{ url_for('account') }}">
-                    <i class="bi bi-person-fill me-2"></i>Профиль
-                  </a>
-                </li>
-                <!-- Настройки (пока ссылаемся на профиль) -->
-                <li>
-                  <a class="dropdown-item d-flex align-items-center" href="{{ url_for('account') }}">
-                    <i class="bi bi-gear-fill me-2"></i>Настройки
-                  </a>
-                </li>
-                <!-- Мои объявления / переключение роли (только для владельцев) -->
-                {% if session.get('original_user_role') == 'owner' %}
-                <li>
-                  <a class="dropdown-item d-flex align-items-center" href="{{ url_for('switch_role') }}">
-                    <i class="bi bi-house-door-fill me-2"></i>
-                    {% if session.get('user_role') == 'guest' %}
-                      Мои объявления
-                    {% else %}
-                      В режим гостя
-                    {% endif %}
-                  </a>
-                </li>
-                {% endif %}
-                <li><hr class="dropdown-divider"></li>
-                <!-- Выход -->
-                <li>
-                  <a class="dropdown-item d-flex align-items-center" href="{{ url_for('logout') }}">
-                    <i class="bi bi-box-arrow-right me-2"></i>Выход
-                  </a>
-                </li>
-              </ul>
-            </div>
+            {% if session.get('user_role') == 'guest' %}
+              <!-- Гость: выпадающее меню пользователя -->
+              <div class="dropdown">
+                <a href="#" class="d-flex align-items-center text-decoration-none dropdown-toggle" id="userMenu" data-bs-toggle="dropdown" aria-expanded="false">
+                  {# Показываем фотографию пользователя, если она есть; иначе используем заглушку #}
+                  {% set avatar = user_photo if user_photo else 'default_avatar.png' %}
+                  <img src="{{ url_for('static', filename=avatar) }}" alt="avatar" class="rounded-circle me-2" width="32" height="32">
+                  <strong>{{ current_user_name or current_username }}</strong>
+                </a>
+                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
+                  <!-- Заголовок с именем пользователя -->
+                  <li class="px-3 py-2 d-flex align-items-center fw-semibold">
+                    <i class="bi bi-person-circle me-2"></i>
+                    <span>{{ current_user_name or current_username }}</span>
+                  </li>
+                  <li><hr class="dropdown-divider"></li>
+                  <!-- Избранное -->
+                  <li>
+                    <a class="dropdown-item d-flex align-items-center" href="{{ url_for('favorites') }}">
+                      <i class="bi bi-heart-fill me-2"></i>Избранное
+                    </a>
+                  </li>
+                  <!-- Сообщения -->
+                  <li>
+                    <a class="dropdown-item d-flex align-items-center" href="{{ url_for('chat_rooms') }}">
+                      <i class="bi bi-chat-dots-fill me-2"></i>Сообщения
+                    </a>
+                  </li>
+                  <!-- История бронирований -->
+                  <li>
+                    <a class="dropdown-item d-flex align-items-center" href="{{ url_for('user_bookings') }}">
+                      <i class="bi bi-clock-history me-2"></i>История
+                    </a>
+                  </li>
+                  <!-- Профиль -->
+                  <li>
+                    <a class="dropdown-item d-flex align-items-center" href="{{ url_for('account') }}">
+                      <i class="bi bi-person-fill me-2"></i>Профиль
+                    </a>
+                  </li>
+                  <!-- Настройки (ссылаемся на профиль) -->
+                  <li>
+                    <a class="dropdown-item d-flex align-items-center" href="{{ url_for('account') }}">
+                      <i class="bi bi-gear-fill me-2"></i>Настройки
+                    </a>
+                  </li>
+                  <!-- Мои объявления / переключение роли (только для владельцев) -->
+                  {% if session.get('original_user_role') == 'owner' %}
+                  <li>
+                    <a class="dropdown-item d-flex align-items-center" href="{{ url_for('switch_role') }}">
+                      <i class="bi bi-house-door-fill me-2"></i>
+                      {% if session.get('user_role') == 'guest' %}
+                        Мои объявления
+                      {% else %}
+                        В режим гостя
+                      {% endif %}
+                    </a>
+                  </li>
+                  {% endif %}
+                  <li><hr class="dropdown-divider"></li>
+                  <!-- Выход -->
+                  <li>
+                    <a class="dropdown-item d-flex align-items-center" href="{{ url_for('logout') }}">
+                      <i class="bi bi-box-arrow-right me-2"></i>Выход
+                    </a>
+                  </li>
+                </ul>
+              </div>
+            {% else %}
+              <!-- Владельцы и менеджеры: показываем аватар, имя и ссылку для выхода -->
+              {% set avatar = user_photo if user_photo else 'default_avatar.png' %}
+              <img src="{{ url_for('static', filename=avatar) }}" alt="avatar" class="rounded-circle me-2" width="32" height="32" style="object-fit: cover;">
+              <span class="me-2"><strong>{{ current_user_name or current_username }}</strong></span>
+              <a href="{{ url_for('logout') }}" class="btn btn-outline-secondary">Выход</a>
+            {% endif %}
           {% endif %}
         </div>
       </div>
