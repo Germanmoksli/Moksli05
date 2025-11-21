@@ -6422,22 +6422,30 @@ def account():
     except Exception:
         user_row = None
     if request.method == 'POST':
-        # Extract profile fields
-        name = (request.form.get('name') or '').strip() or None
+        # Extract first and last name separately from the form.  We will store
+        # the combined value into the ``users.name`` column.  If both fields
+        # are empty, the resulting name will be set to NULL so that the
+        # database column remains blank rather than an empty string.
+        first_name = (request.form.get('first_name') or '').strip()
+        last_name = (request.form.get('last_name') or '').strip()
+        name_parts: list[str] = []
+        if first_name:
+            name_parts.append(first_name)
+        if last_name:
+            name_parts.append(last_name)
+        full_name = ' '.join(name_parts) or None
+
         # Pull country code and phone digits from the form; remove all non‑digit characters
         country_code = (request.form.get('country_code') or '').strip()
         raw_phone = (request.form.get('phone') or '').strip()
         phone_digits = re.sub(r'\D', '', raw_phone)
-        # Determine the new contact_info value.  If digits were provided, always
-        # compose a contact string combining the selected country code and digits.
-        # Otherwise, fall back to the existing contact_info so that omitting the
-        # phone field does not wipe out the existing number.
-        contact: str | None
+        # Determine the new contact_info value.  If digits were provided, compose a
+        # contact string; otherwise preserve the existing number from the database.
         if phone_digits:
             contact = f"{country_code}{phone_digits}"
         else:
-            # Preserve existing contact_info if available
             contact = user_row['contact_info'] if user_row else None
+
         # Handle uploaded photo.  Save the file into ``static/uploads`` and build a
         # relative path for storage in the database.  When saving, ensure the
         # directory exists and optionally prefix the filename with a timestamp to
@@ -6446,7 +6454,6 @@ def account():
         photo_path: str | None = None
         if photo_file and photo_file.filename:
             filename = secure_filename(photo_file.filename)
-            # Prefix the filename with a timestamp to avoid name clashes
             timestamp = datetime.utcnow().strftime('%Y%m%d%H%M%S')
             unique_name = f"{timestamp}_{filename}"
             upload_dir = os.path.join(app.root_path, 'static', 'uploads')
@@ -6454,11 +6461,10 @@ def account():
             file_path = os.path.join(upload_dir, unique_name)
             try:
                 photo_file.save(file_path)
-                # Store the relative path (under static) in the DB
                 photo_path = f'uploads/{unique_name}'
             except Exception:
-                # If saving fails, ignore the upload and continue without updating the photo
                 photo_path = None
+
         # Perform the update.  Do not use a context manager on ``conn`` so that
         # the wrapper does not close the connection before we are done.  Commit
         # explicitly so changes persist on SQLite and remain harmless on PostgreSQL.
@@ -6466,18 +6472,16 @@ def account():
             if photo_path:
                 conn.execute(
                     'UPDATE users SET name=?, contact_info=?, photo=? WHERE id=?',
-                    (name, contact, photo_path, user_id)
+                    (full_name, contact, photo_path, user_id)
                 )
-                # Update the session variable so the navigation bar updates immediately
                 session['user_photo'] = photo_path
             else:
                 conn.execute(
                     'UPDATE users SET name=?, contact_info=? WHERE id=?',
-                    (name, contact, user_id)
+                    (full_name, contact, user_id)
                 )
             conn.commit()
         except Exception:
-            # Ignore update errors but log if necessary
             pass
         # Close connection after update
         conn.close()
@@ -6575,7 +6579,26 @@ def account():
         # On any error while parsing the phone, retain defaults
         phone_country_code = '+7'
         phone_digits_display = ''
-    return render_template('account.html', user=user, phone_country_code=phone_country_code, phone_digits=phone_digits_display)
+    # Parse the stored full name into first and last names for display in the profile edit form.
+    first_name_value: str = ''
+    last_name_value: str = ''
+    if user and user['name']:
+        # Split on whitespace; the first element is considered the first name and the
+        # remainder (if any) is treated as the last name.  This supports multi‑part
+        # surnames (e.g. "Ван дер Ваарт").
+        parts = user['name'].split()
+        if parts:
+            first_name_value = parts[0]
+            if len(parts) > 1:
+                last_name_value = ' '.join(parts[1:])
+    return render_template(
+        'account.html',
+        user=user,
+        phone_country_code=phone_country_code,
+        phone_digits=phone_digits_display,
+        first_name=first_name_value,
+        last_name=last_name_value
+    )
 
 
 # ---------------------------------------------------------------------------

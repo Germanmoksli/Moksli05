@@ -100,11 +100,23 @@
       </a>
     </div>
   </div>
-  <!-- Раздел "Обо мне" -->
-  <h3 class="mt-5 mb-3 fw-bold">Обо мне</h3>
-  <form action="{{ url_for('account') }}" method="post">
+  <!-- Раздел ввода основной информации -->
+  <h3 class="mt-5 mb-3 fw-bold">Основная информация</h3>
+  <form action="{{ url_for('account') }}" method="post" enctype="multipart/form-data">
+    <!-- Имя пользователя -->
     <div class="mb-3">
-      <textarea name="about_me" class="form-control rounded-4" rows="5" placeholder="Напишите о себе">{{ user.about_me or '' }}</textarea>
+      <label for="firstNameInput" class="form-label fw-semibold">Имя</label>
+      <input type="text" name="first_name" id="firstNameInput" class="form-control rounded-4" value="{{ first_name }}" placeholder="Введите ваше имя">
+    </div>
+    <!-- Фамилия пользователя -->
+    <div class="mb-3">
+      <label for="lastNameInput" class="form-label fw-semibold">Фамилия</label>
+      <input type="text" name="last_name" id="lastNameInput" class="form-control rounded-4" value="{{ last_name }}" placeholder="Введите вашу фамилию">
+    </div>
+    <!-- Поле «Обо мне».  Пока не сохраняется в базе данных, но позволяет пользователю оставить заметку о себе. -->
+    <div class="mb-3">
+      <label for="aboutMeTextarea" class="form-label fw-semibold">Обо мне</label>
+      <textarea id="aboutMeTextarea" name="about_me" class="form-control rounded-4" rows="5" placeholder="Напишите о себе">{{ user.about_me or '' }}</textarea>
     </div>
     <div class="text-end">
       <button type="submit" class="btn btn-primary px-4">Готово</button>
