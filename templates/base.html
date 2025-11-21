@@ -114,15 +114,18 @@
         background-color: var(--sidebar-bg);
       }
 
-      /* Глобальные скругления для кнопок и полей ввода. Все стандартные кнопки (.btn) и
-         элементы ввода (.form-control, .form-select) получают большой радиус углов, чтобы
-         выглядеть более плавно и современно. */
+      /* Глобальные скругления для кнопок, полей ввода и выпадающих меню. Используем
+         одинаковый радиус, как у карточек квартир в каталоге (20px), чтобы дизайн
+         выглядел цельным. */
       .btn {
-        border-radius: 30px !important;
+        border-radius: 20px !important;
       }
       .form-control,
       .form-select {
-        border-radius: 30px !important;
+        border-radius: 20px !important;
+      }
+      .dropdown-menu {
+        border-radius: 20px !important;
       }
 
       /* Стили для свернутого меню */
@@ -237,7 +240,8 @@
         color: var(--input-text);
         /* Чёткая граница и радиус скругления, чтобы поля были видны на светлом фоне */
         border: 1px solid var(--input-border);
-        border-radius: 0.25rem;
+        /* Используем тот же радиус скругления, что и у карточек и кнопок */
+        border-radius: 20px;
         box-shadow: none;
       }
       /* При фокусе на поле выделяем границу стандартным синим цветом Bootstrap */
@@ -264,32 +268,52 @@
       }
 
       /* Переопределяем стандартные цвета кнопок для темы Lux.
-         Первичные кнопки (btn-primary) должны быть ярко‑синими, вторичные (btn-secondary) — серыми. */
-      .btn-primary {
-        /* Используем единый оттенок для всех состояний кнопки вместо нескольких
-           синих оттенков. Новый цвет: #119ffe. */
-        background-color: #119ffe !important;
-        border-color: #119ffe !important;
+         Все основные кнопки (btn-primary и btn-secondary) окрашиваем в фирменный цвет
+         логотипа, чтобы интерфейс выглядел согласованно. */
+      .btn-primary,
+      .btn-secondary {
+        background-color: var(--bs-primary) !important;
+        border-color: var(--bs-primary) !important;
         color: #fff !important;
       }
       .btn-primary:hover,
       .btn-primary:focus,
-      .btn-primary:active {
-        background-color: #119ffe !important;
-        border-color: #119ffe !important;
-        color: #fff !important;
-      }
-      .btn-secondary {
-        background-color: #6c757d !important; /* Серый фон */
-        border-color: #6c757d !important;
-        color: #fff !important;
-      }
+      .btn-primary:active,
       .btn-secondary:hover,
       .btn-secondary:focus,
       .btn-secondary:active {
-        background-color: #5c636a !important;
-        border-color: #565e64 !important;
+        background-color: var(--bs-primary) !important;
+        border-color: var(--bs-primary) !important;
         color: #fff !important;
+      }
+      /* Стиль для кнопок с обводкой (outline). Оставляем прозрачный фон, но цвет
+         текста и обводки берём из основного цвета. При наведении и фокусе
+         делаем заливку фирменным цветом. */
+      .btn-outline-secondary,
+      .btn-outline-primary,
+      .btn-outline-success,
+      .btn-outline-danger,
+      .btn-outline-info,
+      .btn-outline-warning {
+        color: var(--bs-primary) !important;
+        border-color: var(--bs-primary) !important;
+        background-color: transparent !important;
+      }
+      .btn-outline-secondary:hover,
+      .btn-outline-primary:hover,
+      .btn-outline-success:hover,
+      .btn-outline-danger:hover,
+      .btn-outline-info:hover,
+      .btn-outline-warning:hover,
+      .btn-outline-secondary:focus,
+      .btn-outline-primary:focus,
+      .btn-outline-success:focus,
+      .btn-outline-danger:focus,
+      .btn-outline-info:focus,
+      .btn-outline-warning:focus {
+        color: #fff !important;
+        background-color: var(--bs-primary) !important;
+        border-color: var(--bs-primary) !important;
       }
 
       /* Заголовки страниц (h2) в основной части: делаем их более заметными и окрашиваем в основной цвет

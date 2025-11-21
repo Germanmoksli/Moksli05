@@ -13,6 +13,60 @@
       /* Контейнер для изображения должен быть позиционирован относительно,
          чтобы вложенная картинка могла занимать всю площадь по абсолютному позиционированию */
       .image-container { position: relative; overflow: hidden; }
+      /* Фирменный цвет приложения и глобальные радиусы. Эти переопределения
+         повторяют настройки из шаблона base.html, чтобы каталог для гостей
+         выглядел в едином стиле. */
+      :root {
+        --bs-primary: #010b4e;
+        --bs-primary-rgb: 1, 11, 78;
+      }
+      /* Скругление углов для кнопок, полей ввода и выпадающих меню */
+      .btn {
+        border-radius: 20px !important;
+        background-color: var(--bs-primary) !important;
+        border-color: var(--bs-primary) !important;
+        color: #fff !important;
+      }
+      .btn:hover,
+      .btn:focus,
+      .btn:active {
+        background-color: var(--bs-primary) !important;
+        border-color: var(--bs-primary) !important;
+        color: #fff !important;
+      }
+      .btn-outline-secondary,
+      .btn-outline-primary,
+      .btn-outline-success,
+      .btn-outline-danger,
+      .btn-outline-info,
+      .btn-outline-warning {
+        color: var(--bs-primary) !important;
+        border-color: var(--bs-primary) !important;
+        background-color: transparent !important;
+      }
+      .btn-outline-secondary:hover,
+      .btn-outline-primary:hover,
+      .btn-outline-success:hover,
+      .btn-outline-danger:hover,
+      .btn-outline-info:hover,
+      .btn-outline-warning:hover,
+      .btn-outline-secondary:focus,
+      .btn-outline-primary:focus,
+      .btn-outline-success:focus,
+      .btn-outline-danger:focus,
+      .btn-outline-info:focus,
+      .btn-outline-warning:focus {
+        color: #fff !important;
+        background-color: var(--bs-primary) !important;
+        border-color: var(--bs-primary) !important;
+      }
+      .form-control,
+      .form-select {
+        border-radius: 20px !important;
+      }
+      .dropdown-menu {
+        border-radius: 20px !important;
+      }
     </style>
   </head>
   <body class="bg-light">
