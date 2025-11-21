@@ -89,18 +89,25 @@
       .pac-item:last-child {
         border-bottom: none !important;
       }
+      /* Цвет подсказки при наведении и выделении — лёгкий светло‑серый,
+         чтобы не перекрывать фирменный цвет. */
       .pac-item:hover,
       .pac-item.pac-item-selected {
-        background-color: var(--bs-primary) !important;
-        color: #fff !important;
+        background-color: #f0f2f5 !important;
+        color: #6c757d !important;
       }
       /* Скрываем стандартные иконки Google, чтобы сохранить единый стиль */
-      /* Иконка геометки слева: окрашиваем в фирменный синий цвет и добавляем
-         отступ. Используем CSS‑фильтр для перекраски стандартной иконки. */
+      /* Иконка геометки слева: заменяем стандартную иконку на собственную
+         тёмно‑синюю (цвет логотипа). Для этого скрываем исходный фон и
+         устанавливаем SVG‑иконку через data URI. */
       .pac-item .pac-icon {
         display: inline-block !important;
+        width: 16px !important;
+        height: 16px !important;
         margin-right: 8px !important;
-        filter: invert(9%) sepia(51%) saturate(6566%) hue-rotate(233deg) brightness(92%) contrast(115%) !important;
+        background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxNicgaGVpZ2h0PScxNicgZmlsbD0nJTIzMDEwYjRlJyB2aWV3Qm94PScwIDAgMTYgMTYnPjxwYXRoIGQ9J004IDE2czYtNS42ODYgNi0xMEE2IDYgMCAxIDAgMiA2YzAgNC4zMTQgNiAxMCA2IDEwem0wLTEzYTMgMyAwIDEgMSAwIDYgMyAzIDAgMCAxIDAtNnonLz48L3N2Zz4=") !important;
+        background-repeat: no-repeat !important;
+        background-size: contain !important;
       }
       /* Скругление карточек и внутренних контейнеров */
       .card {
