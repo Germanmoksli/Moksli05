@@ -44,53 +44,53 @@
       </p>
       <!-- Сетка с пунктами профиля -->
       <div class="row row-cols-1 row-cols-md-2 g-2 g-md-3 profile-grid">
-        <a href="#" class="profile-item d-flex align-items-center p-3" data-bs-toggle="modal" data-bs-target="#jobModal">
+        <a href="#" class="profile-item d-flex align-items-center p-3 profile-edit-item" data-label="Моя работа">
           <i class="bi bi-briefcase-fill profile-icon me-3"></i>
-          <span>Моя работа</span>
+          <span data-label="Моя работа">Моя работа</span>
         </a>
-        <a href="#" class="profile-item d-flex align-items-center p-3">
+        <a href="#" class="profile-item d-flex align-items-center p-3 profile-edit-item" data-label="Где мне всегда хотелось побывать">
           <i class="bi bi-geo-alt-fill profile-icon me-3"></i>
-          <span>Где мне всегда хотелось побывать</span>
+          <span data-label="Где мне всегда хотелось побывать">Где мне всегда хотелось побывать</span>
         </a>
         <a href="#" class="profile-item d-flex align-items-center p-3">
           <i class="bi bi-music-note-beamed profile-icon me-3"></i>
           <span>Любимая песня в школе</span>
         </a>
-        <a href="#" class="profile-item d-flex align-items-center p-3" data-bs-toggle="modal" data-bs-target="#petsModal">
+        <a href="#" class="profile-item d-flex align-items-center p-3 profile-edit-item" data-label="Питомцы">
           <i class="bi bi-paw-fill profile-icon me-3"></i>
-          <span>Питомцы</span>
+          <span data-label="Питомцы">Питомцы</span>
         </a>
-        <a href="#" class="profile-item d-flex align-items-center p-3">
+        <a href="#" class="profile-item d-flex align-items-center p-3 profile-edit-item" data-label="Из какого я поколения">
           <i class="bi bi-people-fill profile-icon me-3"></i>
-          <span>Из какого я поколения</span>
+          <span data-label="Из какого я поколения">Из какого я поколения</span>
         </a>
-        <a href="#" class="profile-item d-flex align-items-center p-3">
+        <a href="#" class="profile-item d-flex align-items-center p-3 profile-edit-item" data-label="Школьные годы">
           <i class="bi bi-book-fill profile-icon me-3"></i>
-          <span>Школьные годы</span>
+          <span data-label="Школьные годы">Школьные годы</span>
         </a>
-        <a href="#" class="profile-item d-flex align-items-center p-3">
+        <a href="#" class="profile-item d-flex align-items-center p-3 profile-edit-item" data-label="Что я делаю часами">
           <i class="bi bi-clock-fill profile-icon me-3"></i>
-          <span>Что я делаю часами</span>
+          <span data-label="Что я делаю часами">Что я делаю часами</span>
         </a>
-        <a href="#" class="profile-item d-flex align-items-center p-3">
+        <a href="#" class="profile-item d-flex align-items-center p-3 profile-edit-item" data-label="Интересный факт обо мне">
           <i class="bi bi-lightbulb-fill profile-icon me-3"></i>
-          <span>Интересный факт обо мне</span>
+          <span data-label="Интересный факт обо мне">Интересный факт обо мне</span>
         </a>
-        <a href="#" class="profile-item d-flex align-items-center p-3">
+        <a href="#" class="profile-item d-flex align-items-center p-3 profile-edit-item" data-label="Мой самый бесполезный навык">
           <i class="bi bi-pencil-fill profile-icon me-3"></i>
-          <span>Мой самый бесполезный навык</span>
+          <span data-label="Мой самый бесполезный навык">Мой самый бесполезный навык</span>
         </a>
-        <a href="#" class="profile-item d-flex align-items-center p-3">
+        <a href="#" class="profile-item d-flex align-items-center p-3 profile-edit-item" data-label="Языки, на которых я говорю">
           <i class="bi bi-chat-square-dots-fill profile-icon me-3"></i>
-          <span>Языки, на которых я говорю</span>
+          <span data-label="Языки, на которых я говорю">Языки, на которых я говорю</span>
         </a>
-        <a href="#" class="profile-item d-flex align-items-center p-3">
+        <a href="#" class="profile-item d-flex align-items-center p-3 profile-edit-item" data-label="Что я безумно люблю">
           <i class="bi bi-heart-fill profile-icon me-3"></i>
-          <span>Что я безумно люблю</span>
+          <span data-label="Что я безумно люблю">Что я безумно люблю</span>
         </a>
-        <a href="#" class="profile-item d-flex align-items-center p-3">
+        <a href="#" class="profile-item d-flex align-items-center p-3 profile-edit-item" data-label="История моей жизни">
           <i class="bi bi-bookmark-fill profile-icon me-3"></i>
-          <span>История моей жизни</span>
+          <span data-label="История моей жизни">История моей жизни</span>
         </a>
       </div>
       <!-- Кнопка добавления места проживания -->
@@ -111,52 +111,61 @@
     </div>
   </form>
 
-  <!-- Модальное окно для поля "Моя работа" -->
-  <div class="modal fade" id="jobModal" tabindex="-1" aria-labelledby="jobModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-      <div class="modal-content rounded-4">
-        <form method="post" action="{{ url_for('account') }}">
-          <div class="modal-header border-0">
-            <h5 class="modal-title" id="jobModalLabel">Моя работа</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body">
-            <div class="mb-3">
-              <label for="jobInput" class="form-label">Укажите вашу работу</label>
-              <input type="text" class="form-control" id="jobInput" name="job" placeholder="Например: преподаватель">
-            </div>
-          </div>
-          <div class="modal-footer border-0">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-            <button type="submit" class="btn btn-primary">Сохранить</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
 
-  <!-- Модальное окно для поля "Питомцы" -->
-  <div class="modal fade" id="petsModal" tabindex="-1" aria-labelledby="petsModalLabel" aria-hidden="true">
+  <!-- Общее модальное окно для редактирования пунктов профиля -->
+  <div class="modal fade" id="profileModal" tabindex="-1" aria-labelledby="profileModalLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content rounded-4">
-        <form method="post" action="{{ url_for('account') }}">
-          <div class="modal-header border-0">
-            <h5 class="modal-title" id="petsModalLabel">Питомцы</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body">
-            <div class="mb-3">
-              <label for="petsInput" class="form-label">Расскажите о своих питомцах</label>
-              <input type="text" class="form-control" id="petsInput" name="pets" placeholder="Например: кошка, собака">
-            </div>
-          </div>
-          <div class="modal-footer border-0">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-            <button type="submit" class="btn btn-primary">Сохранить</button>
-          </div>
-        </form>
+        <div class="modal-header border-0">
+          <h5 class="modal-title" id="profileModalLabel"></h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <input type="text" class="form-control" id="profileModalInput">
+        </div>
+        <div class="modal-footer border-0">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+          <button type="button" class="btn btn-primary" id="profileModalSave">Сохранить</button>
+        </div>
       </div>
     </div>
   </div>
+  <!-- Скрипт для обработки ввода в модальном окне профиля -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      var modalEl = document.getElementById('profileModal');
+      var modalTitle = document.getElementById('profileModalLabel');
+      var modalInput = document.getElementById('profileModalInput');
+      var currentItem = null;
+      // Навешиваем обработчик на все редактируемые элементы профиля
+      var items = document.querySelectorAll('.profile-edit-item');
+      items.forEach(function (item) {
+        item.addEventListener('click', function (e) {
+          e.preventDefault();
+          currentItem = this;
+          var label = this.querySelector('span').getAttribute('data-label');
+          modalTitle.textContent = label;
+          modalInput.value = '';
+          // Открываем модалку
+          var bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
+          bsModal.show();
+        });
+      });
+      // Кнопка сохранения в модальном окне
+      var saveBtn = document.getElementById('profileModalSave');
+      saveBtn.addEventListener('click', function () {
+        if (currentItem) {
+          var label = currentItem.querySelector('span').getAttribute('data-label');
+          var value = modalInput.value.trim();
+          // Если пользователь ввёл значение, показываем его после метки
+          if (value) {
+            currentItem.querySelector('span').textContent = label + ': ' + value;
+          }
+          var bsModal = bootstrap.Modal.getInstance(modalEl);
+          bsModal.hide();
+        }
+      });
+    });
+  </script>
 </div>
 {% endblock %}
