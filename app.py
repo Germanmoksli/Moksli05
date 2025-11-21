@@ -3691,7 +3691,14 @@ def edit_room(room_id: int):
             address_parts.append(str(part))
     address_display = ", ".join(address_parts)
     conn.close()
-    return render_template("room_edit_form.html", room=room, address_display=address_display)
+    # Pass Google Maps API key to the edit form for map integration
+    google_maps_api_key = os.environ.get("GOOGLE_MAPS_API_KEY")
+    return render_template(
+        "room_edit_form.html",
+        room=room,
+        address_display=address_display,
+        google_maps_api_key=google_maps_api_key,
+    )
 
 
 # Calendar view
@@ -6859,7 +6866,9 @@ def view_room_public(room_id: int):
         if src:
             photos.append(src)
     conn.close()
-    return render_template('room_detail.html', room=room, photos=photos)
+    # Pass Google Maps API key to the detail page so that Google Maps can be loaded
+    google_maps_api_key = os.environ.get("GOOGLE_MAPS_API_KEY")
+    return render_template('room_detail.html', room=room, photos=photos, google_maps_api_key=google_maps_api_key)
 
 
 # ---------------------------------------------------------------------------

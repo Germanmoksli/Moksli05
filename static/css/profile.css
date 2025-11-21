@@ -1,0 +1,67 @@
+/* Custom styles for the user profile page in the Moksli application.
+   This file defines the look and feel of the user's "Аккаунт" page,
+   inspired by Airbnb's profile editor.  It uses the primary color
+   defined in Bootstrap variables (via --bs-primary) and applies
+   consistent rounded corners to match the rest of the site. */
+
+/* Large circular avatar with user initial */
+.avatar-circle {
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  background-color: var(--bs-primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 5rem;
+  font-weight: 700;
+  position: relative;
+}
+
+/* Upload photo button positioned below the avatar */
+.upload-photo-button {
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+}
+
+/* Profile item styling: card-like links with icons */
+.profile-item {
+  background-color: #fff;
+  border: 1px solid #e6e6e6;
+  border-radius: 20px;
+  color: inherit;
+  text-decoration: none;
+  transition: background-color 0.1s ease-in-out, box-shadow 0.1s ease-in-out;
+}
+.profile-item:hover,
+.profile-item:focus {
+  background-color: #f7f7f7;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+  text-decoration: none;
+  color: inherit;
+}
+
+/* Icons inside profile items */
+.profile-icon {
+  font-size: 1.2rem;
+  color: var(--bs-primary);
+}
+
+/* Button for adding living place */
+.profile-add {
+  border: 1px solid #e6e6e6;
+  border-radius: 20px;
+  background-color: #fafafa;
+  color: #555;
+  transition: background-color 0.15s ease-in-out;
+}
+.profile-add:hover {
+  background-color: #f2f2f2;
+  text-decoration: none;
+}

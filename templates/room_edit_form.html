@@ -61,12 +61,12 @@
         </div>
         <div class="invalid-feedback">Укажите, является ли кухня студией.</div>
       </div>
-      <!-- Адрес с подсказками -->
-      <div class="mb-3 position-relative">
-        <label for="address" class="form-label">Расположение (введите страну, город, улицу, дом)</label>
-        <input type="text" class="form-control" id="address" name="address" autocomplete="off" placeholder="Например: Казахстан, Алматы, Абая 10" value="{{ address_display }}" required>
-        <ul id="suggestions-list" class="list-group position-absolute w-100" style="z-index: 1000;"></ul>
+      <!-- Адрес с автодополнением -->
+      <div class="mb-3">
+        <label for="address_input" class="form-label">Расположение (введите страну, город, улицу, дом)</label>
+        <input type="text" class="form-control" id="address_input" name="address" autocomplete="off" placeholder="Например: Казахстан, Алматы, Абая 10" value="{{ address_display }}" required>
         <div class="invalid-feedback">Введите адрес.</div>
+        <small class="form-text text-muted">Выберите адрес из выпадающего списка и затем переместите маркер на карте для точного расположения.</small>
       </div>
       <!-- Скрытые поля для частей адреса и координат -->
       <input type="hidden" id="country" name="country" value="{{ room['country'] or '' }}">
@@ -117,80 +117,73 @@
       </div>
     </form>
   </div>
-  <!-- Подключаем Leaflet для карты -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" integrity="" crossorigin=""/>
-  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js" integrity="" crossorigin=""></script>
+  <!-- Инициализация Google Maps для формы редактирования.  Загружаем API
+       с ключом и библиотекой Places, затем вызываем initMap, когда API
+       готов.  Внутри initMap карта центрируется на сохранённых
+       координатах квартиры (если они есть) или на Алма‑Ате по умолчанию.
+       Пользователь может перемещать маркер или кликнуть по карте, чтобы
+       изменить координаты.  Автодополнение адреса заполняет скрытые поля
+       country, city, street и house_number. -->
   <script>
-  // Инициализация карты и установка исходного местоположения. Если существуют сохранённые
-  // координаты, используем их для позиционирования и установки маркера.
-  document.addEventListener('DOMContentLoaded', function() {
-    var lat = parseFloat(document.getElementById('latitude').value) || 43.238949;
-    var lon = parseFloat(document.getElementById('longitude').value) || 76.889709;
-    var map = L.map('mapid').setView([lat, lon], 12);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
-    var marker;
-    if (document.getElementById('latitude').value && document.getElementById('longitude').value) {
-      marker = L.marker([lat, lon]).addTo(map);
-    }
-    map.on('click', function(e) {
-      var latlng = e.latlng;
-      document.getElementById('latitude').value = latlng.lat;
-      document.getElementById('longitude').value = latlng.lng;
-      if (marker) {
-        marker.setLatLng(latlng);
-      } else {
-        marker = L.marker(latlng).addTo(map);
+    function initMap() {
+      var mapContainer = document.getElementById('mapid');
+      if (!mapContainer) return;
+      var latInput = document.getElementById('latitude');
+      var lonInput = document.getElementById('longitude');
+      var lat = parseFloat(latInput.value) || 43.238949;
+      var lon = parseFloat(lonInput.value) || 76.889709;
+      var defaultLatLng = { lat: lat, lng: lon };
+      var map = new google.maps.Map(mapContainer, { center: defaultLatLng, zoom: 12 });
+      var marker = new google.maps.Marker({ map: map, position: defaultLatLng, draggable: true });
+      function updateLatLng(latVal, lonVal) {
+        latInput.value = latVal;
+        lonInput.value = lonVal;
       }
-    });
-    // Подсказки по адресу
-    var addressInput = document.getElementById('address');
-    var suggestionsList = document.getElementById('suggestions-list');
-    addressInput.addEventListener('input', function() {
-      var query = addressInput.value.trim();
-      if (query.length < 3) {
-        suggestionsList.innerHTML = '';
-        return;
-      }
-      fetch('/address_suggestions?q=' + encodeURIComponent(query))
-        .then(function(resp) { return resp.json(); })
-        .then(function(data) {
-          suggestionsList.innerHTML = '';
-          data.forEach(function(item) {
-            var li = document.createElement('li');
-            li.classList.add('list-group-item', 'list-group-item-action');
-            li.textContent = item.display_name;
-            li.dataset.lat = item.lat;
-            li.dataset.lon = item.lon;
-            li.dataset.country = item.country || '';
-            li.dataset.city = item.city || '';
-            li.dataset.street = item.street || '';
-            li.dataset.house_number = item.house_number || '';
-            suggestionsList.appendChild(li);
+      updateLatLng(lat, lon);
+      marker.addListener('dragend', function(event) {
+        updateLatLng(event.latLng.lat(), event.latLng.lng());
+      });
+      map.addListener('click', function(e) {
+        marker.setPosition(e.latLng);
+        updateLatLng(e.latLng.lat(), e.latLng.lng());
+      });
+      // Автодополнение для ввода адреса
+      var addressInput = document.getElementById('address_input');
+      if (addressInput) {
+        var autocomplete = new google.maps.places.Autocomplete(addressInput, { types: ['geocode'] });
+        autocomplete.addListener('place_changed', function() {
+          var place = autocomplete.getPlace();
+          if (!place || !place.geometry) return;
+          document.getElementById('address_input').value = addressInput.value;
+          var countryVal = '';
+          var cityVal = '';
+          var streetVal = '';
+          var houseVal = '';
+          (place.address_components || []).forEach(function(comp) {
+            if (comp.types.includes('country')) countryVal = comp.long_name;
+            if (comp.types.includes('locality') || comp.types.includes('administrative_area_level_1') || comp.types.includes('administrative_area_level_2')) cityVal = comp.long_name;
+            if (comp.types.includes('route')) streetVal = comp.long_name;
+            if (comp.types.includes('street_number')) houseVal = comp.long_name;
           });
+          document.getElementById('country').value = countryVal;
+          document.getElementById('city').value = cityVal;
+          document.getElementById('street').value = streetVal;
+          document.getElementById('house_number').value = houseVal;
+          var loc = place.geometry.location;
+          if (loc) {
+            var newLat = loc.lat();
+            var newLng = loc.lng();
+            map.setCenter({ lat: newLat, lng: newLng });
+            map.setZoom(16);
+            marker.setPosition({ lat: newLat, lng: newLng });
+            updateLatLng(newLat, newLng);
+          }
         });
-    });
-    suggestionsList.addEventListener('click', function(e) {
-      if (e.target && e.target.nodeName === 'LI') {
-        addressInput.value = e.target.textContent;
-        document.getElementById('latitude').value = e.target.dataset.lat;
-        document.getElementById('longitude').value = e.target.dataset.lon;
-        document.getElementById('country').value = e.target.dataset.country;
-        document.getElementById('city').value = e.target.dataset.city;
-        document.getElementById('street').value = e.target.dataset.street;
-        document.getElementById('house_number').value = e.target.dataset.house_number;
-        suggestionsList.innerHTML = '';
-        var latf = parseFloat(e.target.dataset.lat);
-        var lonf = parseFloat(e.target.dataset.lon);
-        map.setView([latf, lonf], 16);
-        if (marker) {
-          marker.setLatLng([latf, lonf]);
-        } else {
-          marker = L.marker([latf, lonf]).addTo(map);
-        }
       }
-    });
-  });
+    }
   </script>
+  <!-- Загружаем библиотеку Google Maps с ключом API и вызовом обратной функции initMap -->
+  <script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&libraries=places&callback=initMap" async defer></script>
   <script>
     // Bootstrap валидация форм
     (function () {

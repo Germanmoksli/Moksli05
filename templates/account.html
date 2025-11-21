@@ -1,194 +1,114 @@
 {% extends "base.html" %}
-{% block title %}Аккаунт{% endblock %}
+{% block title %}Мой профиль{% endblock %}
+
+{#
+  Страница профиля пользователя.  Вдохновлена дизайном Airbnb и
+  адаптирована под фирменный стиль Moksli.  Показывает большую
+  круглую аватарку с первой буквой имени, ссылки на заполнение
+  разных блоков информации и раздел «Обо мне» с кнопкой
+  сохранения.  Пункты пока не ведут на отдельные формы редактирования,
+  но вы можете добавить соответствующие маршруты и подменить ссылки.
+#}
 
 {% block content %}
-  <div class="mx-auto" style="max-width: 600px;">
-    <h2 class="text-primary fw-bold fs-4 mb-4">Аккаунт</h2>
-    <!-- View mode: display user information as plain text -->
-    <div id="account-view">
-      <div class="d-flex align-items-start mb-3">
-        <!-- Display avatar in view mode -->
-        <div class="me-3 text-center">
-          {% set avatar_filename = user.photo if user.photo else 'default_avatar.png' %}
-          <img src="{{ url_for('static', filename=avatar_filename) }}" class="rounded-circle" style="width: 150px; height: 150px; object-fit: cover;">
+<div class="container py-4 my-4">
+  <div class="row gx-5 gy-4 align-items-start">
+    <!-- Левая колонка: аватар и кнопка загрузки фото -->
+    <div class="col-12 col-md-4 d-flex flex-column align-items-center">
+      <div class="position-relative mb-3">
+        <!-- Аватар: первая буква имени или логина -->
+        <div class="avatar-circle shadow-sm">
+          <span>
+            {% if user and user.name %}
+              {{ user.name[0] | upper }}
+            {% elif user and user.username %}
+              {{ user.username[0] | upper }}
+            {% else %}
+              U
+            {% endif %}
+          </span>
         </div>
-        <div class="flex-grow-1">
-          <p class="mb-2"><strong>Имя пользователя:</strong> {{ user.username }}</p>
-          <p class="mb-2"><strong>Имя:</strong> {{ user.name or '' }}</p>
-          <p class="mb-2"><strong>Роль:</strong> {{ user.role }}</p>
-          {# Display the owner's unique ID so that it can be shared with prospective managers. #}
-          {% if user.role == 'owner' %}
-          <p class="mb-2"><strong>ID владельца:</strong> {{ user.id }}</p>
-          {% endif %}
-          <p class="mb-2"><strong>Телефон:</strong> {{ (user.contact_info or '') | format_phone }}</p>
-        </div>
-      </div>
-      <div class="d-flex justify-content-center gap-2 mt-3">
-        <button type="button" id="edit-button" class="btn btn-primary">Редактировать</button>
-        <a href="{{ url_for('logout') }}" class="btn btn-secondary">Выйти</a>
+        <!-- Кнопка загрузки фото (пока не активна) -->
+        <button type="button" class="btn btn-light btn-sm upload-photo-button shadow rounded-pill" disabled>
+          <i class="bi bi-camera-fill me-1"></i>Добавить
+        </button>
       </div>
     </div>
-    <!-- Edit mode form: hidden by default, reveals on clicking Edit -->
-    <form id="account-edit-form" method="post" enctype="multipart/form-data" class="needs-validation" novalidate style="display: none;">
-      <!-- Photo and identity section -->
-      <div class="d-flex align-items-start mb-3">
-        <div id="photo-wrapper" class="me-3 text-center">
-          {# Display the user's photo if available; otherwise show a default avatar image. #}
-          {% set avatar_filename = user.photo if user.photo else 'default_avatar.png' %}
-          <img src="{{ url_for('static', filename=avatar_filename) }}" class="rounded-circle" style="width: 150px; height: 150px; object-fit: cover; cursor: pointer;">
-          <input type="file" id="photo" name="photo" accept="image/*" class="d-none">
-        </div>
-        <div class="flex-grow-1">
-          <div class="mb-3">
-            <label class="form-label">Имя пользователя</label>
-            <input type="text" class="form-control" value="{{ user.username }}" readonly>
-          </div>
-          <div class="mb-3">
-            <label for="name" class="form-label">Имя</label>
-            <input type="text" class="form-control" id="name" name="name" value="{{ user.name or '' }}">
-          </div>
-        </div>
+    <!-- Правая колонка: заголовок, описание и список полей -->
+    <div class="col-12 col-md-8">
+      <h2 class="fw-bold mb-2">Мой профиль</h2>
+      <p class="text-muted mb-4" style="max-width:480px;">
+        Хозяева и гости могут просматривать ваш профиль. Он также может отображаться
+        на разных страницах Moksli, что помогает нам поддерживать атмосферу доверия
+        в сообществе.
+      </p>
+      <!-- Сетка с пунктами профиля -->
+      <div class="row row-cols-1 row-cols-md-2 g-2 g-md-3 profile-grid">
+        <a href="#" class="profile-item d-flex align-items-center p-3">
+          <i class="bi bi-briefcase-fill profile-icon me-3"></i>
+          <span>Моя работа</span>
+        </a>
+        <a href="#" class="profile-item d-flex align-items-center p-3">
+          <i class="bi bi-geo-alt-fill profile-icon me-3"></i>
+          <span>Где мне всегда хотелось побывать</span>
+        </a>
+        <a href="#" class="profile-item d-flex align-items-center p-3">
+          <i class="bi bi-music-note-beamed profile-icon me-3"></i>
+          <span>Любимая песня в школе</span>
+        </a>
+        <a href="#" class="profile-item d-flex align-items-center p-3">
+          <i class="bi bi-paw-fill profile-icon me-3"></i>
+          <span>Питомцы</span>
+        </a>
+        <a href="#" class="profile-item d-flex align-items-center p-3">
+          <i class="bi bi-people-fill profile-icon me-3"></i>
+          <span>Из какого я поколения</span>
+        </a>
+        <a href="#" class="profile-item d-flex align-items-center p-3">
+          <i class="bi bi-book-fill profile-icon me-3"></i>
+          <span>Школьные годы</span>
+        </a>
+        <a href="#" class="profile-item d-flex align-items-center p-3">
+          <i class="bi bi-clock-fill profile-icon me-3"></i>
+          <span>Что я делаю часами</span>
+        </a>
+        <a href="#" class="profile-item d-flex align-items-center p-3">
+          <i class="bi bi-lightbulb-fill profile-icon me-3"></i>
+          <span>Интересный факт обо мне</span>
+        </a>
+        <a href="#" class="profile-item d-flex align-items-center p-3">
+          <i class="bi bi-pencil-fill profile-icon me-3"></i>
+          <span>Мой самый бесполезный навык</span>
+        </a>
+        <a href="#" class="profile-item d-flex align-items-center p-3">
+          <i class="bi bi-chat-square-dots-fill profile-icon me-3"></i>
+          <span>Языки, на которых я говорю</span>
+        </a>
+        <a href="#" class="profile-item d-flex align-items-center p-3">
+          <i class="bi bi-heart-fill profile-icon me-3"></i>
+          <span>Что я безумно люблю</span>
+        </a>
+        <a href="#" class="profile-item d-flex align-items-center p-3">
+          <i class="bi bi-bookmark-fill profile-icon me-3"></i>
+          <span>История моей жизни</span>
+        </a>
       </div>
-      <!-- Role: read-only -->
-      <div class="mb-3">
-        <label class="form-label">Роль</label>
-        <input type="text" class="form-control" value="{{ user.role }}" readonly>
-      </div>
-      <!-- Phone editing fields -->
-      <div class="mb-3">
-        <label class="form-label">Телефон</label>
-        <div class="row g-2 align-items-end">
-          <div class="col-auto clickable-field" onclick="this.querySelector('select').focus();">
-            <select id="country_code" name="country_code" class="form-select">
-              <option value="+7" data-mask="(XXX) XXX XX XX" data-length="10" data-flag="🇰🇿" {% if phone_country_code == '+7' %}selected{% endif %}>🇰🇿 +7</option>
-              <option value="+1" data-mask="(XXX) XXX-XXXX" data-length="10" data-flag="🇺🇸" {% if phone_country_code == '+1' %}selected{% endif %}>🇺🇸 +1</option>
-              <option value="+44" data-mask="(XXXX) XXX XXXX" data-length="10" data-flag="🇬🇧" {% if phone_country_code == '+44' %}selected{% endif %}>🇬🇧 +44</option>
-              <option value="+49" data-mask="(XXXX) XXX XXXX" data-length="10" data-flag="🇩🇪" {% if phone_country_code == '+49' %}selected{% endif %}>🇩🇪 +49</option>
-              <option value="+81" data-mask="(XXXX) XXX XXX" data-length="9" data-flag="🇯🇵" {% if phone_country_code == '+81' %}selected{% endif %}>🇯🇵 +81</option>
-            </select>
-          </div>
-          <div class="col clickable-field" onclick="this.querySelector('input').focus();">
-            <!-- Prepopulate the subscriber number (without country code) using the provided phone_digits variable. -->
-            <input type="tel" class="form-control" id="phone" name="phone" placeholder="" list="guest-phones" value="{{ phone_digits or '' }}">
-          </div>
-        </div>
-      </div>
-      <!-- Buttons for edit mode -->
-      <div class="d-flex justify-content-center gap-2 mt-4">
-        <button type="submit" class="btn btn-primary">Сохранить</button>
-        <button type="button" id="cancel-edit" class="btn btn-secondary">Отмена</button>
-      </div>
-    </form>
-    <!-- Script to handle photo upload and preview -->
-    <script>
-      document.addEventListener('DOMContentLoaded', function () {
-        var wrapper = document.getElementById('photo-wrapper');
-        var input = document.getElementById('photo');
-        if (wrapper && input) {
-          wrapper.addEventListener('click', function() {
-            input.click();
-          });
-          input.addEventListener('change', function() {
-            var file = input.files[0];
-            if (file) {
-              var reader = new FileReader();
-              reader.onload = function(e) {
-                wrapper.innerHTML = '<img src="' + e.target.result + '" class="rounded-circle" style="width: 150px; height: 150px; object-fit: cover; cursor: pointer;">';
-              };
-              reader.readAsDataURL(file);
-            }
-          });
-        }
-      });
-    </script>
-    <!-- Script for phone masking similar to booking form with backspace handling -->
-    <script>
-      document.addEventListener('DOMContentLoaded', function () {
-        var codeSelect = document.getElementById('country_code');
-        var phoneInput = document.getElementById('phone');
-        if (!codeSelect || !phoneInput) return;
-        var currentMask = '';
-        var currentLength = 0;
-        function updatePlaceholder() {
-          var selected = codeSelect.options[codeSelect.selectedIndex];
-          currentMask = selected.getAttribute('data-mask');
-          currentLength = parseInt(selected.getAttribute('data-length'), 10) || 10;
-          phoneInput.placeholder = currentMask;
-          // Preserve any existing digits when switching country codes or on initial load.
-          var existingDigits = phoneInput.value.replace(/\D/g, '');
-          if (existingDigits) {
-            // Trim existing digits to the maximum length allowed for the selected country
-            existingDigits = existingDigits.slice(0, currentLength);
-            phoneInput.value = formatNumber(existingDigits);
-          } else {
-            phoneInput.value = '';
-          }
-        }
-        function formatNumber(digits) {
-          var result = '';
-          var digitIndex = 0;
-          for (var i = 0; i < currentMask.length; i++) {
-            var ch = currentMask[i];
-            if (ch === 'X') {
-              if (digitIndex < digits.length) {
-                result += digits[digitIndex++];
-              } else {
-                break;
-              }
-            } else {
-              result += ch;
-            }
-          }
-          return result;
-        }
-        codeSelect.addEventListener('change', updatePlaceholder);
-        phoneInput.addEventListener('input', function () {
-          var digits = phoneInput.value.replace(/\D/g, '');
-          if (digits.length > currentLength) {
-            digits = digits.slice(0, currentLength);
-          }
-          phoneInput.value = formatNumber(digits);
-        });
-        // Handle Backspace to delete the last digit regardless of separators
-        phoneInput.addEventListener('keydown', function (e) {
-          if (e.key === 'Backspace') {
-            e.preventDefault();
-            var digits = phoneInput.value.replace(/\D/g, '');
-            if (digits.length > 0) {
-              digits = digits.slice(0, -1);
-              phoneInput.value = formatNumber(digits);
-            }
-          }
-        });
-        // Keep cursor at end when focusing
-        phoneInput.addEventListener('focus', function () {
-          var len = phoneInput.value.length;
-          phoneInput.setSelectionRange(len, len);
-        });
-        // Initialize placeholder and format existing phone number on first load
-        updatePlaceholder();
-      });
-    </script>
-    <!-- Script to toggle between view and edit modes -->
-    <script>
-      document.addEventListener('DOMContentLoaded', function () {
-        var editBtn = document.getElementById('edit-button');
-        var cancelBtn = document.getElementById('cancel-edit');
-        var viewDiv = document.getElementById('account-view');
-        var editForm = document.getElementById('account-edit-form');
-        if (editBtn) {
-          editBtn.addEventListener('click', function () {
-            viewDiv.style.display = 'none';
-            editForm.style.display = 'block';
-          });
-        }
-        if (cancelBtn) {
-          cancelBtn.addEventListener('click', function () {
-            editForm.style.display = 'none';
-            viewDiv.style.display = 'block';
-          });
-        }
-      });
-    </script>
+      <!-- Кнопка добавления места проживания -->
+      <a href="#" class="btn btn-light w-100 mt-4 profile-add p-3 d-flex align-items-center justify-content-center">
+        <i class="bi bi-house-door-fill me-2"></i>
+        <span>Где я живу</span>
+      </a>
+    </div>
   </div>
+  <!-- Раздел "Обо мне" -->
+  <h3 class="mt-5 mb-3 fw-bold">Обо мне</h3>
+  <form action="{{ url_for('account') }}" method="post">
+    <div class="mb-3">
+      <textarea name="about_me" class="form-control rounded-4" rows="5" placeholder="Напишите о себе">{{ user.about_me or '' }}</textarea>
+    </div>
+    <div class="text-end">
+      <button type="submit" class="btn btn-primary px-4">Готово</button>
+    </div>
+  </form>
+</div>
 {% endblock %}

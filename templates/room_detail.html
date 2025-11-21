@@ -138,16 +138,21 @@
   </div>
 </div>
 {% if room['latitude'] and room['longitude'] %}
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+<!-- Отображение карты Google для страницы с деталями квартиры.  Карта появляется
+     только если известны координаты (широта и долгота). Мы загружаем API
+     Google Maps с вашим ключом и библиотекой Places, а затем инициализируем
+     карту внутри функции initRoomDetailMap.  Функция вызывается из
+     callback-параметра после загрузки API. -->
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-  var lat = {{ room['latitude'] }};
-  var lon = {{ room['longitude'] }};
-  var map = L.map('mapid').setView([lat, lon], 15);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
-  L.marker([lat, lon]).addTo(map);
-});
+  function initRoomDetailMap() {
+    var lat = {{ room['latitude'] }};
+    var lon = {{ room['longitude'] }};
+    var mapContainer = document.getElementById('mapid');
+    if (!mapContainer) return;
+    var map = new google.maps.Map(mapContainer, { center: { lat: lat, lng: lon }, zoom: 15 });
+    new google.maps.Marker({ position: { lat: lat, lng: lon }, map: map });
+  }
 </script>
+<script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&callback=initRoomDetailMap" async defer></script>
 {% endif %}
 {% endblock %}
