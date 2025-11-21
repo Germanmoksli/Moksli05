@@ -470,7 +470,7 @@
              авторизованным гостям. Включает поля: город, диапазон дат
              (Litepicker) и количество гостей. Значения берутся из параметров
              запроса, чтобы сохранять фильтры при навигации. #}
-{% if session.get('user_role') != 'owner' and session.get('user_role') != 'manager' %}
+{% if (session.get('user_role') != 'owner' and session.get('user_role') != 'manager') and request.endpoint == 'public_listings' %}
           <form method="get" action="{{ url_for('public_listings') }}" class="d-flex flex-wrap align-items-end gap-2 ms-3" style="max-width: 60%;">
             <div class="flex-grow-1">
               <label for="nav_location" class="form-label mb-0">Город</label>
