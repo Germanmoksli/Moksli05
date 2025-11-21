@@ -491,13 +491,78 @@
                   {% endif %}
                   <span>{{ current_user_name or current_username }}</span>
                 </a>
+                <!--
+                  Раскрывающееся меню аккаунта. В нём мы отображаем
+                  имя текущего пользователя и предоставляем список
+                  ссылок на основные разделы профиля. Каждая строка
+                  снабжена иконкой из набора Bootstrap Icons для
+                  наглядности. Пункты меню:
+                  1. Имя и фамилия пользователя (не кликабельный заголовок).
+                  2. «Избранное» — список понравившихся квартир.
+                  3. «Сообщения» — страница со всеми чатами пользователя.
+                  4. «История» — страница со списком бронирований.
+                  5. «Профиль» — редактирование профиля.
+                  6. «Настройки» — настройки аккаунта (сейчас ведёт на страницу профиля).
+                  7. «Мои объявления/В режим гостя» — переключение роли, только для владельцев.
+                  8. «Выход» — завершение сессии.
+                -->
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="accountMenu">
-                  <li><a class="dropdown-item" href="{{ url_for('account') }}">Профиль</a></li>
+                  <!-- Заголовок с именем пользователя -->
+                  <li class="px-3 py-2 d-flex align-items-center fw-semibold">
+                    <i class="bi bi-person-circle me-2"></i>
+                    <span>{{ current_user_name or current_username }}</span>
+                  </li>
+                  <li><hr class="dropdown-divider"></li>
+                  <!-- Избранное -->
+                  <li>
+                    <a class="dropdown-item d-flex align-items-center" href="{{ url_for('favorites') }}">
+                      <i class="bi bi-heart-fill me-2"></i>Избранное
+                    </a>
+                  </li>
+                  <!-- Сообщения -->
+                  <li>
+                    <a class="dropdown-item d-flex align-items-center" href="{{ url_for('chat_rooms') }}">
+                      <i class="bi bi-chat-dots-fill me-2"></i>Сообщения
+                    </a>
+                  </li>
+                  <!-- История бронирований -->
+                  <li>
+                    <a class="dropdown-item d-flex align-items-center" href="{{ url_for('user_bookings') }}">
+                      <i class="bi bi-clock-history me-2"></i>История
+                    </a>
+                  </li>
+                  <!-- Профиль -->
+                  <li>
+                    <a class="dropdown-item d-flex align-items-center" href="{{ url_for('account') }}">
+                      <i class="bi bi-person-fill me-2"></i>Профиль
+                    </a>
+                  </li>
+                  <!-- Настройки (пока ссылается на профиль) -->
+                  <li>
+                    <a class="dropdown-item d-flex align-items-center" href="{{ url_for('account') }}">
+                      <i class="bi bi-gear-fill me-2"></i>Настройки
+                    </a>
+                  </li>
+                  <!-- Мои объявления / переключение роли (только для владельцев) -->
                   {% if session.get('original_user_role') == 'owner' %}
-                    <li><a class="dropdown-item" href="{{ url_for('switch_role') }}">{% if session.get('user_role') == 'guest' %}В режим владельца{% else %}В режим гостя{% endif %}</a></li>
+                  <li>
+                    <a class="dropdown-item d-flex align-items-center" href="{{ url_for('switch_role') }}">
+                      <i class="bi bi-house-door-fill me-2"></i>
+                      {% if session.get('user_role') == 'guest' %}
+                        Мои объявления
+                      {% else %}
+                        В режим гостя
+                      {% endif %}
+                    </a>
+                  </li>
                   {% endif %}
                   <li><hr class="dropdown-divider"></li>
-                  <li><a class="dropdown-item" href="{{ url_for('logout') }}">Выйти</a></li>
+                  <!-- Выход -->
+                  <li>
+                    <a class="dropdown-item d-flex align-items-center" href="{{ url_for('logout') }}">
+                      <i class="bi bi-box-arrow-right me-2"></i>Выход
+                    </a>
+                  </li>
                 </ul>
               </div>
             {% else %}
