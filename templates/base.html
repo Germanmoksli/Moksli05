@@ -8,6 +8,8 @@
     <link href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.2/dist/lux/bootstrap.min.css" rel="stylesheet">
     <!-- Подключаем Bootstrap Icons для отображения иконок в меню -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <!-- Стили для календаря Litepicker (выбор диапазона дат) -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/litepicker/2.0.12/css/litepicker.min.css" rel="stylesheet">
     <!-- Подключаем пользовательские стили для страницы профиля -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}">
     <style>
@@ -464,6 +466,50 @@
               {# Для гостей навигационные элементы скрыты. #}
             {% endif %}
           </ul>
+          {# Форма поиска для гостей, размещённая в навигации. Показываем только
+             авторизованным гостям. Включает поля: город, диапазон дат
+             (Litepicker) и количество гостей. Значения берутся из параметров
+             запроса, чтобы сохранять фильтры при навигации. #}
+          {% if session.get('user_id') and session.get('user_role') == 'guest' %}
+          <form method="get" action="{{ url_for('public_listings') }}" class="d-none d-lg-flex align-items-end gap-2 ms-3" style="max-width: 60%;">
+            <div class="flex-grow-1">
+              <label for="nav_location" class="form-label mb-0">Город</label>
+              <input type="text" class="form-control" id="nav_location" name="location" list="navCityList" placeholder="Введите город" value="{{ request.args.get('location', '') }}">
+              <datalist id="navCityList">
+                {% set city_list = [
+                    'Абай','Акколь','Аксай','Аксу','Актау','Актобе','Алга','Алматы','Аральск','Аркалык',
+                    'Арыс','Астана','Атбасар','Атырау','Аягоз','Алатау','Байконур','Балхаш','Булаево',
+                    'Державинск','Ерейментау','Есик','Есиль','Жанаозен','Жанатас','Жаркент','Жезказган',
+                    'Жем','Жетысай','Житикара','Зайсан','Казалинск','Кандыагаш','Капшагай','Конаев',
+                    'Караганда','Каражал','Каратау','Каркаралинск','Каскелен','Кентау','Кокшетау',
+                    'Костанай','Косшы','Кульсары','Курчатов','Кызылорда','Ленгер','Лисаковск','Макинск',
+                    'Мамлютка','Павлодар','Петропавловск','Приозёрск','Риддер','Рудный','Сарань','Сарканд',
+                    'Сарыагаш','Сатпаев','Семей','Сергеевка','Серебрянск','Степногорск','Степняк',
+                    'Тайынша','Талгар','Талдыкорган','Тараз','Текели','Темир','Темиртау','Тобыл','Туркестан',
+                    'Уральск','Усть-Каменогорск','Ушарал','Уштобе','Форт-Шевченко','Хромтау','Шалкар','Шар',
+                    'Шардара','Шахтинск','Шемонаиха','Шу','Шымкент','Щучинск','Экибастуз','Эмба'
+                ] %}
+                {% for city_name in city_list %}
+                  <option value="{{ city_name }}"></option>
+                {% endfor %}
+              </datalist>
+            </div>
+            <div class="flex-grow-1">
+              <label for="nav_date_range" class="form-label mb-0">Когда</label>
+              <input type="text" class="form-control" id="nav_date_range" name="date_range" placeholder="Выберите даты" autocomplete="off">
+              <input type="hidden" id="nav_check_in" name="check_in" value="{{ request.args.get('check_in', '') }}">
+              <input type="hidden" id="nav_check_out" name="check_out" value="{{ request.args.get('check_out', '') }}">
+            </div>
+            <div class="" style="width: 110px;">
+              <label for="nav_guests" class="form-label mb-0">Кто</label>
+              <input type="number" min="1" class="form-control" id="nav_guests" name="guests" placeholder="Гости" value="{{ request.args.get('guests', '') }}">
+            </div>
+            <div>
+              <button type="submit" class="btn btn-primary" style="height: 38px;">Найти</button>
+            </div>
+          </form>
+          {% endif %}
+
           <!-- Правая часть: аккаунт или кнопки входа/регистрации -->
           <div class="d-flex align-items-center">
             {% if session.get('user_id') %}
@@ -613,6 +659,60 @@
             bsAlert.close();
           });
         }, 5000);
+      });
+    </script>
+
+    <!-- Подключаем Litepicker для выбора диапазона дат в навигации -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/litepicker/2.0.12/litepicker.min.js"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        var navDateInput = document.getElementById('nav_date_range');
+        if (navDateInput) {
+          var navCheckIn = document.getElementById('nav_check_in');
+          var navCheckOut = document.getElementById('nav_check_out');
+          var pickerNav = new Litepicker({
+            element: navDateInput,
+            singleMode: false,
+            allowRepick: true,
+            format: 'DD.MM.YYYY',
+            lang: 'ru-RU',
+            autoApply: true,
+            showWeekNumbers: false,
+            tooltipText: { one: 'ночь', other: 'ночей' },
+            tooltipNumber: (totalDays) => totalDays,
+            dropdowns: {
+              minYear: new Date().getFullYear(),
+              maxYear: new Date().getFullYear() + 1,
+              months: true,
+              years: true
+            },
+            setup: (picker) => {
+              picker.on('selected', (date1, date2) => {
+                // Обновляем скрытые поля для check_in и check_out
+                if (navCheckIn && navCheckOut) {
+                  navCheckIn.value = date1 ? date1.format('YYYY-MM-DD') : '';
+                  navCheckOut.value = date2 ? date2.format('YYYY-MM-DD') : '';
+                  // Отображаем выбранный диапазон в поле ввода
+                  navDateInput.value = date1 && date2 ? `${date1.format('DD.MM.YYYY')} - ${date2.format('DD.MM.YYYY')}` : '';
+                }
+              });
+            }
+          });
+          // Если даты уже есть в скрытых полях (из запроса), то устанавливаем их в пикер
+          // Восстанавливаем ранее выбранный диапазон, если такие значения есть
+          var initStart = navCheckIn && navCheckIn.value ? new Date(navCheckIn.value) : null;
+          var initEnd = navCheckOut && navCheckOut.value ? new Date(navCheckOut.value) : null;
+          function formatDate(d) {
+            var day = ('0' + d.getDate()).slice(-2);
+            var month = ('0' + (d.getMonth() + 1)).slice(-2);
+            var year = d.getFullYear();
+            return day + '.' + month + '.' + year;
+          }
+          if (initStart && initEnd) {
+            pickerNav.setDateRange(initStart, initEnd);
+            navDateInput.value = `${formatDate(initStart)} - ${formatDate(initEnd)}`;
+          }
+        }
       });
     </script>
 
