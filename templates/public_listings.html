@@ -83,7 +83,7 @@
              выглядел аккуратно, задаём высоту 32px и добавляем отступ справа.  -->
         <a class="navbar-brand fw-bold d-flex align-items-center" href="{{ url_for('public_listings') }}">
           <img src="{{ url_for('static', filename='uploads/logo.png') }}" alt="Moksli logo" height="48" class="me-2">
-          <span class="logo-text" style="color: var(--bs-primary); font-size: 0.9rem;">moksli</span>
+          {# Убираем текстовое название рядом с логотипом для каталога, оставляя только изображение #}
         </a>
     {# Для владельцев и менеджеров отображаем навигационные пункты в верхнем меню #}
     {% if session.get('user_role') == 'owner' %}
@@ -123,6 +123,48 @@
       </li>
     </ul>
     {% endif %}
+        {# Форма поиска по каталогу. Размещаем непосредственно в навигации,
+           чтобы фильтры (город, дата, гости) отображались в верхнем меню
+           на странице каталога. Используем скрытые поля для check_in и
+           check_out, а также Litepicker для выбора диапазона дат.
+         #}
+        <form method="get" action="{{ url_for('public_listings') }}" class="d-flex flex-wrap align-items-end gap-2 ms-3" style="max-width: 60%;">
+          <div>
+            <label for="nav_location" class="form-label mb-0">Город</label>
+            <input type="text" class="form-control" id="nav_location" name="location" list="navCityList" placeholder="Введите город" value="{{ request.args.get('location', '') }}">
+            <datalist id="navCityList">
+              {% set city_list = [
+                  'Абай','Акколь','Аксай','Аксу','Актау','Актобе','Алга','Алматы','Аральск','Аркалык',
+                  'Арыс','Астана','Атбасар','Атырау','Аягоз','Алатау','Байконур','Балхаш','Булаево',
+                  'Державинск','Ерейментау','Есик','Есиль','Жанаозен','Жанатас','Жаркент','Жезказган',
+                  'Жем','Жетысай','Житикара','Зайсан','Казалинск','Кандыагаш','Капшагай','Конаев',
+                  'Караганда','Каражал','Каратау','Каркаралинск','Каскелен','Кентау','Кокшетау',
+                  'Костанай','Косшы','Кульсары','Курчатов','Кызылорда','Ленгер','Лисаковск','Макинск',
+                  'Мамлютка','Павлодар','Петропавловск','Приозёрск','Риддер','Рудный','Сарань','Сарканд',
+                  'Сарыагаш','Сатпаев','Семей','Сергеевка','Серебрянск','Степногорск','Степняк',
+                  'Тайынша','Талгар','Талдыкорган','Тараз','Текели','Темир','Темиртау','Тобыл','Туркестан',
+                  'Уральск','Усть-Каменогорск','Ушарал','Уштобе','Форт-Шевченко','Хромтау','Шалкар','Шар',
+                  'Шардара','Шахтинск','Шемонаиха','Шу','Шымкент','Щучинск','Экибастуз','Эмба'
+              ] %}
+              {% for city_name in city_list %}
+                <option value="{{ city_name }}"></option>
+              {% endfor %}
+            </datalist>
+          </div>
+          <div>
+            <label for="nav_date_range" class="form-label mb-0">Когда</label>
+            <input type="text" class="form-control" id="nav_date_range" name="date_range" placeholder="Выберите даты" autocomplete="off">
+            <input type="hidden" id="nav_check_in" name="check_in" value="{{ request.args.get('check_in', '') }}">
+            <input type="hidden" id="nav_check_out" name="check_out" value="{{ request.args.get('check_out', '') }}">
+          </div>
+          <div>
+            <label for="nav_guests" class="form-label mb-0">Кто</label>
+            <input type="number" min="1" class="form-control" id="nav_guests" name="guests" placeholder="Гости" value="{{ request.args.get('guests', '') }}">
+          </div>
+          <div>
+            <button type="submit" class="btn btn-primary" style="height: 38px;">Найти</button>
+          </div>
+        </form>
         <!-- Навигация: для гостей отображаем кнопки регистрации и входа.  Для
              авторизованных пользователей показываем меню с аватаром и именем -->
         <div class="d-flex gap-2">
@@ -334,6 +376,54 @@
         var coVal = checkOutInput.value;
         if (ciVal && coVal) {
           picker.setDateRange(ciVal, coVal);
+        }
+      });
+    </script>
+    <!-- Инициализация Litepicker для полей даты в навигации -->
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        var navDateInput = document.getElementById('nav_date_range');
+        if (navDateInput) {
+          var navCheckIn = document.getElementById('nav_check_in');
+          var navCheckOut = document.getElementById('nav_check_out');
+          var pickerNav = new Litepicker({
+            element: navDateInput,
+            singleMode: false,
+            allowRepick: true,
+            format: 'DD.MM.YYYY',
+            lang: 'ru-RU',
+            autoApply: true,
+            showWeekNumbers: false,
+            tooltipText: { one: 'ночь', other: 'ночей' },
+            tooltipNumber: (totalDays) => totalDays,
+            dropdowns: {
+              minYear: new Date().getFullYear(),
+              maxYear: new Date().getFullYear() + 1,
+              months: true,
+              years: true
+            },
+            setup: (picker) => {
+              picker.on('selected', (date1, date2) => {
+                if (navCheckIn && navCheckOut) {
+                  navCheckIn.value = date1 ? date1.format('YYYY-MM-DD') : '';
+                  navCheckOut.value = date2 ? date2.format('YYYY-MM-DD') : '';
+                  navDateInput.value = date1 && date2 ? `${date1.format('DD.MM.YYYY')} - ${date2.format('DD.MM.YYYY')}` : '';
+                }
+              });
+            }
+          });
+          var initStart = navCheckIn && navCheckIn.value ? new Date(navCheckIn.value) : null;
+          var initEnd = navCheckOut && navCheckOut.value ? new Date(navCheckOut.value) : null;
+          function formatDateNav(d) {
+            var day = ('0' + d.getDate()).slice(-2);
+            var month = ('0' + (d.getMonth() + 1)).slice(-2);
+            var year = d.getFullYear();
+            return day + '.' + month + '.' + year;
+          }
+          if (initStart && initEnd) {
+            pickerNav.setDateRange(initStart, initEnd);
+            navDateInput.value = `${formatDateNav(initStart)} - ${formatDateNav(initEnd)}`;
+          }
         }
       });
     </script>
