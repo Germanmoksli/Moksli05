@@ -2439,16 +2439,18 @@ def ensure_user_room_last_seen_table(conn: sqlite3.Connection) -> None:
 # Home page
 @app.route("/")
 def index():
-    """Home page handler.
-
-    If the user is authenticated, render the internal dashboard landing page.
-    Otherwise, redirect guests to the public listings catalogue.
     """
-    if not session.get('user_id'):
-        # Unauthenticated guests see the public listings page instead of the
-        # internal dashboard.
-        return redirect(url_for('public_listings'))
-    return render_template("index.html")
+    Главная страница приложения.
+
+    Независимо от того, авторизован пользователь или нет, при обращении
+    к корневому URL приложение перенаправляет пользователя на страницу
+    каталога квартир. Таким образом, каталог является основной
+    «домашней» страницей для всех пользователей (владельцев, гостей,
+    менеджеров и неавторизованных гостей). Старый дашборд и другие
+    внутренние страницы по-прежнему доступны через соответствующие
+    маршруты.
+    """
+    return redirect(url_for('public_listings'))
 
 
 # Guests list
