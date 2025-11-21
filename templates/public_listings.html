@@ -234,7 +234,7 @@
       <!-- Поисковая форма в стиле Airbnb. Показываем её, если пользователь
            не авторизован или находится не в режиме гостя (например, владелец/менеджер).
            Для авторизованных гостей форма отображается в шапке навигации. -->
-      {% if not session.get('user_id') or session.get('user_role') != 'guest' %}
+      {% if session.get('user_role') == 'owner' or session.get('user_role') == 'manager' %}
       <form method="get" class="d-flex flex-wrap align-items-end gap-2 mb-4">
         <div>
           <label for="location" class="form-label">Город</label>
