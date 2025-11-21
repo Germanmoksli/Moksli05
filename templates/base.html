@@ -469,9 +469,9 @@
             {% if session.get('user_id') %}
               {% if session.get('user_role') == 'guest' %}
                 <!-- Гость: в правой части только иконка меню; аватар отображается в самом меню -->
-                <div class="dropdown me-3">
+                <div class="dropdown me-4">
                   <a href="#" class="d-flex align-items-center text-decoration-none" id="guestMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="bi bi-list" style="font-size: 1.5rem;"></i>
+                    <i class="bi bi-list" style="font-size: 2rem;"></i>
                   </a>
                   <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="guestMenuButton">
                     <!-- Заголовок с именем пользователя и крупной аватаркой -->
