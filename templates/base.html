@@ -366,13 +366,14 @@
              берётся из каталога static/uploads/logo.png. Благодаря flex-контейнеру
              элементы выравниваются по центру по вертикали. -->
         <a class="navbar-brand fw-bold d-flex align-items-center" href="{{ url_for('public_listings') }}">
-          <img src="{{ url_for('static', filename='uploads/logo.png') }}" alt="Moksli logo" height="32" class="me-2">
-          <span class="logo-text">MOKSLI</span>
+          <img src="{{ url_for('static', filename='uploads/logo.png') }}" alt="Moksli logo" height="48" class="me-2">
+          <!-- Уменьшаем размер текста и окрашиваем его в основной цвет логотипа -->
+          <span class="logo-text" style="color: var(--bs-primary); font-size: 0.9rem;">MOKSLI</span>
         </a>
         {% else %}
         <a class="navbar-brand fw-bold d-flex align-items-center" href="{{ url_for('dashboard') if session.get('user_id') else url_for('public_listings') }}">
-          <img src="{{ url_for('static', filename='uploads/logo.png') }}" alt="Moksli logo" height="32" class="me-2">
-          <span class="logo-text">MOKSLI</span>
+          <img src="{{ url_for('static', filename='uploads/logo.png') }}" alt="Moksli logo" height="48" class="me-2">
+          <span class="logo-text" style="color: var(--bs-primary); font-size: 0.9rem;">MOKSLI</span>
         </a>
         {% endif %}
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar" aria-controls="mainNavbar" aria-expanded="false" aria-label="Toggle navigation">

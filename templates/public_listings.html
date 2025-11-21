@@ -22,8 +22,8 @@
         <!-- Отображаем логотип приложения вместо текста. Чтобы логотип
              выглядел аккуратно, задаём высоту 32px и добавляем отступ справа.  -->
         <a class="navbar-brand fw-bold d-flex align-items-center" href="{{ url_for('public_listings') }}">
-          <img src="{{ url_for('static', filename='uploads/logo.png') }}" alt="Moksli logo" height="32" class="me-2">
-          <span class="logo-text">MOKSLI</span>
+          <img src="{{ url_for('static', filename='uploads/logo.png') }}" alt="Moksli logo" height="48" class="me-2">
+          <span class="logo-text" style="color: var(--bs-primary); font-size: 0.9rem;">MOKSLI</span>
         </a>
         <!-- Навигация: для гостей отображаем кнопки регистрации и входа.  Для
              авторизованных пользователей показываем меню с аватаром и именем -->
