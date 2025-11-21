@@ -231,6 +231,9 @@
       .card {
         background-color: var(--card-bg);
         color: var(--card-text);
+        /* Поддерживаем единый радиус скругления (20px) для всех карточек,
+           включая карточки на странице деталей квартиры и другие контейнеры. */
+        border-radius: 20px !important;
       }
       /* Элементы ввода формы */
       input.form-control,
@@ -378,6 +381,16 @@
       line-height: 1;
       white-space: nowrap;
     }
+      /* Скругляем углы у карусели и её изображений, чтобы фотографии
+         в галерее квартиры повторяли общий стиль (20px). */
+      .carousel,
+      .carousel .carousel-inner,
+      .carousel .carousel-item,
+      .carousel .carousel-item img {
+        border-radius: 20px !important;
+        overflow: hidden;
+      }
+
     </style>
   </head>
   <body class="bg-light">
