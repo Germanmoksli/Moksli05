@@ -69,6 +69,34 @@
       .dropdown-menu {
         border-radius: 20px !important;
       }
+
+      /* Стилизация подсказок Google Places Autocomplete, чтобы они
+         соответствовали фирменному стилю сайта. Скругляем углы контейнера,
+         применяем тень и задаём цвета для элементов и наведения. */
+      .pac-container {
+        border-radius: 20px !important;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
+        overflow: hidden !important;
+        padding: 0 !important;
+      }
+      .pac-item {
+        padding: 8px 16px !important;
+        border-bottom: 1px solid rgba(var(--bs-primary-rgb), 0.1) !important;
+        color: var(--bs-primary) !important;
+        font-size: 0.9rem !important;
+      }
+      .pac-item:last-child {
+        border-bottom: none !important;
+      }
+      .pac-item:hover,
+      .pac-item.pac-item-selected {
+        background-color: var(--bs-primary) !important;
+        color: #fff !important;
+      }
+      /* Скрываем стандартные иконки Google, чтобы сохранить единый стиль */
+      .pac-item .pac-icon {
+        display: none !important;
+      }
       /* Скругление карточек и внутренних контейнеров */
       .card {
         border-radius: 20px !important;
