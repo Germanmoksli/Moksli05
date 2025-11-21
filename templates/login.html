@@ -5,7 +5,10 @@
        с минимальной высотой, равной высоте окна, чтобы разместить форму в самом центре. -->
   <div class="d-flex align-items-center justify-content-center min-vh-100">
     <div style="max-width: 400px; width: 100%;">
-      <h2 class="mb-4 text-center text-primary fw-bold fs-4">MOKSLI</h2>
+      <!-- Показываем фирменный логотип вместо текстового названия -->
+      <div class="mb-4 text-center">
+        <img src="{{ url_for('static', filename='uploads/logo.png') }}" alt="Moksli logo" height="60">
+      </div>
       <!-- Социальная авторизация. Предлагаем альтернативный способ входа через Google. -->
       <div class="mb-3">
         <p class="text-center mb-2">Или войдите через социальную сеть</p>

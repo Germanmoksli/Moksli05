@@ -201,72 +201,17 @@ _load_env_file()
 # processing fails, the original bytes are returned unchanged.
 def apply_watermark_to_image_data(image_bytes: bytes) -> bytes:
     """
-    Overlay a bold "moksli.com" watermark onto an image represented by
-    ``image_bytes`` and return the resulting image bytes.  The watermark is
-    placed at a random location within the image and drawn with
-    semi‑transparent white text and a black shadow.  If the Pillow
-    dependencies are missing or an error occurs, the original image bytes
-    are returned.
+    Return the original image bytes unchanged.
+
+    This function previously applied a visible watermark to uploaded photos,
+    but the watermark has been removed to improve the visual quality of listings.
+    It now returns ``image_bytes`` directly.
 
     :param image_bytes: The original image data
-    :return: New image data with watermark applied (or the original data on error)
+    :return: The same image data, without any modifications
     """
-    try:
-        from PIL import Image, ImageDraw, ImageFont  # type: ignore
-    except Exception:
-        # Pillow is not installed; return the original data
-        return image_bytes
-    try:
-        # Load the image from bytes and ensure it has an alpha channel
-        with io.BytesIO(image_bytes) as stream:
-            img = Image.open(stream)
-            img = img.convert("RGBA")
-        # Prepare a transparent overlay for the text
-        overlay = Image.new("RGBA", img.size, (255, 255, 255, 0))
-        draw = ImageDraw.Draw(overlay)
-        text = "moksli.com"
-        # Compute font size relative to the smaller image dimension (20%) for a very bold watermark
-        # This ensures the watermark text is large and clearly visible even on high‑resolution images
-        font_size = max(12, int(min(img.size) * 0.2))
-        try:
-            # Attempt to load a bold TrueType font if available
-            font = ImageFont.truetype("DejaVuSans-Bold.ttf", font_size)
-        except Exception:
-            # Fallback to default font
-            font = ImageFont.load_default()
-        # Measure the text size
-        text_width, text_height = draw.textsize(text, font=font)
-        # Randomly choose a position for the watermark ensuring it fits within
-        # the image.  This prevents overlapping on edges and makes each
-        # watermark appear at a different spot.
-        max_x = max(0, img.size[0] - text_width)
-        max_y = max(0, img.size[1] - text_height)
-        x = random.randint(0, max_x) if max_x > 0 else 0
-        y = random.randint(0, max_y) if max_y > 0 else 0
-        # Draw a thick black shadow around the text for contrast
-        for dx in [-2, -1, 0, 1, 2]:
-            for dy in [-2, -1, 0, 1, 2]:
-                if dx != 0 or dy != 0:
-                    draw.text((x + dx, y + dy), text, font=font, fill=(0, 0, 0, 160))
-        # Draw the watermark text with 50% transparency (alpha 128).  Using
-        # white ensures the watermark remains visible on dark backgrounds.
-        draw.text((x, y), text, font=font, fill=(255, 255, 255, 128))
-        # Composite the overlay onto the image
-        watermarked = Image.alpha_composite(img, overlay)
-        # Convert back to original mode if the format does not support alpha
-        # Determine original format if present (else default to PNG)
-        fmt = img.format or "PNG"
-        if fmt.upper() in ["JPEG", "JPG", "WEBP"]:
-            watermarked = watermarked.convert("RGB")
-        out = io.BytesIO()
-        try:
-            watermarked.save(out, format=fmt)
-        except Exception:
-            # Fallback to PNG if the original format fails
-            watermarked.save(out, format="PNG")
-        return out.getvalue()
-    except Exception:
-        return image_bytes
+    # Simply return the original bytes without modifying the image
+    return image_bytes
 
 # ----------------------------------------------------------------------------
 # Email sending utility
@@ -3397,6 +3342,23 @@ def add_room():
                 except Exception:
                     pass
                 saved_photos.append((unique_name, image_data_str))
+        # Reorder saved photos so that the selected main photo (if any) becomes the first element
+        # Owners choose the main photo via a 1-indexed select in the form (main_photo_index).  We
+        # convert this to zero-based indexing and, if it is within range of the uploaded photos,
+        # move that photo to the beginning of the list.  This ensures the chosen main photo
+        # appears first in galleries and in the public listing.
+        try:
+            main_idx_str = request.form.get("main_photo_index", "")
+            main_idx = int(main_idx_str) - 1 if main_idx_str else 0
+        except Exception:
+            main_idx = 0
+        if 0 <= main_idx < len(saved_photos):
+            try:
+                selected_photo = saved_photos.pop(main_idx)
+                saved_photos.insert(0, selected_photo)
+            except Exception:
+                # If popping fails for any reason, leave the order unchanged
+                pass
         # Insert the new room record with all collected fields
         conn = get_db_connection()
         try:
@@ -6702,11 +6664,10 @@ def public_listings():
     if valid_dates:
         conditions.append("id NOT IN (SELECT room_id FROM bookings WHERE (check_in_date < ? AND check_out_date > ?))")
         params.extend([check_out_date, check_in_date])
-    # Фильтр по локации: ищем совпадения в стране, городе, улице или названии комнаты
+    # Фильтр по городу: если выбран конкретный город, показываем только записи с точным совпадением
     if location:
-        like = f"%{location}%"
-        conditions.append("(country LIKE ? OR city LIKE ? OR street LIKE ? OR room_number LIKE ?)")
-        params.extend([like, like, like, like])
+        conditions.append("city = ?")
+        params.append(location)
     # Фильтр по количеству гостей: выбираем квартиры, которые могут вместить не меньше указанного числа
     if guests:
         conditions.append("(max_guests IS NULL OR max_guests >= ?)")

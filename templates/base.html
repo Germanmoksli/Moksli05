@@ -45,8 +45,16 @@
            схемы компонентов, таких как кнопки .btn-primary, ссылки с классом
            .text-primary и др. Если эти переменные объявлены после подключения
            внешней темы, они перекроют стандартные значения для текущей темы. */
-        --bs-primary: #119ffe;
-        --bs-primary-rgb: 17, 159, 254;
+        /*
+         * Настраиваем основной цвет приложения под новый фирменный стиль.
+         * Цвет взят из загруженного логотипа и представляет собой глубокий
+         * насыщенный синий оттенок. Мы заменяем стандартные значения
+         * Bootswatch Lux (#119ffe) на наш новый цвет.  Значение
+         * `--bs-primary-rgb` должно содержать десятичные компоненты цвета
+         * через запятую, что используется в световых переходах Bootstrap.
+         */
+        --bs-primary: #010b4e;
+        --bs-primary-rgb: 1, 11, 78;
       }
 
       /* Применяем фон и цвет текста к body, чтобы изменить всю страницу */
@@ -354,9 +362,18 @@
       <div class="container-fluid">
         <!-- Логотип/бренд -->
         {% if session.get('user_role') == 'guest' %}
-        <a class="navbar-brand fw-bold" href="{{ url_for('public_listings') }}">MOKSLI</a>
+        <!-- Заменяем текстовый логотип на изображение + название. Изображение
+             берётся из каталога static/uploads/logo.png. Благодаря flex-контейнеру
+             элементы выравниваются по центру по вертикали. -->
+        <a class="navbar-brand fw-bold d-flex align-items-center" href="{{ url_for('public_listings') }}">
+          <img src="{{ url_for('static', filename='uploads/logo.png') }}" alt="Moksli logo" height="32" class="me-2">
+          <span class="logo-text">MOKSLI</span>
+        </a>
         {% else %}
-        <a class="navbar-brand fw-bold" href="{{ url_for('dashboard') if session.get('user_id') else url_for('public_listings') }}">MOKSLI</a>
+        <a class="navbar-brand fw-bold d-flex align-items-center" href="{{ url_for('dashboard') if session.get('user_id') else url_for('public_listings') }}">
+          <img src="{{ url_for('static', filename='uploads/logo.png') }}" alt="Moksli logo" height="32" class="me-2">
+          <span class="logo-text">MOKSLI</span>
+        </a>
         {% endif %}
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar" aria-controls="mainNavbar" aria-expanded="false" aria-label="Toggle navigation">
           <span class="navbar-toggler-icon"></span>
