@@ -486,7 +486,7 @@
           <form method="get" action="{{ url_for('public_listings') }}" class="d-flex flex-wrap align-items-end gap-2 ms-3" style="max-width: 60%;">
             <div class="flex-grow-1">
               <label for="nav_location" class="form-label mb-0">Город</label>
-              <input type="text" class="form-control" id="nav_location" name="location" placeholder="Введите город" value="{{ request.args.get('location', '') }}">
+              <input type="text" class="form-control" id="nav_location" name="location" placeholder="Введите город" value="{{ request.args.get('location', '') }}" autocomplete="off">
             </div>
             <div class="flex-grow-1">
               <label for="nav_date_range" class="form-label mb-0">Когда</label>
