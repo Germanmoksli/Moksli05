@@ -128,6 +128,7 @@
            на странице каталога. Используем скрытые поля для check_in и
            check_out, а также Litepicker для выбора диапазона дат.
          #}
+        {% if session.get('user_role') != 'owner' and session.get('user_role') != 'manager' %}
         <form method="get" action="{{ url_for('public_listings') }}" class="d-flex flex-wrap align-items-end gap-2 ms-3" style="max-width: 60%;">
           <div>
             <label for="nav_location" class="form-label mb-0">Город</label>
@@ -165,6 +166,7 @@
             <button type="submit" class="btn btn-primary" style="height: 38px;">Найти</button>
           </div>
         </form>
+        {% endif %}
         <!-- Навигация: для гостей отображаем кнопки регистрации и входа.  Для
              авторизованных пользователей показываем меню с аватаром и именем -->
         <div class="d-flex gap-2">
