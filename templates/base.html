@@ -144,7 +144,8 @@
       .pac-item {
         padding: 8px 16px !important;
         border-bottom: 1px solid rgba(var(--bs-primary-rgb), 0.1) !important;
-        color: var(--bs-primary) !important;
+        /* Нейтральный серый цвет текста для названий городов */
+        color: #6c757d !important;
         font-size: 0.9rem !important;
       }
       .pac-item:last-child {
@@ -156,7 +157,9 @@
         color: #fff !important;
       }
       .pac-item .pac-icon {
-        display: none !important;
+        display: inline-block !important;
+        margin-right: 8px !important;
+        filter: invert(9%) sepia(51%) saturate(6566%) hue-rotate(233deg) brightness(92%) contrast(115%) !important;
       }
 
       /* Стили для свернутого меню */
