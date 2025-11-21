@@ -407,12 +407,12 @@
         <a class="navbar-brand fw-bold d-flex align-items-center" href="{{ url_for('public_listings') }}">
           <img src="{{ url_for('static', filename='uploads/logo.png') }}" alt="Moksli logo" height="48" class="me-2">
           <!-- Уменьшаем размер текста и окрашиваем его в основной цвет логотипа -->
-          <span class="logo-text" style="color: var(--bs-primary); font-size: 0.9rem;">MOKSLI</span>
+          <span class="logo-text" style="color: var(--bs-primary); font-size: 0.9rem;">moksli</span>
         </a>
         {% else %}
         <a class="navbar-brand fw-bold d-flex align-items-center" href="{{ url_for('dashboard') if session.get('user_id') else url_for('public_listings') }}">
           <img src="{{ url_for('static', filename='uploads/logo.png') }}" alt="Moksli logo" height="48" class="me-2">
-          <span class="logo-text" style="color: var(--bs-primary); font-size: 0.9rem;">MOKSLI</span>
+          <span class="logo-text" style="color: var(--bs-primary); font-size: 0.9rem;">moksli</span>
         </a>
         {% endif %}
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar" aria-controls="mainNavbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -420,64 +420,9 @@
         </button>
         <div class="collapse navbar-collapse" id="mainNavbar">
           <!-- Левая часть меню: ссылки в зависимости от роли -->
+          <!-- Верхняя панель без пунктов меню: оставляем только логотип и имя пользователя. -->
           <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-            {% if session.get('user_role') == 'owner' %}
-              <li class="nav-item">
-                <a href="{{ url_for('calendar_view') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('calendar') %}active{% endif %}">Календарь</a>
-              </li>
-              <li class="nav-item">
-                <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">Дашборд</a>
-              </li>
-              <li class="nav-item">
-                <a href="{{ url_for('list_guests') }}" class="nav-link {% if request.endpoint == 'list_guests' %}active{% endif %}">Гости</a>
-              </li>
-              <li class="nav-item">
-                <a href="{{ url_for('list_rooms') }}" class="nav-link {% if request.endpoint == 'list_rooms' %}active{% endif %}">Квартиры</a>
-              </li>
-              <li class="nav-item">
-                <a href="{{ url_for('list_employees') }}" class="nav-link {% if request.endpoint == 'list_employees' %}active{% endif %}">
-                  Сотрудники
-                  {% if session.get('user_role') == 'owner' and pending_request_count %}
-                    <span class="badge bg-primary ms-1">{{ pending_request_count }}</span>
-                  {% endif %}
-                </a>
-              </li>
-              <li class="nav-item">
-                <a href="{{ url_for('subscribe') }}" class="nav-link {% if request.endpoint == 'subscribe' %}active{% endif %}">Подписка</a>
-              </li>
-            {% elif session.get('user_role') == 'manager' %}
-              <li class="nav-item">
-                <a href="{{ url_for('calendar_view') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('calendar') %}active{% endif %}">Календарь</a>
-              </li>
-              <li class="nav-item">
-                <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">Дашборд</a>
-              </li>
-              <li class="nav-item">
-                <a href="{{ url_for('list_guests') }}" class="nav-link {% if request.endpoint == 'list_guests' %}active{% endif %}">Гости</a>
-              </li>
-              <li class="nav-item">
-                <a href="{{ url_for('list_employees') }}" class="nav-link {% if request.endpoint == 'list_employees' %}active{% endif %}">Сотрудники</a>
-              </li>
-            {% elif session.get('user_role') == 'guest' %}
-              <li class="nav-item">
-                <a href="{{ url_for('public_listings') }}" class="nav-link {% if request.endpoint == 'public_listings' %}active{% endif %}">Каталог</a>
-              </li>
-              <li class="nav-item">
-                <a href="{{ url_for('user_bookings') }}" class="nav-link {% if request.endpoint == 'user_bookings' %}active{% endif %}">Мои бронирования</a>
-              </li>
-              <li class="nav-item">
-                <a href="{{ url_for('favorites') }}" class="nav-link {% if request.endpoint == 'favorites' %}active{% endif %}">Избранное</a>
-              </li>
-            {% endif %}
-            {% if session.get('user_role') in ['owner', 'manager', 'guest'] %}
-              <li class="nav-item">
-                <a href="{{ url_for('chat') }}" class="nav-link {% if request.endpoint in ['chat', 'chat_rooms'] %}active{% endif %}">Чат
-                  {% if unread_message_count %}
-                    <span class="badge bg-primary ms-1">{{ unread_message_count }}</span>
-                  {% endif %}
-                </a>
-              </li>
-            {% endif %}
+            {# Никаких пунктов навигации в верхнем меню. Навигация доступна через выпадающее меню аккаунта. #}
           </ul>
           <!-- Правая часть: аккаунт или кнопки входа/регистрации -->
           <div class="d-flex align-items-center">
