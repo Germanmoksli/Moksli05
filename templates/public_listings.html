@@ -429,6 +429,20 @@
         }
       });
     </script>
+    <!-- Подключение Google Maps Places API для автодополнения городов -->
+    <!-- Замените YOUR_API_KEY на действительный ключ Google Maps JavaScript API
+         с включённой библиотекой Places.  Без ключа подсказки работать не будут. -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        // Инициализируем Google Places Autocomplete для поля ввода города.
+        var navCityInput = document.getElementById('nav_location');
+        if (navCityInput) {
+          // Ограничиваем подсказки только городами по всему миру
+          var autocomplete = new google.maps.places.Autocomplete(navCityInput, { types: ['(cities)'] });
+        }
+      });
+    </script>
     <!-- Инициализация всплывающих подсказок Bootstrap (tooltip) -->
     <script>
       document.addEventListener('DOMContentLoaded', function () {
