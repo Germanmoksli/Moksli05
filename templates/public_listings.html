@@ -454,11 +454,15 @@
             tooltipNumber: (totalDays) => totalDays,
             numberOfMonths: 2,
             numberOfColumns: 2,
+            // Убираем выпадающие списки выбора месяца и года. Вместо них над
+            // календарём будут отображаться надписи вроде "Ноябрь 2025" и
+            // "Декабрь 2025". Для навигации остаются стрелки. Ограничиваем
+            // диапазон годов через minYear и maxYear.
             dropdowns: {
               minYear: new Date().getFullYear(),
               maxYear: new Date().getFullYear() + 1,
-              months: true,
-              years: true
+              months: false,
+              years: false
             },
             setup: (picker) => {
               picker.on('selected', (date1, date2) => {

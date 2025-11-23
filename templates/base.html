@@ -743,11 +743,15 @@
             // Показываем два месяца и размещаем их в две колонки
             numberOfMonths: 2,
             numberOfColumns: 2,
+            // Убираем выпадающие списки выбора месяца и года. Теперь над
+            // календарём отображается заголовок вида "Ноябрь 2025", а
+            // переключение между месяцами осуществляется стрелками. При этом
+            // сохраняем ограничения по году через свойства minYear и maxYear.
             dropdowns: {
               minYear: new Date().getFullYear(),
               maxYear: new Date().getFullYear() + 1,
-              months: true,
-              years: true
+              months: false,
+              years: false
             },
             setup: (picker) => {
               picker.on('selected', (date1, date2) => {
