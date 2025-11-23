@@ -190,7 +190,9 @@
          элементами интерфейса. */
       .litepicker {
         border-radius: 20px !important;
-        overflow: hidden !important;
+        /* Не скрываем overflow, чтобы стрелки навигации календаря
+           (переключения месяцев) оставались видимыми. */
+        overflow: visible !important;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
       }
 
