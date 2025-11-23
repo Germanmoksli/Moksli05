@@ -185,6 +185,15 @@
         background-position: center !important;
       }
 
+      /* Стили для всплывающего календаря Litepicker. Округляем углы и добавляем
+         лёгкую тень, чтобы календарь выглядел в едином стиле с остальными
+         элементами интерфейса. */
+      .litepicker {
+        border-radius: 20px !important;
+        overflow: hidden !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+      }
+
       /* Стили для свернутого меню */
       .sidebar.collapsed {
         /* Когда меню свернуто, оно должно быть достаточно широким,
@@ -539,7 +548,7 @@
           <form method="get" action="{{ url_for('public_listings') }}" class="d-flex flex-wrap align-items-end gap-2 ms-3" style="max-width: 60%;">
             <div class="flex-grow-1">
               <label for="nav_location" class="form-label mb-0">Город</label>
-              <input type="text" class="form-control" id="nav_location" name="location" placeholder="Введите город" value="{{ request.args.get('location', '') }}" autocomplete="off">
+              <input type="text" class="form-control" id="nav_location" name="location" placeholder="Введите город" value="{{ request.args.get('location', '') }}">
             </div>
             <div class="flex-grow-1">
               <label for="nav_date_range" class="form-label mb-0">Когда</label>
@@ -547,64 +556,9 @@
               <input type="hidden" id="nav_check_in" name="check_in" value="{{ request.args.get('check_in', '') }}">
               <input type="hidden" id="nav_check_out" name="check_out" value="{{ request.args.get('check_out', '') }}">
             </div>
-            <div class="dropdown" style="width: 160px;" id="nav_guests_wrapper">
-              <label class="form-label mb-0 d-block">Кто</label>
-              <button class="form-control text-start dropdown-toggle" type="button" id="navGuestsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                <span id="navGuestsSummary">Гости</span>
-              </button>
-              <ul class="dropdown-menu p-3" style="min-width: 280px;" aria-labelledby="navGuestsDropdown">
-                <div class="d-flex justify-content-between align-items-center py-1">
-                  <div>
-                    <div class="fw-bold">Взрослые</div>
-                    <small class="text-muted">От 13 лет</small>
-                  </div>
-                  <div class="d-flex align-items-center">
-                    <button type="button" class="btn btn-outline-secondary btn-sm guest-decrement" data-target="adults"><i class="bi bi-dash"></i></button>
-                    <span class="mx-2 guest-count" id="adults-count">0</span>
-                    <button type="button" class="btn btn-outline-secondary btn-sm guest-increment" data-target="adults"><i class="bi bi-plus"></i></button>
-                  </div>
-                </div>
-                <hr class="my-1">
-                <div class="d-flex justify-content-between align-items-center py-1">
-                  <div>
-                    <div class="fw-bold">Дети</div>
-                    <small class="text-muted">Возраст от 2 до 12</small>
-                  </div>
-                  <div class="d-flex align-items-center">
-                    <button type="button" class="btn btn-outline-secondary btn-sm guest-decrement" data-target="children"><i class="bi bi-dash"></i></button>
-                    <span class="mx-2 guest-count" id="children-count">0</span>
-                    <button type="button" class="btn btn-outline-secondary btn-sm guest-increment" data-target="children"><i class="bi bi-plus"></i></button>
-                  </div>
-                </div>
-                <hr class="my-1">
-                <div class="d-flex justify-content-between align-items-center py-1">
-                  <div>
-                    <div class="fw-bold">Младенцы</div>
-                    <small class="text-muted">Младше 2</small>
-                  </div>
-                  <div class="d-flex align-items-center">
-                    <button type="button" class="btn btn-outline-secondary btn-sm guest-decrement" data-target="infants"><i class="bi bi-dash"></i></button>
-                    <span class="mx-2 guest-count" id="infants-count">0</span>
-                    <button type="button" class="btn btn-outline-secondary btn-sm guest-increment" data-target="infants"><i class="bi bi-plus"></i></button>
-                  </div>
-                </div>
-                <hr class="my-1">
-                <div class="d-flex justify-content-between align-items-center py-1">
-                  <div>
-                    <div class="fw-bold">Домашние животные</div>
-                    <small class="text-muted">Путешествуете с животным‑помощником?</small>
-                  </div>
-                  <div class="d-flex align-items-center">
-                    <button type="button" class="btn btn-outline-secondary btn-sm guest-decrement" data-target="pets"><i class="bi bi-dash"></i></button>
-                    <span class="mx-2 guest-count" id="pets-count">0</span>
-                    <button type="button" class="btn btn-outline-secondary btn-sm guest-increment" data-target="pets"><i class="bi bi-plus"></i></button>
-                  </div>
-                </div>
-                <div class="mt-2 d-flex justify-content-end">
-                  <button type="button" class="btn btn-primary btn-sm" id="navGuestsDone">Готово</button>
-                </div>
-              </ul>
-              <input type="hidden" name="guests" id="nav_guests_hidden" value="{{ request.args.get('guests', '') }}">
+            <div style="width: 110px;">
+              <label for="nav_guests" class="form-label mb-0">Кто</label>
+              <input type="number" min="1" class="form-control" id="nav_guests" name="guests" placeholder="Гости" value="{{ request.args.get('guests', '') }}">
             </div>
             <div>
               <button type="submit" class="btn btn-primary" style="height: 38px;">Найти</button>
@@ -764,60 +718,6 @@
       });
     </script>
 
-    <!-- Скрипт управления выбором количества гостей (взрослые, дети, младенцы, домашние
-         животные). Обновляет отображение суммарного количества и скрытое поле
-         формы. Использует Bootstrap Dropdown для управления выпадающим списком. -->
-    <script>
-      document.addEventListener('DOMContentLoaded', function() {
-        var wrapper = document.getElementById('nav_guests_wrapper');
-        if (!wrapper) return;
-        var counts = { adults: 0, children: 0, infants: 0, pets: 0 };
-        var summaryEl = document.getElementById('navGuestsSummary');
-        var hiddenInput = document.getElementById('nav_guests_hidden');
-        function updateSummary() {
-          var total = counts.adults + counts.children + counts.infants;
-          var text = 'Гости';
-          if (total > 0) {
-            var word;
-            if (total === 1) { word = 'гость'; }
-            else if (total >= 2 && total <= 4) { word = 'гостя'; }
-            else { word = 'гостей'; }
-            text = total + ' ' + word;
-          }
-          summaryEl.textContent = text;
-          if (hiddenInput) hiddenInput.value = total;
-        }
-        wrapper.querySelectorAll('.guest-increment').forEach(function(btn) {
-          btn.addEventListener('click', function() {
-            var target = this.getAttribute('data-target');
-            counts[target]++;
-            var countEl = document.getElementById(target + '-count');
-            if (countEl) countEl.textContent = counts[target];
-            updateSummary();
-          });
-        });
-        wrapper.querySelectorAll('.guest-decrement').forEach(function(btn) {
-          btn.addEventListener('click', function() {
-            var target = this.getAttribute('data-target');
-            if (counts[target] > 0) {
-              counts[target]--;
-              var countEl = document.getElementById(target + '-count');
-              if (countEl) countEl.textContent = counts[target];
-              updateSummary();
-            }
-          });
-        });
-        var doneBtn = document.getElementById('navGuestsDone');
-        if (doneBtn) {
-          doneBtn.addEventListener('click', function() {
-            var dropdownToggle = document.getElementById('navGuestsDropdown');
-            var dropdown = bootstrap.Dropdown.getInstance(dropdownToggle);
-            if (dropdown) dropdown.hide();
-          });
-        }
-      });
-    </script>
-
     <!-- Подключаем Litepicker для выбора диапазона дат в навигации -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/litepicker/2.0.12/litepicker.min.js"></script>
     <script>
@@ -826,6 +726,10 @@
         if (navDateInput) {
           var navCheckIn = document.getElementById('nav_check_in');
           var navCheckOut = document.getElementById('nav_check_out');
+          // Инициализируем Litepicker для фильтра "Когда" в навигации.
+          // Показываем сразу два месяца в две колонки, чтобы пользователю было
+          // удобнее выбирать диапазон дат. Дополнительно эти опции не
+          // влияют на логику выбора, но позволяют видеть больше дат за один раз.
           var pickerNav = new Litepicker({
             element: navDateInput,
             singleMode: false,
@@ -836,6 +740,9 @@
             showWeekNumbers: false,
             tooltipText: { one: 'ночь', other: 'ночей' },
             tooltipNumber: (totalDays) => totalDays,
+            // Показываем два месяца и размещаем их в две колонки
+            numberOfMonths: 2,
+            numberOfColumns: 2,
             dropdowns: {
               minYear: new Date().getFullYear(),
               maxYear: new Date().getFullYear() + 1,
