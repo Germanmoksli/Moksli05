@@ -504,12 +504,12 @@
         <!-- Логотип/бренд -->
         {% if session.get('user_role') == 'guest' %}
         <!-- Заменяем текстовый логотип на изображение + название. Изображение
-             берётся из каталога static/uploads/logo.png. Благодаря flex-контейнеру
+             берётся из каталога static/uploads/logo_moksli.png. Благодаря flex-контейнеру
              элементы выравниваются по центру по вертикали. -->
         <a class="navbar-brand fw-bold d-flex align-items-center ms-4" href="{{ url_for('public_listings') }}">
           <!-- Увеличиваем размер логотипа и смещаем его чуть вправо за счёт большего отступа слева.  
                Размер логотипа увеличен до 80px, чтобы он выглядел заметнее. -->
-          <img src="{{ url_for('static', filename='uploads/logo.png') }}" alt="Moksli logo" height="80" class="me-2">
+          <img src="{{ url_for('static', filename='uploads/logo_moksli.png') }}" alt="Moksli logo" height="80" class="me-2">
           <!-- Уменьшаем размер текста и окрашиваем его в основной цвет логотипа -->
           {% if request.endpoint != 'public_listings' %}
           <span class="logo-text" style="color: var(--bs-primary); font-size: 0.9rem;">moksli</span>
@@ -518,7 +518,7 @@
         {% else %}
         <a class="navbar-brand fw-bold d-flex align-items-center ms-4" href="{{ url_for('dashboard') if session.get('user_id') else url_for('public_listings') }}">
           <!-- Аналогично увеличиваем размер логотипа и отступ слева в режиме владельца/менеджера -->
-          <img src="{{ url_for('static', filename='uploads/logo.png') }}" alt="Moksli logo" height="80" class="me-2">
+          <img src="{{ url_for('static', filename='uploads/logo_moksli.png') }}" alt="Moksli logo" height="80" class="me-2">
           {% if request.endpoint != 'public_listings' %}
           <span class="logo-text" style="color: var(--bs-primary); font-size: 0.9rem;">moksli</span>
           {% endif %}
