@@ -169,6 +169,18 @@
            содержимое страницы. */
         background-color: #ffffff !important;
       }
+
+      /* Объединяем месяцы календаря в единую белую плашку. Убираем фон и
+         тени у отдельных колонок и переносим их на общий контейнер. */
+      .litepicker .container__months {
+        background-color: #ffffff !important;
+        border-radius: 20px !important;
+        box-shadow: none !important;
+      }
+      .litepicker .container__months .month-item {
+        background-color: transparent !important;
+        box-shadow: none !important;
+      }
     </style>
   </head>
   <body class="bg-light">

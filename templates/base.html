@@ -204,6 +204,19 @@
         background-color: #ffffff !important;
       }
 
+      /* Объединяем две месячные секции календаря в одну сплошную плашку. По
+         умолчанию Litepicker задаёт фон для каждой колонки отдельно. Мы
+         перекрываем эти фоны и задаём общий белый фон контейнеру месяцев. */
+      .litepicker .container__months {
+        background-color: #ffffff !important;
+        border-radius: 20px !important;
+        box-shadow: none !important;
+      }
+      .litepicker .container__months .month-item {
+        background-color: transparent !important;
+        box-shadow: none !important;
+      }
+
       /* Увеличиваем расстояние между двумя календарями (месяцами) и
          настраиваем позиционирование всплывающего окна. Вместо разделительной
          линии добавляем горизонтальный зазор между месяцами, чтобы они
