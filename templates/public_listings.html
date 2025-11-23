@@ -142,21 +142,19 @@
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
       }
 
-      /* Добавляем разделительную линию между двумя месяцами в
-         календаре Litepicker. За счёт псевдо‑элемента линия имеет
-         отступы сверху и снизу, поэтому не занимает всю высоту. */
+      /* Увеличиваем расстояние между двумя отображаемыми месяцами (календарями).
+         Вместо вертикальной линии мы вводим зазор между блоками, чтобы они
+         визуально отделялись друг от друга. */
       .litepicker .container__months.columns-2 {
-        position: relative;
+        column-gap: 2rem;
       }
-      .litepicker .container__months.columns-2::after {
-        content: '';
-        position: absolute;
-        left: 50%;
-        top: 16px;
-        bottom: 16px;
-        width: 1px;
-        background-color: rgba(var(--bs-primary-rgb), 0.25);
-        transform: translateX(-0.5px);
+
+      /* Центрируем всплывающий календарь относительно поля ввода и
+         слегка увеличиваем его размер, чтобы он выглядел более заметным. */
+      .litepicker {
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        font-size: 0.95rem !important;
       }
     </style>
   </head>
