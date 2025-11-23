@@ -194,6 +194,27 @@
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
       }
 
+      /* Разделительная линия между двумя месяцами в календаре Litepicker. Мы
+         позиционируем контейнер месяцев как relative и добавляем
+         псевдо-элемент, который рисует вертикальную линию. Она не тянется
+         на всю высоту календаря, оставляя небольшой отступ сверху и
+         снизу (приблизительно 1 см). */
+      .litepicker .container__months.columns-2 {
+        position: relative;
+      }
+      .litepicker .container__months.columns-2::after {
+        content: '';
+        position: absolute;
+        left: 50%;
+        top: 16px;        /* отступ сверху для разделительной линии */
+        bottom: 16px;     /* отступ снизу */
+        width: 1px;
+        /* Используем полутона фирменного цвета, чтобы линия была не
+           слишком яркой. При желании можно изменить opacity. */
+        background-color: rgba(var(--bs-primary-rgb), 0.25);
+        transform: translateX(-0.5px);
+      }
+
       /* Стили для свернутого меню */
       .sidebar.collapsed {
         /* Когда меню свернуто, оно должно быть достаточно широким,
