@@ -584,6 +584,12 @@
 #}
 {% if (session.get('user_role') != 'owner' and session.get('user_role') != 'manager') and request.endpoint == 'public_listings' %}
           <form method="get" action="{{ url_for('public_listings') }}" class="d-flex flex-wrap align-items-end gap-2 ms-3" style="max-width: 60%;">
+            <!-- Кнопка поиска слева: круглая кнопка с иконкой лупы -->
+            <div>
+              <button type="submit" class="btn btn-primary d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; border-radius: 50%;">
+                <i class="bi bi-search"></i>
+              </button>
+            </div>
             <div class="flex-grow-1">
               <label for="nav_location" class="form-label mb-0">Город</label>
               <input type="text" class="form-control" id="nav_location" name="location" placeholder="Введите город" value="{{ request.args.get('location', '') }}">
@@ -598,9 +604,7 @@
               <label for="nav_guests" class="form-label mb-0">Кто</label>
               <input type="number" min="1" class="form-control" id="nav_guests" name="guests" placeholder="Гости" value="{{ request.args.get('guests', '') }}">
             </div>
-            <div>
-              <button type="submit" class="btn btn-primary" style="height: 38px;">Найти</button>
-            </div>
+            <!-- Убираем текстовую кнопку "Найти", так как иконка поиска располагается слева -->
           </form>
 {% endif %}
 
