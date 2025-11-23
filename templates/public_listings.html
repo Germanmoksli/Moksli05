@@ -241,17 +241,14 @@
             </button>
           </div>
           <div class="flex-grow-1">
-            <label for="nav_location" class="form-label mb-0">Город</label>
             <input type="text" class="form-control" id="nav_location" name="location" placeholder="Введите город" value="{{ request.args.get('location', '') }}">
           </div>
           <div class="flex-grow-1">
-            <label for="nav_date_range" class="form-label mb-0">Когда</label>
             <input type="text" class="form-control" id="nav_date_range" name="date_range" placeholder="Выберите даты" autocomplete="off">
             <input type="hidden" id="nav_check_in" name="check_in" value="{{ request.args.get('check_in', '') }}">
             <input type="hidden" id="nav_check_out" name="check_out" value="{{ request.args.get('check_out', '') }}">
           </div>
           <div style="width: 110px;">
-            <label for="nav_guests" class="form-label mb-0">Кто</label>
             <input type="number" min="1" class="form-control" id="nav_guests" name="guests" placeholder="Гости" value="{{ request.args.get('guests', '') }}">
           </div>
           <!-- Убираем текстовую кнопку "Найти", так как иконка поиска располагается слева -->
