@@ -2197,106 +2197,92 @@ def ensure_photo_column(conn: sqlite3.Connection) -> None:
     # emulates PRAGMA via information_schema.  If the table does not
     # exist, the result will be an empty list.  Only proceed if there
     # are existing columns.
-    cols = conn.execute("PRAGMA table_info(users)").fetchall()
-    if not cols:
-        # Table does not exist; nothing to do
-        return
-    # Each row returned by PRAGMA is either a tuple (from raw sqlite) or a mapping
-    # object (e.g. sqlite3.Row or RealDictRow).  sqlite3.Row acts like a mapping
-    # but does not implement ``get``; instead, column values can be accessed via
-    # indexing with the column name.  Determine the column name accordingly.
-    has_photo = False
-    # Track whether a schema change has been made so we can commit explicitly.
-    column_added = False
-    for row in cols:
-        if isinstance(row, tuple):
-            # For tuple rows, the column name is at index 1
-            col_name = row[1]
-        else:
-            try:
-                # sqlite3.Row and RealDictRow support dict-style access using []
-                col_name = row['name']
-            except Exception:
-                # Fallback to None if name cannot be determined
-                col_name = None
-        if col_name == 'photo':
-            has_photo = True
-            break
-    if not has_photo:
-        try:
-            conn.execute("ALTER TABLE users ADD COLUMN photo TEXT;")
-            # Mark that we added a column so we can commit below
-            column_added = True
-        except Exception:
-            # Ignore errors if another process has already added the column or if
-            # the underlying database does not support ALTER TABLE in this way
-            pass
-    # Explicitly commit the schema change when a column was added.  On some
-    # database backends autocommit may be disabled (e.g. PostgreSQL without
-    # autocommit) so ALTER statements would remain uncommitted and subsequent
-    # queries could fail.  Suppress any commit errors to avoid breaking the
-    # application if the connection is in autocommit mode or closed.
-    if column_added:
+    """
+    On databases that support ALTER TABLE IF NOT EXISTS (e.g. PostgreSQL 9.6+),
+    simply attempt to add the column with that clause.  On SQLite versions
+    earlier than 3.35 (which lack IF NOT EXISTS), fallback to PRAGMA to
+    detect existing columns and add if missing.  Suppress any errors
+    indicating that the column already exists or the statement is unsupported.
+    """
+    # Try to add the photo column with IF NOT EXISTS.  If the backend doesn't
+    # support this syntax, it will raise an exception which we catch below.
+    try:
+        conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS photo TEXT;")
         try:
             conn.commit()
         except Exception:
             pass
+        return
+    except Exception:
+        # Fall back to checking via PRAGMA (SQLite) to determine if the column
+        # exists, then add it without the IF NOT EXISTS clause.  On systems
+        # where PRAGMA is unsupported (e.g. PostgreSQL), cols will be empty
+        # and we simply return.
+        try:
+            cols = conn.execute("PRAGMA table_info(users)").fetchall()
+        except Exception:
+            return
+        if not cols:
+            return
+        # Determine if photo exists
+        has_photo = False
+        for row in cols:
+            col_name = None
+            if isinstance(row, tuple):
+                col_name = row[1]
+            else:
+                try:
+                    col_name = row['name']
+                except Exception:
+                    col_name = None
+            if col_name == 'photo':
+                has_photo = True
+                break
+        if not has_photo:
+            try:
+                conn.execute("ALTER TABLE users ADD COLUMN photo TEXT;")
+                try:
+                    conn.commit()
+                except Exception:
+                    pass
+            except Exception:
+                pass
 
 # Additional helper to ensure profile columns exist on users table
 def ensure_profile_columns(conn: sqlite3.Connection) -> None:
+    """Ensure the users table has optional profile columns.
+
+    This helper attempts to add the columns ``birth_date``, ``zodiac_sign``,
+    ``city`` and ``about_me`` to the ``users`` table.  It uses a very
+    conservative approach compatible with both SQLite and PostgreSQL: each
+    column is added individually with a plain ``ALTER TABLE … ADD COLUMN``
+    statement, ignoring any errors if the column already exists.  After a
+    successful addition the change is committed.  Suppressing errors makes
+    this function idempotent and safe to call on every connection.
     """
-    Ensure that the ``users`` table has columns for storing additional profile
-    information such as birth_date, zodiac_sign, city and about_me.  This
-    function checks existing columns and adds any that are missing.  On
-    databases that support PRAGMA, columns are detected via table_info.  Any
-    exceptions during ALTER are suppressed to accommodate concurrent
-    deployments.
-    """
-    try:
-        cols = conn.execute("PRAGMA table_info(users)").fetchall()
-    except Exception:
-        # Unable to introspect columns; nothing to do
-        return
-    if not cols:
-        return
-    existing = set()
-    for row in cols:
-        if isinstance(row, tuple):
-            col_name = row[1]
-        else:
-            try:
-                col_name = row['name']
-            except Exception:
-                col_name = None
-        if col_name:
-            existing.add(col_name)
-    # Define desired columns and their SQL types
-    desired_columns = {
+    desired_columns: dict[str, str] = {
         'birth_date': 'DATE',
         'zodiac_sign': 'TEXT',
         'city': 'TEXT',
-        'about_me': 'TEXT'
+        'about_me': 'TEXT',
     }
-    # Track whether any column was added to trigger a commit later
-    added_any = False
     for col, col_type in desired_columns.items():
-        if col not in existing:
-            try:
-                conn.execute(f"ALTER TABLE users ADD COLUMN {col} {col_type};")
-                added_any = True
-            except Exception:
-                # Ignore errors if the column already exists or cannot be added
-                pass
-    # If we added one or more columns, commit the schema changes explicitly.
-    # Without this commit, some database engines might not persist the ALTER
-    # statements until a future write occurs, causing subsequent updates to
-    # fail with "column does not exist" errors.  Suppress commit errors in
-    # case the connection is autocommit or closed.
-    if added_any:
         try:
-            conn.commit()
+            # Try to add the column.  Do not use IF NOT EXISTS because that
+            # syntax is not available on all SQLite versions.  If the column
+            # already exists, an exception will be raised and caught below.
+            conn.execute(f"ALTER TABLE users ADD COLUMN {col} {col_type};")
+            # Commit the change immediately; this mirrors SQLite's autocommit
+            # behaviour and persists the schema update on PostgreSQL.  Wrap
+            # commit in a try/except so any errors do not abort the function.
+            try:
+                conn.commit()
+            except Exception:
+                pass
         except Exception:
-            pass
+            # Ignore errors such as duplicate column name; this makes the
+            # function idempotent and allows concurrent deployments to race.
+            continue
 
 # ---------------------------------------------------------------------------
 # Chat rooms and memberships
