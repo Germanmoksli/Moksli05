@@ -40,10 +40,12 @@
   text-decoration: none;
   transition: background-color 0.1s ease-in-out;
   position: relative;
+  cursor: default;
 }
+/* Отключаем подсветку и кликабельность у карточек профиля. Теперь фон не меняется при наведении. */
 .profile-item:hover,
 .profile-item:focus {
-  background-color: #f7f7f7;
+  background-color: #fff;
   text-decoration: none;
   color: inherit;
 }
