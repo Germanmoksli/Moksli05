@@ -244,6 +244,29 @@
       var profileItems = document.querySelectorAll('.profile-item');
 
       /**
+       * Обновляет видимость карточек профиля в режиме просмотра.
+       * Если значение не заполнено (span содержит только метку без двоеточия),
+       * элемент скрывается.  В режиме редактирования карточки показываются.
+       */
+      function updateProfileItemVisibility() {
+        profileItems.forEach(function(item) {
+          var span = item.querySelector('.profile-value');
+          if (!span) return;
+          var text = (span.textContent || '').trim();
+          // Если значение отсутствует, в тексте нет двоеточия
+          if (text.indexOf(':') === -1) {
+            // скрываем элемент в режиме просмотра
+            item.classList.add('d-none');
+          } else {
+            item.classList.remove('d-none');
+          }
+        });
+      }
+
+      // Первоначально скрываем пустые карточки
+      updateProfileItemVisibility();
+
+      /**
        * Войти в режим редактирования: скрыть текстовые значения и показать инпуты
        */
       function enterEditMode() {
@@ -263,6 +286,8 @@
             input.value = value;
             span.classList.add('d-none');
             input.classList.remove('d-none');
+            // Показываем все карточки в режиме редактирования, чтобы их можно было заполнить
+            item.classList.remove('d-none');
           }
         });
 
@@ -304,6 +329,9 @@
           updateDisplayParagraph(birthDateDisplay, bdVal);
           updateDisplayParagraph(zodiacSignDisplay, zsVal);
           updateDisplayParagraph(cityDisplay, cityVal);
+
+          // После сохранения обновляем видимость карточек профиля
+          updateProfileItemVisibility();
         }
 
         // Скрыть кнопку загрузки фотографии при выходе из режима редактирования
