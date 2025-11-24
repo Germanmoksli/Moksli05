@@ -96,7 +96,8 @@
   background: transparent;
   color: var(--bs-primary);
   font-weight: 600;
-  font-size: 1.25rem;
+  /* Уменьшаем размер шрифта кнопки редактирования, чтобы она выглядела аккуратнее */
+  font-size: 1rem;
   display: inline-flex;
   align-items: center;
   border-bottom: 2px solid var(--bs-primary);
@@ -104,7 +105,8 @@
   line-height: 1;
 }
 .block1-edit-btn i {
-  font-size: 1.5rem;
+  /* Уменьшаем размер иконки в кнопке редактирования */
+  font-size: 1.25rem;
   margin-right: 0.5rem;
 }
 .block1-edit-btn:hover {
