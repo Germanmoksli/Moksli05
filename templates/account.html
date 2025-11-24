@@ -11,6 +11,15 @@
 #}
 
 {% block content %}
+  {#
+    Убедимся, что переменная profile_data всегда определена.  Если она
+    не была передана из контекста, присваиваем ей пустой словарь.  Это
+    предотвращает ошибки UndefinedError, когда шаблон пытается
+    обращаться к profile_data.get().
+  #}
+  {% if profile_data is not defined or profile_data is none %}
+    {% set profile_data = {} %}
+  {% endif %}
 <div class="container py-4 my-4">
   <div class="row gx-5 gy-4 align-items-start">
     <!-- Левая колонка: аватар и кнопка загрузки фото -->
