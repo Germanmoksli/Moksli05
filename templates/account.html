@@ -72,17 +72,34 @@
               <span>Редактировать</span>
             </button>
           </div>
-          <!-- Дополнительная информация: дата рождения, знак зодиака и город.  Эти элементы
-               динамически обновляются после сохранения формы.  Если значения пусты,
-               строки скрываются с помощью CSS.  Размещаем эти поля перед
-               разделом «Обо мне», чтобы они отображались выше текстового описания. -->
-          <p id="birthDateDisplay" class="mb-0 mt-2" {% if user and user.birth_date %}style=""{% else %}style="display:none;"{% endif %}>
+          <!-- Однострочная сводка возраста, знака зодиака и города.  Формируется
+               сервером и обновляется на клиенте после сохранения формы.  Если
+               значения отсутствуют, ничего не отображается. -->
+          {% set _info = [] %}
+          {% if age_years %}
+            {% set _ = _info.append(age_years|string + ' лет') %}
+          {% endif %}
+          {% if user and user.zodiac_sign %}
+            {% set _ = _info.append(user.zodiac_sign) %}
+          {% endif %}
+          {% if user and user.city %}
+            {% set _ = _info.append(user.city) %}
+          {% endif %}
+          {% if _info %}
+          <p id="profileSummary" class="mb-0 mt-2">{{ _info|join(', ') }}</p>
+          {% else %}
+          <p id="profileSummary" class="mb-0 mt-2" style="display:none;"></p>
+          {% endif %}
+          <!-- Скрытые элементы отображения даты рождения, знака зодиака и города для
+               поддержки существующей логики редактирования. Их контент и стиль не
+               видны пользователю. -->
+          <p id="birthDateDisplay" class="mb-0 mt-2" style="display:none;">
             <strong>Дата рождения:</strong> <span>{{ user.birth_date or '' }}</span>
           </p>
-          <p id="zodiacSignDisplay" class="mb-0" {% if user and user.zodiac_sign %}style=""{% else %}style="display:none;"{% endif %}>
+          <p id="zodiacSignDisplay" class="mb-0" style="display:none;">
             <strong>Знак зодиака:</strong> <span>{{ user.zodiac_sign or '' }}</span>
           </p>
-          <p id="cityDisplay" class="mb-0" {% if user and user.city %}style=""{% else %}style="display:none;"{% endif %}>
+          <p id="cityDisplay" class="mb-0" style="display:none;">
             <strong>Город проживания:</strong> <span>{{ user.city or '' }}</span>
           </p>
           <!-- Описание пользователя -->
@@ -263,8 +280,55 @@
         });
       }
 
+      /**
+       * Обновляет строку профиля с возрастом, знаком зодиака и городом.
+       * Вычисляет возраст по дате рождения и собирает имеющиеся части
+       * (например: "18 лет", "Скорпион", "Алматы") в одну строку через запятую.
+       */
+      function updateProfileSummary() {
+        var summaryElem = document.getElementById('profileSummary');
+        if (!summaryElem) return;
+        var parts = [];
+        // Возраст
+        var bdVal2 = birthDateInput ? birthDateInput.value.trim() : '';
+        if (bdVal2) {
+          try {
+            var bdDate = new Date(bdVal2);
+            var today2 = new Date();
+            var age2 = today2.getFullYear() - bdDate.getFullYear();
+            var m2 = today2.getMonth() - bdDate.getMonth();
+            if (m2 < 0 || (m2 === 0 && today2.getDate() < bdDate.getDate())) {
+              age2--;
+            }
+            if (!isNaN(age2) && age2 >= 0) {
+              parts.push(age2 + ' лет');
+            }
+          } catch (e) {
+            // ignore
+          }
+        }
+        // Знак зодиака
+        var zsVal2 = zodiacSignInput ? zodiacSignInput.value.trim() : '';
+        if (zsVal2) {
+          parts.push(zsVal2);
+        }
+        // Город
+        var cityVal3 = cityInput ? cityInput.value.trim() : '';
+        if (cityVal3) {
+          parts.push(cityVal3);
+        }
+        if (parts.length > 0) {
+          summaryElem.textContent = parts.join(', ');
+          summaryElem.style.display = '';
+        } else {
+          summaryElem.textContent = '';
+          summaryElem.style.display = 'none';
+        }
+      }
+
       // Первоначально скрываем пустые карточки
       updateProfileItemVisibility();
+
 
       /**
        * Войти в режим редактирования: скрыть текстовые значения и показать инпуты
@@ -329,6 +393,9 @@
           updateDisplayParagraph(birthDateDisplay, bdVal);
           updateDisplayParagraph(zodiacSignDisplay, zsVal);
           updateDisplayParagraph(cityDisplay, cityVal);
+
+          // После сохранения обновляем строку сводки (возраст, знак, город)
+          updateProfileSummary();
 
           // После сохранения обновляем видимость карточек профиля
           updateProfileItemVisibility();
@@ -403,6 +470,10 @@
       var birthDateDisplay = document.getElementById('birthDateDisplay');
       var zodiacSignDisplay = document.getElementById('zodiacSignDisplay');
       var cityDisplay = document.getElementById('cityDisplay');
+
+      // Теперь, когда элементы ввода и отображения инициализированы,
+      // обновляем сводку (возраст, знак, город) согласно текущим значениям
+      updateProfileSummary();
 
       /**
        * Обновляет видимость и текст параграфа в блоке отображения. Если
