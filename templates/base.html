@@ -675,7 +675,7 @@
             {% if session.get('user_id') %}
               {% if session.get('user_role') == 'guest' %}
                 <!-- Гость: в правой части только иконка меню; аватар отображается в самом меню -->
-                <div class="dropdown me-5">
+                <div class="dropdown">
                   <a href="#" class="d-flex align-items-center text-decoration-none" id="guestMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
                     <i class="bi bi-list" style="font-size: 2rem;"></i>
                   </a>
@@ -742,7 +742,7 @@
               {% else %}
                 {% if session.get('user_role') == 'owner' %}
                   <!-- Для владельцев: выпадающее меню с пунктами Переключиться на режим гостя и Выход -->
-                  <div class="dropdown me-3">
+                  <div class="dropdown">
                     <a href="#" class="d-flex align-items-center text-decoration-none dropdown-toggle" id="ownerMenu" data-bs-toggle="dropdown" aria-expanded="false">
                       {% if user_photo %}
                         <img src="{{ url_for('static', filename=user_photo) }}" class="rounded-circle me-2" width="32" height="32" style="object-fit: cover;">
