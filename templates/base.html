@@ -519,21 +519,28 @@
        * наконец блок аккаунта. Селекторы ограничены id
        * #mainNavContainer, чтобы изменения не затронули другие панели.
        */
-      #mainNavContainer > .navbar-toggler {
+      #mainNavContainer > .navbar-brand {
+        /* Логотип должен быть слева. Задаём первый порядок и небольшой
+           отступ справа, чтобы отделить его от следующего элемента. */
         order: 1;
         margin-left: 0;
         margin-right: 1rem;
       }
       #mainNavContainer > .navbar-collapse {
+        /* После логотипа располагается блок меню. margin-left: auto
+           прижимает все последующие элементы (аккаунт и бургер) к правому краю. */
         order: 2;
-      }
-      #mainNavContainer > .navbar-brand {
-        order: 3;
         margin-left: auto;
-        margin-right: 1rem;
       }
       #mainNavContainer > .nav-account {
+        /* Блок аккаунта расположен слева от бургер‑кнопки */
+        order: 3;
+        margin-right: 1rem;
+      }
+      #mainNavContainer > .navbar-toggler {
+        /* Бургер‑кнопка должна быть в самом правом краю */
         order: 4;
+        margin-left: 0;
       }
 
     </style>
