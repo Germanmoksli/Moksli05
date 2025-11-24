@@ -86,7 +86,13 @@ def create_tables(connection) -> None:
             role TEXT NOT NULL,
             name TEXT,
             contact_info TEXT,
-            photo TEXT
+            -- Optional profile fields: avatar photo, birth date, zodiac sign,
+            -- city of residence and a short bio.  These columns may be NULL.
+            photo TEXT,
+            birth_date DATE,
+            zodiac_sign TEXT,
+            city TEXT,
+            about_me TEXT
         );
         """
     )

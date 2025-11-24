@@ -2228,6 +2228,49 @@ def ensure_photo_column(conn: sqlite3.Connection) -> None:
             # the underlying database does not support ALTER TABLE in this way
             pass
 
+# Additional helper to ensure profile columns exist on users table
+def ensure_profile_columns(conn: sqlite3.Connection) -> None:
+    """
+    Ensure that the ``users`` table has columns for storing additional profile
+    information such as birth_date, zodiac_sign, city and about_me.  This
+    function checks existing columns and adds any that are missing.  On
+    databases that support PRAGMA, columns are detected via table_info.  Any
+    exceptions during ALTER are suppressed to accommodate concurrent
+    deployments.
+    """
+    try:
+        cols = conn.execute("PRAGMA table_info(users)").fetchall()
+    except Exception:
+        # Unable to introspect columns; nothing to do
+        return
+    if not cols:
+        return
+    existing = set()
+    for row in cols:
+        if isinstance(row, tuple):
+            col_name = row[1]
+        else:
+            try:
+                col_name = row['name']
+            except Exception:
+                col_name = None
+        if col_name:
+            existing.add(col_name)
+    # Define desired columns and their SQL types
+    desired_columns = {
+        'birth_date': 'DATE',
+        'zodiac_sign': 'TEXT',
+        'city': 'TEXT',
+        'about_me': 'TEXT'
+    }
+    for col, col_type in desired_columns.items():
+        if col not in existing:
+            try:
+                conn.execute(f"ALTER TABLE users ADD COLUMN {col} {col_type};")
+            except Exception:
+                # Ignore errors if the column already exists or cannot be added
+                pass
+
 # ---------------------------------------------------------------------------
 # Chat rooms and memberships
 #
@@ -6414,6 +6457,8 @@ def account():
     conn = get_db_connection()
     # Ensure the photo column exists on the users table before any updates
     ensure_photo_column(conn)
+    # Ensure additional profile columns (birth_date, zodiac_sign, city, about_me)
+    ensure_profile_columns(conn)
     # Always fetch the current user record up front so that both GET and POST
     # branches have access to the existing contact_info and photo.  Avoid
     # closing the connection here since it will be reused further down.
@@ -6465,20 +6510,31 @@ def account():
             except Exception:
                 photo_path = None
 
+        # Extract additional profile fields from the form.  Empty strings are
+        # converted to None so that NULL is stored instead of an empty string.
+        birth_date_raw = (request.form.get('birth_date') or '').strip()
+        birth_date = birth_date_raw or None
+        zodiac_sign_raw = (request.form.get('zodiac_sign') or '').strip()
+        zodiac_sign = zodiac_sign_raw or None
+        city_raw = (request.form.get('city') or '').strip()
+        city_val = city_raw or None
+        about_me_raw = (request.form.get('about_me') or '').strip()
+        about_me_val = about_me_raw or None
+
         # Perform the update.  Do not use a context manager on ``conn`` so that
         # the wrapper does not close the connection before we are done.  Commit
         # explicitly so changes persist on SQLite and remain harmless on PostgreSQL.
         try:
             if photo_path:
                 conn.execute(
-                    'UPDATE users SET name=?, contact_info=?, photo=? WHERE id=?',
-                    (full_name, contact, photo_path, user_id)
+                    'UPDATE users SET name=?, contact_info=?, photo=?, birth_date=?, zodiac_sign=?, city=?, about_me=? WHERE id=?',
+                    (full_name, contact, photo_path, birth_date, zodiac_sign, city_val, about_me_val, user_id)
                 )
                 session['user_photo'] = photo_path
             else:
                 conn.execute(
-                    'UPDATE users SET name=?, contact_info=? WHERE id=?',
-                    (full_name, contact, user_id)
+                    'UPDATE users SET name=?, contact_info=?, birth_date=?, zodiac_sign=?, city=?, about_me=? WHERE id=?',
+                    (full_name, contact, birth_date, zodiac_sign, city_val, about_me_val, user_id)
                 )
             conn.commit()
         except Exception:

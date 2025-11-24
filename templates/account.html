@@ -67,9 +67,15 @@
           <p class="mb-0"><strong>Обо мне:</strong> {{ user.about_me or '' }}</p>
           <!-- Дополнительная информация: дата рождения, знак зодиака и город. Эти элементы обновляются
                динамически после сохранения формы.  Если значения пусты, строки скрываются с помощью CSS. -->
-          <p id="birthDateDisplay" class="mb-0 mt-2" style="display: none;"><strong>Дата рождения:</strong> <span></span></p>
-          <p id="zodiacSignDisplay" class="mb-0" style="display: none;"><strong>Знак зодиака:</strong> <span></span></p>
-          <p id="cityDisplay" class="mb-0" style="display: none;"><strong>Город проживания:</strong> <span></span></p>
+          <p id="birthDateDisplay" class="mb-0 mt-2" {% if user and user.birth_date %}style=""{% else %}style="display:none;"{% endif %}>
+            <strong>Дата рождения:</strong> <span>{{ user.birth_date or '' }}</span>
+          </p>
+          <p id="zodiacSignDisplay" class="mb-0" {% if user and user.zodiac_sign %}style=""{% else %}style="display:none;"{% endif %}>
+            <strong>Знак зодиака:</strong> <span>{{ user.zodiac_sign or '' }}</span>
+          </p>
+          <p id="cityDisplay" class="mb-0" {% if user and user.city %}style=""{% else %}style="display:none;"{% endif %}>
+            <strong>Город проживания:</strong> <span>{{ user.city or '' }}</span>
+          </p>
         </div>
         <!-- Блок 1: форма редактирования имени, фамилии и описания -->
         <form id="block1-edit" class="mb-4 d-none" action="{{ url_for('account') }}" method="post" enctype="multipart/form-data">
@@ -92,15 +98,15 @@
           <div class="row g-3 align-items-end mb-3">
             <div class="col-12 col-md-4">
               <label for="birthDateInput" class="form-label fw-semibold">Дата рождения</label>
-              <input type="date" id="birthDateInput" name="birth_date" class="form-control rounded-4" value="">
+              <input type="date" id="birthDateInput" name="birth_date" class="form-control rounded-4" value="{{ user.birth_date or '' }}">
             </div>
             <div class="col-12 col-md-4">
               <label for="zodiacSignInput" class="form-label fw-semibold">Знак зодиака</label>
-              <input type="text" id="zodiacSignInput" name="zodiac_sign" class="form-control rounded-4" readonly>
+              <input type="text" id="zodiacSignInput" name="zodiac_sign" class="form-control rounded-4" value="{{ user.zodiac_sign or '' }}" readonly>
             </div>
             <div class="col-12 col-md-4">
               <label for="cityInput" class="form-label fw-semibold">Город проживания</label>
-              <input type="text" id="cityInput" name="city" class="form-control rounded-4" value="">
+              <input type="text" id="cityInput" name="city" class="form-control rounded-4" value="{{ user.city or '' }}">
             </div>
           </div>
 
