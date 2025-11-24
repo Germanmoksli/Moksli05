@@ -65,6 +65,11 @@
           </div>
           <!-- Описание пользователя -->
           <p class="mb-0"><strong>Обо мне:</strong> {{ user.about_me or '' }}</p>
+          <!-- Дополнительная информация: дата рождения, знак зодиака и город. Эти элементы обновляются
+               динамически после сохранения формы.  Если значения пусты, строки скрываются с помощью CSS. -->
+          <p id="birthDateDisplay" class="mb-0 mt-2" style="display: none;"><strong>Дата рождения:</strong> <span></span></p>
+          <p id="zodiacSignDisplay" class="mb-0" style="display: none;"><strong>Знак зодиака:</strong> <span></span></p>
+          <p id="cityDisplay" class="mb-0" style="display: none;"><strong>Город проживания:</strong> <span></span></p>
         </div>
         <!-- Блок 1: форма редактирования имени, фамилии и описания -->
         <form id="block1-edit" class="mb-4 d-none" action="{{ url_for('account') }}" method="post" enctype="multipart/form-data">
@@ -249,6 +254,9 @@
         if (photoBtn) {
           photoBtn.classList.remove('d-none');
         }
+
+        // Заполнить дополнительные поля из отображаемых значений
+        prefillAdditionalInputs();
       }
 
       /**
@@ -270,6 +278,16 @@
             span.classList.remove('d-none');
           }
         });
+
+        // Если сохраняем, обновим элементы отображения для даты рождения, знака зодиака и города
+        if (save) {
+          var bdVal = birthDateInput ? birthDateInput.value.trim() : '';
+          var zsVal = zodiacSignInput ? zodiacSignInput.value.trim() : '';
+          var cityVal = cityInput ? cityInput.value.trim() : '';
+          updateDisplayParagraph(birthDateDisplay, bdVal);
+          updateDisplayParagraph(zodiacSignDisplay, zsVal);
+          updateDisplayParagraph(cityDisplay, cityVal);
+        }
 
         // Скрыть кнопку загрузки фотографии при выходе из режима редактирования
         var photoBtn2 = document.getElementById('uploadPhotoBtn');
@@ -333,6 +351,56 @@
       // Автоматическое определение знака зодиака по выбранной дате рождения
       var birthDateInput = document.getElementById('birthDateInput');
       var zodiacSignInput = document.getElementById('zodiacSignInput');
+      var cityInput = document.getElementById('cityInput');
+
+      // Элементы для отображения выбранных значений в режиме просмотра. Эти
+      // параграфы находятся в блоке block1-display и по умолчанию скрыты.
+      var birthDateDisplay = document.getElementById('birthDateDisplay');
+      var zodiacSignDisplay = document.getElementById('zodiacSignDisplay');
+      var cityDisplay = document.getElementById('cityDisplay');
+
+      /**
+       * Обновляет видимость и текст параграфа в блоке отображения. Если
+       * передано пустое значение, скрывает параграф; иначе показывает.
+       * @param {HTMLElement} displayElem Параграф, содержащий span для текста
+       * @param {string} value Значение для отображения
+       */
+      function updateDisplayParagraph(displayElem, value) {
+        if (!displayElem) return;
+        var span = displayElem.querySelector('span');
+        if (value) {
+          if (span) span.textContent = value;
+          displayElem.style.display = '';
+        } else {
+          if (span) span.textContent = '';
+          displayElem.style.display = 'none';
+        }
+      }
+
+      /**
+       * Заполняет дополнительные поля (дата рождения, знак зодиака, город) данными
+       * из параграфов отображения, если они были ранее сохранены.
+       */
+      function prefillAdditionalInputs() {
+        if (birthDateInput && birthDateDisplay && birthDateDisplay.style.display !== 'none') {
+          var bdSpan = birthDateDisplay.querySelector('span');
+          if (bdSpan && bdSpan.textContent) {
+            birthDateInput.value = bdSpan.textContent.trim();
+          }
+        }
+        if (zodiacSignInput && zodiacSignDisplay && zodiacSignDisplay.style.display !== 'none') {
+          var zsSpan = zodiacSignDisplay.querySelector('span');
+          if (zsSpan && zsSpan.textContent) {
+            zodiacSignInput.value = zsSpan.textContent.trim();
+          }
+        }
+        if (cityInput && cityDisplay && cityDisplay.style.display !== 'none') {
+          var ctSpan = cityDisplay.querySelector('span');
+          if (ctSpan && ctSpan.textContent) {
+            cityInput.value = ctSpan.textContent.trim();
+          }
+        }
+      }
 
       /**
        * Возвращает название знака зодиака на русском языке
