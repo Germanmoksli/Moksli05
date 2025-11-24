@@ -2206,6 +2206,8 @@ def ensure_photo_column(conn: sqlite3.Connection) -> None:
     # but does not implement ``get``; instead, column values can be accessed via
     # indexing with the column name.  Determine the column name accordingly.
     has_photo = False
+    # Track whether a schema change has been made so we can commit explicitly.
+    column_added = False
     for row in cols:
         if isinstance(row, tuple):
             # For tuple rows, the column name is at index 1
@@ -2223,9 +2225,21 @@ def ensure_photo_column(conn: sqlite3.Connection) -> None:
     if not has_photo:
         try:
             conn.execute("ALTER TABLE users ADD COLUMN photo TEXT;")
+            # Mark that we added a column so we can commit below
+            column_added = True
         except Exception:
             # Ignore errors if another process has already added the column or if
             # the underlying database does not support ALTER TABLE in this way
+            pass
+    # Explicitly commit the schema change when a column was added.  On some
+    # database backends autocommit may be disabled (e.g. PostgreSQL without
+    # autocommit) so ALTER statements would remain uncommitted and subsequent
+    # queries could fail.  Suppress any commit errors to avoid breaking the
+    # application if the connection is in autocommit mode or closed.
+    if column_added:
+        try:
+            conn.commit()
+        except Exception:
             pass
 
 # Additional helper to ensure profile columns exist on users table
@@ -2263,13 +2277,26 @@ def ensure_profile_columns(conn: sqlite3.Connection) -> None:
         'city': 'TEXT',
         'about_me': 'TEXT'
     }
+    # Track whether any column was added to trigger a commit later
+    added_any = False
     for col, col_type in desired_columns.items():
         if col not in existing:
             try:
                 conn.execute(f"ALTER TABLE users ADD COLUMN {col} {col_type};")
+                added_any = True
             except Exception:
                 # Ignore errors if the column already exists or cannot be added
                 pass
+    # If we added one or more columns, commit the schema changes explicitly.
+    # Without this commit, some database engines might not persist the ALTER
+    # statements until a future write occurs, causing subsequent updates to
+    # fail with "column does not exist" errors.  Suppress commit errors in
+    # case the connection is autocommit or closed.
+    if added_any:
+        try:
+            conn.commit()
+        except Exception:
+            pass
 
 # ---------------------------------------------------------------------------
 # Chat rooms and memberships

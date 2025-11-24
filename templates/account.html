@@ -29,7 +29,16 @@
                       background-size: cover;
                       background-position: center;"
              {% endif %}>
-          {% if not (user and user.photo) %}
+          {#
+            Show the initial letter only when there is no photo available in either
+            the user's record or the session.  Previously the condition checked
+            ``not (user and user.photo)``, which failed to account for a newly
+            uploaded photo stored in ``session['user_photo']``.  This prevented
+            the letter from disappearing immediately after an upload and caused
+            confusion when the page was refreshed.  We now check ``avatar_path``
+            directly since it reflects both the session and the database.
+          #}
+          {% if not avatar_path %}
             <span>
               {% if user and user.name %}
                 {{ user.name[0] | upper }}
