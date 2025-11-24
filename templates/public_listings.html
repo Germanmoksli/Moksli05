@@ -201,6 +201,20 @@
         border-radius: 20px !important;
         padding: 0.5rem 1rem !important;
       }
+
+      /* Уменьшаем высоту верхней навигационной панели. Стандартная
+         навигация Bootstrap довольно высокая из-за внутренних отступов и
+         увеличенного логотипа. Мы сокращаем вертикальные отступы и
+         уменьшаем высоту логотипа, чтобы меню выглядело более компактным.
+         Эти изменения касаются только каталога и не влияют на другие
+         страницы. */
+      nav.navbar {
+        padding-top: 0.25rem !important;
+        padding-bottom: 0.25rem !important;
+      }
+      nav.navbar .navbar-brand img {
+        height: 60px !important;
+      }
     </style>
   </head>
   <body class="bg-light">
