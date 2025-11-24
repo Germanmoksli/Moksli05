@@ -129,3 +129,27 @@
   background-color: #f2f2f2;
   text-decoration: none;
 }
+
+/* ---------------------------- Навигационная панель ---------------------------- */
+/* Уменьшаем высоту верхней навигационной панели и делаем её фон чуть темнее,
+   чтобы она не сливалась с фоном страницы. Эти стили применяются ко всему
+   сайту, так как файл profile.css подключён глобально из base.html. */
+nav.navbar {
+  padding-top: 0.25rem !important;
+  padding-bottom: 0.25rem !important;
+  background-color: #f0f2f5 !important;
+}
+nav.navbar .navbar-brand img {
+  height: 60px !important;
+}
+
+/* Стили для формы фильтра (город, даты, гости) в верхнем меню. Добавляем
+   мягкую тень, скруглённые углы и белый фон, чтобы блок фильтров
+   не сливался с навигацией. Эта форма получает идентификатор
+   `nav_filter_form` как в public_listings, так и в base.html. */
+#nav_filter_form {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+  background-color: #ffffff !important;
+  border-radius: 20px !important;
+  padding: 0.5rem 1rem !important;
+}
