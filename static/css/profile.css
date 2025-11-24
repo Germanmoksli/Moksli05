@@ -90,6 +90,18 @@
   transition: background-color 0.15s ease-in-out;
 }
 
+/* Ensure that the Save/Cancel buttons in the edit form appear at the bottom of
+   the editing panel. By making the form a flex container and pushing the
+   button wrapper to the end with margin‑top: auto, the buttons stay near the
+   bottom regardless of the number of input fields. */
+#block1-edit {
+  display: flex;
+  flex-direction: column;
+}
+#block1-edit .text-end {
+  margin-top: auto;
+}
+
 /* Custom style for the block1 edit button with underline and larger icon/text */
 .block1-edit-btn {
   border: none;
