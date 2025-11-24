@@ -1247,13 +1247,16 @@ def inject_current_user():
         ).fetchone()
         conn.close()
         if user:
-            # Prefer the photo stored in the session if set during the current request cycle.
-            # This allows the sidebar avatar to update immediately after a user uploads a new
-            # profile picture, even if the database update failed or the user record has not
-            # yet been reloaded.  If no session photo exists, fall back to the value stored
-            # in the database.  The photo path is relative to the "static" folder (e.g.
-            # "uploads/20250101010101_avatar.jpg").
-            photo_path = session.get('user_photo') or user['photo']
+            # Determine the appropriate photo path.  Prefer the session value if set,
+            # since it updates immediately after an upload.  If the session does not
+            # contain a photo, fall back to the path stored in the database.  If a
+            # database photo exists and no session value is set, also write it into
+            # the session so subsequent requests preserve the avatar.
+            photo_path = session.get('user_photo')
+            if not photo_path:
+                photo_path = user['photo']
+                if photo_path:
+                    session['user_photo'] = photo_path
             return dict(
                 current_username=user['username'],
                 current_user_name=user['name'],
