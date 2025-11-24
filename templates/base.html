@@ -980,5 +980,18 @@
         });
       });
     </script>
+
+    <!-- Футер приложения. Закреплён внизу всех страниц. Используем серый фон,
+         как в верхней навигации, и основной синий цвет для текста. Слева
+         отображаем копирайт и ссылки, справа — логотипы платёжных систем. -->
+    <footer class="footer fixed-bottom py-2">
+      <div class="container d-flex justify-content-between align-items-center small">
+        <span>© 2025 · Moksli · Все права защищены · <a href="#" class="text-primary">Условия использования</a> · <a href="#" class="text-primary">Конфиденциальность</a> · <a href="#" class="text-primary">Описание процедуры оплаты</a></span>
+        <span>
+          <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFoAAAAoCAYAAAB+Qu3IAAAFcElEQVR4nO2ae1BUVRzHv8sCC7i8RBCJRzzkOYwjMQbytAzywaNV5CHTNGXixGSUYWXNONNkTuokPogRm6QC5eUiyqZoBgobSLyyeKmQL+SRDGuBwLLs9kfDYW+7i7tw9/pH9zOzM+f3O+f87tnvnv2d3727HIVCoQCL3jF42gv4v8AKzRCs0AzBCs0QrNAMwQrNEKzQDMEKzRCs0AzBCs0QrNAMwQrNEKzQDMEKzRCs0AxhSFeg6NjduPRTKwDAyIiLvp7vsNCar3ZsRuZxHM6pIHaT+CBMTY3hG5BOfGlvRCPn0Fsqc2vr2nE0R4S6hk4MDErA5RrAwtwMi2ws4OG+BN6ejtj76asa1ylI3osz5+opvrambPh4OerydnWGth29OSmStCcnp1BaJlY7Ti5XoFg40+fr7YTly9y0ukZW9llERO1CsbAW9+4/hFQqw9iYFAODErR13EV5xTUcOFSmcf6wZAQ/VDaq+AsKq7W6/nygTWhBXDDMzHjELiy5qnZc1dXr6B8YJrbyBzQb3X/0Y+fHeZj+Qejtbetxu+NrjA2VorM1B5/tToXNQvNZYxSfFkMqlan4C4quQN8/NNEmNH+BCeLXP0/sq+I29D4YUhlXWFJD2hwOBymbwrWKf1bUAJlsCgBgbcVH1v4tcHayBY9nBE8PB+zKTMCt33OxOTFCYwzlncvjGZH2nbuDqK3r0Godc4XWw1B5d8rlChSdrqX0S6UyCMvriB220hcuznZaxR5Q+hYAgEwmVxljaWGGvNwMtfNv3xmEuH5GzIz0WJiaGhNb3+mDVqGjXlyOxXZWxD5VfIXSf/5iE4YlI8TWNm0AgJOTLWkPS0YgSP4c4voOssufRH5hNSU9pCRGIHp1ALFLhOrTCl3QKjSXa4DEDaHEbmrpxs3uB8RWzts8nhESBCFax17zUgBMTGZ2oOhCI8JWfwgL+ySsfGEnPvgkD82t3Rrnnyya+dDdXe3h7+eCOKVUNywZgeiC6kFJF7TX0anJqyj2yaJ/xR0dHce5878Q/7roQFhZLtA6rpurPbL2bQGXS13y+LgU9Q1d2J9VhsDQ95Dy2gGVndnYfAudN+4TWxAXDACIWbsChoZc4tdn+qBd6MAAD3h7ztSk07u4XNSAx48niF+XtDHN1tejcb3hCNK3roWbq73aMYWlNdizr5jiyz9VRbHjY4IAAAut+QgP8SN+UWUjJI9GdV6XNujlzjBF6eTvutmL5tZuStqwtuJj3cuBc4rt4+WII1+m4dZvx9DX8y0KTuxAaLAvZYxyDT81JaccykvsrRG0wovY8bFBpD0xMYkSofr6f77oRejUpEhwOBxiZx8TofLHZmInCEJgbDz/m9LFdlZITghH1YU98PRwIP6HQ3+T9sXLLRgYlBC7r38YXPN4GPDjYMCPw/YduZSY+kofehH6WRc7hAT5EPvE95cxOTlTHcwlbeTlX0buN5WQy1VvLLhcA0q1s8TemrR1Fa7m53bcvfenzut7Enp7qKRJTBdnO4QG+6jtmw3Jo1Fs2/4V/J5Lx+GcCnTeuI/xcSkeDv2FrOyzlBuO6WpiZHQcZyquEX/SxjDIR8pVXm1N2WSMQqFAQRG1LKUD2h4q/ZdNG0LwTmauSgWwOTGCklZ0petmLzIyj2vsXxG4FJnvCgAAwvI6ygEcFxOkdo6PlyOWujuQUrSgsBofvb9xzmtUh952tKYDby5pAwBeiQlC1v43kZoUiWX+rnjGwQZmZjwYGnJhu8gSq8L9cfRgGmoufQH+AhMA1LRhbGyINVEBGqKDUlO3d95Dy689c1qnJjjs33aZgX3wzxCs0AzBCs0QrNAMwQrNEKzQDMEKzRCs0AzxD4q4zruUrDO9AAAAAElFTkSuQmCC" alt="Visa" style="height:24px; margin-right:0.5rem;">
+          <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFoAAAAoCAYAAAB+Qu3IAAABQUlEQVR4nO2aMQ7CQAwEE0RBQUnJ5/gYfI6SB9AdRRQJRVyIbO9QsNOi2GiyWCa5sbXWBiNn9+sv8C9YNIRFQ1g0hEVD7NUNHuO5+9mp3cv7PW/9fodLfb+tjIr1bk1uj4z0Nbk9aOnloyMiOXNdRHLmuihliY6K+sSWdFeKItJdkuhKyVvqVaeRSHdadLXkb3VVUtSyvd5BpESr0tyrr06dsn5YtFrysg+1Jaj6eHRAWDREaI+mxsbM8Yq2G4ahfrd2oiEsGsKiISwawqIhLBoiJFrxZmQN+iG9op8TDWHREGHR1PiY+1DjQ9UnlWi17GV9tWxlfY8OiLRoVap7dVWpU/9aShJdLftbvWopxPwvP0CTeYQauWGZNyLkfl4+o6Ppjl4XlUX/CZIcCXvHZ+8m5KLNhNc7CIuGsGgIi4Z4ATmAfcGoD4gnAAAAAElFTkSuQmCC" alt="Mastercard" style="height:24px;">
+        </span>
+      </div>
+    </footer>
   </body>
 </html>

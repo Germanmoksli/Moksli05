@@ -153,3 +153,21 @@ nav.navbar .navbar-brand img {
   border-radius: 20px !important;
   padding: 0.5rem 1rem !important;
 }
+
+/* ---------------------------- Футер ---------------------------- */
+/* Общий стиль для футера, закреплённого внизу страницы. Серый фон,
+   как у навигации, с синим текстом. Небольшой размер шрифта, тонкая
+   верхняя граница. */
+footer.footer {
+  background-color: #f0f2f5 !important;
+  color: var(--bs-primary) !important;
+  border-top: 1px solid #dee2e6;
+  font-size: 0.9rem;
+}
+footer.footer a {
+  color: var(--bs-primary) !important;
+  text-decoration: none;
+}
+footer.footer a:hover {
+  text-decoration: underline;
+}
