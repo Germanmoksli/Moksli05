@@ -16,17 +16,24 @@
     <!-- Левая колонка: аватар и кнопка загрузки фото -->
     <div class="col-12 col-md-4 d-flex flex-column align-items-center">
       <div class="position-relative mb-3">
-        <!-- Аватар: первая буква имени или логина -->
-        <div class="avatar-circle shadow-sm">
-          <span>
-            {% if user and user.name %}
-              {{ user.name[0] | upper }}
-            {% elif user and user.username %}
-              {{ user.username[0] | upper }}
-            {% else %}
-              U
-            {% endif %}
-          </span>
+        <!-- Аватар: если загружена фотография, показываем её; иначе инициалы -->
+        <div class="avatar-circle shadow-sm"
+             {% if user and user.photo %}
+               style="background-image: url('{{ url_for('static', filename=user.photo) }}');
+                      background-size: cover;
+                      background-position: center;"
+             {% endif %}>
+          {% if not (user and user.photo) %}
+            <span>
+              {% if user and user.name %}
+                {{ user.name[0] | upper }}
+              {% elif user and user.username %}
+                {{ user.username[0] | upper }}
+              {% else %}
+                U
+              {% endif %}
+            </span>
+          {% endif %}
         </div>
         <!-- Кнопка загрузки фото. При клике откроется диалог выбора изображения. -->
         <button type="button" class="btn btn-light btn-sm upload-photo-button shadow rounded-pill" id="uploadPhotoBtn">
