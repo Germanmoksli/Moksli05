@@ -41,14 +41,30 @@
         </button>
       </div>
     </div>
-    <!-- Правая колонка: заголовок, описание и список полей -->
+    <!-- Правая колонка: форма редактирования имени, фамилии и описания, а ниже — настройки профиля -->
     <div class="col-12 col-md-8">
-      <h2 class="fw-bold mb-2">Мой профиль</h2>
-      <p class="text-muted mb-4" style="max-width:480px;">
-        Хозяева и гости могут просматривать ваш профиль. Он также может отображаться
-        на разных страницах Moksli, что помогает нам поддерживать атмосферу доверия
-        в сообществе.
-      </p>
+      <form action="{{ url_for('account') }}" method="post" enctype="multipart/form-data" class="mb-4">
+        <!-- Поле для загрузки фотографии. Скрытый input будет открыт при клике на кнопку \"Добавить\" -->
+        <input type="file" name="photo" id="photoInput" accept="image/*" hidden>
+        <!-- Имя пользователя -->
+        <div class="mb-3">
+          <label for="firstNameInput" class="form-label fw-semibold">Имя</label>
+          <input type="text" name="first_name" id="firstNameInput" class="form-control rounded-4" value="{{ first_name }}" placeholder="Введите ваше имя">
+        </div>
+        <!-- Фамилия пользователя -->
+        <div class="mb-3">
+          <label for="lastNameInput" class="form-label fw-semibold">Фамилия</label>
+          <input type="text" name="last_name" id="lastNameInput" class="form-control rounded-4" value="{{ last_name }}" placeholder="Введите вашу фамилию">
+        </div>
+        <!-- Поле «Обо мне». Пока не сохраняется в базе данных, но позволяет пользователю оставить заметку о себе. -->
+        <div class="mb-3">
+          <label for="aboutMeTextarea" class="form-label fw-semibold">Обо мне</label>
+          <textarea id="aboutMeTextarea" name="about_me" class="form-control rounded-4" rows="5" placeholder="Напишите о себе">{{ user.about_me or '' }}</textarea>
+        </div>
+        <div class="text-end">
+          <button type="submit" class="btn btn-primary px-4">Готово</button>
+        </div>
+      </form>
       <!-- Сетка с пунктами профиля -->
       <div class="row row-cols-1 row-cols-md-2 g-2 g-md-3 profile-grid">
         <a href="#" class="profile-item d-flex align-items-center p-3 profile-edit-item" data-label="Моя работа">
@@ -107,30 +123,7 @@
       </a>
     </div>
   </div>
-  <!-- Раздел ввода основной информации -->
-  <h3 class="mt-5 mb-3 fw-bold">Основная информация</h3>
-  <form action="{{ url_for('account') }}" method="post" enctype="multipart/form-data">
-    <!-- Поле для загрузки фотографии. Скрытый input будет открыт при клике на кнопку "Добавить" -->
-    <input type="file" name="photo" id="photoInput" accept="image/*" hidden>
-    <!-- Имя пользователя -->
-    <div class="mb-3">
-      <label for="firstNameInput" class="form-label fw-semibold">Имя</label>
-      <input type="text" name="first_name" id="firstNameInput" class="form-control rounded-4" value="{{ first_name }}" placeholder="Введите ваше имя">
-    </div>
-    <!-- Фамилия пользователя -->
-    <div class="mb-3">
-      <label for="lastNameInput" class="form-label fw-semibold">Фамилия</label>
-      <input type="text" name="last_name" id="lastNameInput" class="form-control rounded-4" value="{{ last_name }}" placeholder="Введите вашу фамилию">
-    </div>
-    <!-- Поле «Обо мне».  Пока не сохраняется в базе данных, но позволяет пользователю оставить заметку о себе. -->
-    <div class="mb-3">
-      <label for="aboutMeTextarea" class="form-label fw-semibold">Обо мне</label>
-      <textarea id="aboutMeTextarea" name="about_me" class="form-control rounded-4" rows="5" placeholder="Напишите о себе">{{ user.about_me or '' }}</textarea>
-    </div>
-    <div class="text-end">
-      <button type="submit" class="btn btn-primary px-4">Готово</button>
-    </div>
-  </form>
+  <!-- Раздел ввода основной информации убран; соответствующие поля перенесены выше -->
 
 
   <!-- Общее модальное окно для редактирования пунктов профиля -->
