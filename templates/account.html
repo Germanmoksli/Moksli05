@@ -85,65 +85,67 @@
         </form>
         <!-- Сетка с пунктами профиля -->
       <div class="row row-cols-1 row-cols-md-2 g-2 g-md-3 profile-grid">
-        <a href="#" class="profile-item d-flex align-items-center p-3 profile-edit-item" data-label="Моя работа">
+        <a href="#" class="profile-item d-flex align-items-center p-3" data-label="Моя работа">
           <i class="bi bi-briefcase-fill profile-icon me-3"></i>
-          <span data-label="Моя работа">Моя работа</span>
-          <i class="bi bi-pencil ms-auto text-primary"></i>
+          <!-- Текстовое значение пункта профиля. При просмотре отображается текст, при редактировании скрывается -->
+          <span class="profile-value" data-label="Моя работа">Моя работа</span>
+          <!-- Поле ввода для редактирования значения. Скрыто до включения режима редактирования -->
+          <input type="text" class="profile-input form-control d-none ms-2" data-label="Моя работа" />
         </a>
-        <a href="#" class="profile-item d-flex align-items-center p-3 profile-edit-item" data-label="Где мне всегда хотелось побывать">
+        <a href="#" class="profile-item d-flex align-items-center p-3" data-label="Где мне всегда хотелось побывать">
           <i class="bi bi-geo-alt-fill profile-icon me-3"></i>
-          <span data-label="Где мне всегда хотелось побывать">Где мне всегда хотелось побывать</span>
-          <i class="bi bi-pencil ms-auto text-primary"></i>
+          <span class="profile-value" data-label="Где мне всегда хотелось побывать">Где мне всегда хотелось побывать</span>
+          <input type="text" class="profile-input form-control d-none ms-2" data-label="Где мне всегда хотелось побывать" />
         </a>
-        <a href="#" class="profile-item d-flex align-items-center p-3 profile-edit-item" data-label="Любимая песня в школе">
+        <a href="#" class="profile-item d-flex align-items-center p-3" data-label="Любимая песня в школе">
           <i class="bi bi-music-note-beamed profile-icon me-3"></i>
-          <span data-label="Любимая песня в школе">Любимая песня в школе</span>
-          <i class="bi bi-pencil ms-auto text-primary"></i>
+          <span class="profile-value" data-label="Любимая песня в школе">Любимая песня в школе</span>
+          <input type="text" class="profile-input form-control d-none ms-2" data-label="Любимая песня в школе" />
         </a>
-        <a href="#" class="profile-item d-flex align-items-center p-3 profile-edit-item" data-label="Питомцы">
+        <a href="#" class="profile-item d-flex align-items-center p-3" data-label="Питомцы">
           <i class="bi bi-paw-fill profile-icon me-3"></i>
-          <span data-label="Питомцы">Питомцы</span>
-          <i class="bi bi-pencil ms-auto text-primary"></i>
+          <span class="profile-value" data-label="Питомцы">Питомцы</span>
+          <input type="text" class="profile-input form-control d-none ms-2" data-label="Питомцы" />
         </a>
-        <a href="#" class="profile-item d-flex align-items-center p-3 profile-edit-item" data-label="Из какого я поколения">
+        <a href="#" class="profile-item d-flex align-items-center p-3" data-label="Из какого я поколения">
           <i class="bi bi-people-fill profile-icon me-3"></i>
-          <span data-label="Из какого я поколения">Из какого я поколения</span>
-          <i class="bi bi-pencil ms-auto text-primary"></i>
+          <span class="profile-value" data-label="Из какого я поколения">Из какого я поколения</span>
+          <input type="text" class="profile-input form-control d-none ms-2" data-label="Из какого я поколения" />
         </a>
-        <a href="#" class="profile-item d-flex align-items-center p-3 profile-edit-item" data-label="Школьные годы">
+        <a href="#" class="profile-item d-flex align-items-center p-3" data-label="Школьные годы">
           <i class="bi bi-book-fill profile-icon me-3"></i>
-          <span data-label="Школьные годы">Школьные годы</span>
-          <i class="bi bi-pencil ms-auto text-primary"></i>
+          <span class="profile-value" data-label="Школьные годы">Школьные годы</span>
+          <input type="text" class="profile-input form-control d-none ms-2" data-label="Школьные годы" />
         </a>
-        <a href="#" class="profile-item d-flex align-items-center p-3 profile-edit-item" data-label="Что я делаю часами">
+        <a href="#" class="profile-item d-flex align-items-center p-3" data-label="Что я делаю часами">
           <i class="bi bi-clock-fill profile-icon me-3"></i>
-          <span data-label="Что я делаю часами">Что я делаю часами</span>
-          <i class="bi bi-pencil ms-auto text-primary"></i>
+          <span class="profile-value" data-label="Что я делаю часами">Что я делаю часами</span>
+          <input type="text" class="profile-input form-control d-none ms-2" data-label="Что я делаю часами" />
         </a>
-        <a href="#" class="profile-item d-flex align-items-center p-3 profile-edit-item" data-label="Интересный факт обо мне">
+        <a href="#" class="profile-item d-flex align-items-center p-3" data-label="Интересный факт обо мне">
           <i class="bi bi-lightbulb-fill profile-icon me-3"></i>
-          <span data-label="Интересный факт обо мне">Интересный факт обо мне</span>
-          <i class="bi bi-pencil ms-auto text-primary"></i>
+          <span class="profile-value" data-label="Интересный факт обо мне">Интересный факт обо мне</span>
+          <input type="text" class="profile-input form-control d-none ms-2" data-label="Интересный факт обо мне" />
         </a>
-        <a href="#" class="profile-item d-flex align-items-center p-3 profile-edit-item" data-label="Мой самый бесполезный навык">
+        <a href="#" class="profile-item d-flex align-items-center p-3" data-label="Мой самый бесполезный навык">
           <i class="bi bi-pencil-fill profile-icon me-3"></i>
-          <span data-label="Мой самый бесполезный навык">Мой самый бесполезный навык</span>
-          <i class="bi bi-pencil ms-auto text-primary"></i>
+          <span class="profile-value" data-label="Мой самый бесполезный навык">Мой самый бесполезный навык</span>
+          <input type="text" class="profile-input form-control d-none ms-2" data-label="Мой самый бесполезный навык" />
         </a>
-        <a href="#" class="profile-item d-flex align-items-center p-3 profile-edit-item" data-label="Языки, на которых я говорю">
+        <a href="#" class="profile-item d-flex align-items-center p-3" data-label="Языки, на которых я говорю">
           <i class="bi bi-chat-square-dots-fill profile-icon me-3"></i>
-          <span data-label="Языки, на которых я говорю">Языки, на которых я говорю</span>
-          <i class="bi bi-pencil ms-auto text-primary"></i>
+          <span class="profile-value" data-label="Языки, на которых я говорю">Языки, на которых я говорю</span>
+          <input type="text" class="profile-input form-control d-none ms-2" data-label="Языки, на которых я говорю" />
         </a>
-        <a href="#" class="profile-item d-flex align-items-center p-3 profile-edit-item" data-label="Что я безумно люблю">
+        <a href="#" class="profile-item d-flex align-items-center p-3" data-label="Что я безумно люблю">
           <i class="bi bi-heart-fill profile-icon me-3"></i>
-          <span data-label="Что я безумно люблю">Что я безумно люблю</span>
-          <i class="bi bi-pencil ms-auto text-primary"></i>
+          <span class="profile-value" data-label="Что я безумно люблю">Что я безумно люблю</span>
+          <input type="text" class="profile-input form-control d-none ms-2" data-label="Что я безумно люблю" />
         </a>
-        <a href="#" class="profile-item d-flex align-items-center p-3 profile-edit-item" data-label="История моей жизни">
+        <a href="#" class="profile-item d-flex align-items-center p-3" data-label="История моей жизни">
           <i class="bi bi-bookmark-fill profile-icon me-3"></i>
-          <span data-label="История моей жизни">История моей жизни</span>
-          <i class="bi bi-pencil ms-auto text-primary"></i>
+          <span class="profile-value" data-label="История моей жизни">История моей жизни</span>
+          <input type="text" class="profile-input form-control d-none ms-2" data-label="История моей жизни" />
         </a>
       </div>
       <!-- Кнопка добавления места проживания -->
@@ -156,77 +158,85 @@
   <!-- Раздел ввода основной информации убран; соответствующие поля перенесены выше -->
 
 
-  <!-- Общее модальное окно для редактирования пунктов профиля -->
-  <div class="modal fade" id="profileModal" tabindex="-1" aria-labelledby="profileModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-      <div class="modal-content rounded-4">
-        <div class="modal-header border-0">
-          <h5 class="modal-title" id="profileModalLabel"></h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <input type="text" class="form-control" id="profileModalInput">
-        </div>
-        <div class="modal-footer border-0">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-          <button type="button" class="btn btn-primary" id="profileModalSave">Сохранить</button>
-        </div>
-      </div>
-    </div>
-  </div>
-  <!-- Скрипт для обработки ввода в модальном окне профиля -->
+  <!-- Скрипт для переключения режима редактирования и обновления пунктов профиля -->
   <script>
     document.addEventListener('DOMContentLoaded', function () {
-      var modalEl = document.getElementById('profileModal');
-      var modalTitle = document.getElementById('profileModalLabel');
-      var modalInput = document.getElementById('profileModalInput');
-      var currentItem = null;
-      // Навешиваем обработчик на все редактируемые элементы профиля
-      var items = document.querySelectorAll('.profile-edit-item');
-      items.forEach(function (item) {
-        item.addEventListener('click', function (e) {
-          e.preventDefault();
-          currentItem = this;
-          var label = this.querySelector('span').getAttribute('data-label');
-          modalTitle.textContent = label;
-          modalInput.value = '';
-          // Открываем модалку
-          var bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
-          bsModal.show();
-        });
-      });
-      // Кнопка сохранения в модальном окне
-      var saveBtn = document.getElementById('profileModalSave');
-      saveBtn.addEventListener('click', function () {
-        if (currentItem) {
-          var label = currentItem.querySelector('span').getAttribute('data-label');
-          var value = modalInput.value.trim();
-          // Если пользователь ввёл значение, показываем его после метки
-          if (value) {
-            currentItem.querySelector('span').textContent = label + ': ' + value;
-          }
-          var bsModal = bootstrap.Modal.getInstance(modalEl);
-          bsModal.hide();
-        }
-      });
-
-      // Логика для блока 1 (основная информация): переключение между режимом просмотра и редактирования.
-      // При нажатии на кнопку «Редактировать» скрываем блок отображения и показываем форму,
-      // а при нажатии на кнопку «Отмена» возвращаемся к исходному виду.
+      // Получаем ссылки на элементы управления
       var block1EditBtn = document.getElementById('block1-edit-btn');
       var block1Display = document.getElementById('block1-display');
       var block1Edit = document.getElementById('block1-edit');
       var block1Cancel = document.getElementById('block1-cancel');
+      var block1Form = block1Edit;
+      var block1SaveBtn = block1Form ? block1Form.querySelector('button[type="submit"]') : null;
+
+      // Коллекции элементов профиля: отображаемые значения и поля ввода
+      var profileItems = document.querySelectorAll('.profile-item');
+
+      /**
+       * Войти в режим редактирования: скрыть текстовые значения и показать инпуты
+       */
+      function enterEditMode() {
+        profileItems.forEach(function (item) {
+          var span = item.querySelector('.profile-value');
+          var input = item.querySelector('.profile-input');
+          if (span && input) {
+            // Парсим существующее значение (если есть) после двоеточия
+            var label = span.getAttribute('data-label');
+            var text = span.textContent || '';
+            var value = '';
+            var parts = text.split(':');
+            if (parts.length > 1) {
+              // Значение после двоеточия
+              value = parts.slice(1).join(':').trim();
+            }
+            input.value = value;
+            span.classList.add('d-none');
+            input.classList.remove('d-none');
+          }
+        });
+      }
+
+      /**
+       * Выйти из режима редактирования: скрыть инпуты и показать текстовые значения. Если save=true, то
+       * обновляем текст значениями из инпутов.
+       */
+      function exitEditMode(save) {
+        profileItems.forEach(function (item) {
+          var span = item.querySelector('.profile-value');
+          var input = item.querySelector('.profile-input');
+          if (span && input) {
+            if (save) {
+              var label = span.getAttribute('data-label');
+              var value = input.value.trim();
+              // Формируем текст: метка + значение (если есть)
+              span.textContent = value ? label + ': ' + value : label;
+            }
+            input.classList.add('d-none');
+            span.classList.remove('d-none');
+          }
+        });
+      }
+
       if (block1EditBtn && block1Display && block1Edit) {
         block1EditBtn.addEventListener('click', function () {
           block1Display.classList.add('d-none');
           block1Edit.classList.remove('d-none');
+          enterEditMode();
         });
       }
+
       if (block1Cancel && block1Display && block1Edit) {
         block1Cancel.addEventListener('click', function () {
           block1Edit.classList.add('d-none');
           block1Display.classList.remove('d-none');
+          exitEditMode(false);
+        });
+      }
+
+      if (block1SaveBtn) {
+        block1SaveBtn.addEventListener('click', function () {
+          // Обновляем текстовые значения перед отправкой формы
+          exitEditMode(true);
         });
       }
 
@@ -239,14 +249,13 @@
           photoInput.click();
         });
 
-        // Обновляем превью аватарки, когда выбран новый файл.  
+        // Обновляем превью аватарки, когда выбран новый файл.
         photoInput.addEventListener('change', function () {
           if (this.files && this.files[0]) {
             var reader = new FileReader();
             reader.onload = function (e) {
               var avatarCircle = document.querySelector('.avatar-circle');
               if (avatarCircle) {
-                // Устанавливаем изображение в качестве фона и скрываем начальную букву
                 avatarCircle.style.backgroundImage = 'url(' + e.target.result + ')';
                 avatarCircle.style.backgroundSize = 'cover';
                 var span = avatarCircle.querySelector('span');

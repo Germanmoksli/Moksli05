@@ -53,6 +53,25 @@
   color: var(--bs-primary);
 }
 
+/* Underlined text for profile item values when not editing */
+.profile-value {
+  border-bottom: 1px solid var(--bs-primary);
+  padding-bottom: 2px;
+  flex-grow: 1;
+}
+
+/* Input styling inside profile items during edit mode */
+/* Инпуты для редактирования профиля: появятся в режиме редактирования */
+.profile-input {
+  border: 1px solid var(--bs-primary);
+  border-radius: 20px;
+  flex-grow: 1;
+  outline: none;
+  box-shadow: none;
+  padding: 0.375rem 0.75rem;
+  background-color: #fff;
+}
+
 /* Button for adding living place */
 .profile-add {
   border: 1px solid #e6e6e6;
