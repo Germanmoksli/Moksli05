@@ -541,10 +541,11 @@
           <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="mainNavbar">
-          <!-- Левая часть меню: ссылки в зависимости от роли -->
-          <!-- Левый блок навигации. Для гостей пунктов меню нет, для владельцев и менеджеров отображаются
-               основные разделы (Календарь, Дашборд, Гости, Квартиры, Сотрудники, Подписка). -->
-          <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+          <!-- Левая часть меню: ссылки в зависимости от роли. Для гостей пунктов меню
+               нет, для владельцев и менеджеров отображаются основные разделы. Мы
+               добавляем класс me-auto только когда действительно есть элементы,
+               чтобы пустой список не оттягивал следующие элементы вправо. -->
+          <ul class="navbar-nav mb-2 mb-lg-0{% if session.get('user_role') == 'owner' or session.get('user_role') == 'manager' %} me-auto{% endif %}">
             {% if session.get('user_role') == 'owner' %}
               <li class="nav-item">
                 <a href="{{ url_for('calendar_view') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('calendar') %}active{% endif %}">Календарь</a>
@@ -583,7 +584,9 @@
                 <a href="{{ url_for('list_employees') }}" class="nav-link {% if request.endpoint == 'list_employees' %}active{% endif %}">Сотрудники</a>
               </li>
             {% else %}
-              {# Для гостей навигационные элементы скрыты. #}
+              {# Для гостей навигационные элементы скрыты. Но мы оставляем
+                 пустой ul без класса me-auto, чтобы следующие элементы не
+                 прижимались вправо. #}
             {% endif %}
           </ul>
           {# Форма поиска для гостей, размещённая в навигации. Показываем только
@@ -602,7 +605,7 @@
    и на странице деталей квартиры. Если пользователь — владелец или
    менеджер, фильтры не отображаем.  #}
 {% if (session.get('user_role') != 'owner' and session.get('user_role') != 'manager') and (request.endpoint == 'public_listings' or request.endpoint == 'view_room_public') %}
-          <form id="nav_filter_form" method="get" action="{{ url_for('public_listings') }}" class="d-flex flex-wrap align-items-end gap-2 ms-3" style="max-width: 60%;">
+          <form id="nav_filter_form" method="get" action="{{ url_for('public_listings') }}" class="d-flex flex-wrap align-items-end gap-2 mx-auto" style="max-width: 60%;">
             <!-- Кнопка поиска слева: круглая кнопка с иконкой лупы -->
             <div>
               <button type="submit" class="btn btn-primary d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; border-radius: 50% !important; padding: 0;">

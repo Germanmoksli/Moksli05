@@ -281,7 +281,7 @@
          #}
         {% if session.get('user_role') != 'owner' and session.get('user_role') != 'manager' %}
         <!-- Добавляем идентификатор nav_filter_form, чтобы стилизовать блок фильтров и добавить тень -->
-        <form id="nav_filter_form" method="get" action="{{ url_for('public_listings') }}" class="d-flex flex-wrap align-items-end gap-2 ms-3" style="max-width: 60%;">
+        <form id="nav_filter_form" method="get" action="{{ url_for('public_listings') }}" class="d-flex flex-wrap align-items-end gap-2 mx-auto" style="max-width: 60%;">
           <!-- Кнопка поиска слева: круглая кнопка с иконкой лупы -->
           <div>
             <button type="submit" class="btn btn-primary d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; border-radius: 50% !important; padding: 0;">
