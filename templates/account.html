@@ -103,13 +103,13 @@
             <strong>Город проживания:</strong> <span>{{ user.city or '' }}</span>
           </p>
           <!-- Описание пользователя -->
-          <!-- Описание пользователя.  Используем белые строки pre-line, чтобы
-               сохранять переносы строк, введённые пользователем.  Если поле
-               пустое, текст не отображается. -->
-          <p class="mb-0 mt-2">
-            <strong>Обо мне:</strong>
-            <span style="white-space: pre-line;">{{ user.about_me or '' }}</span>
-          </p>
+          <!-- Описание пользователя в стиле мессенджера.  Если поле пустое,
+               блок не отображается. -->
+          {% if user and user.about_me %}
+          <div class="about-bubble mt-2">
+            {{ user.about_me }}
+          </div>
+          {% endif %}
         </div>
         <!-- Блок 1: форма редактирования имени, фамилии и описания -->
         <form id="block1-edit" class="mb-4 d-none" action="{{ url_for('account') }}" method="post" enctype="multipart/form-data">
