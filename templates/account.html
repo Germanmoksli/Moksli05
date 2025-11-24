@@ -17,9 +17,15 @@
     <div class="col-12 col-md-4 d-flex flex-column align-items-center">
       <div class="position-relative mb-3">
         <!-- Аватар: если загружена фотография, показываем её; иначе инициалы -->
+        {#
+          Используем фотографию из базы данных (user.photo) или из сессии (session['user_photo']).
+          session['user_photo'] обновляется при загрузке нового снимка и служит временной подстановкой
+          до тех пор, пока пользователь не перезагрузит страницу и фото не будет считано из базы данных.
+        #}
+        {% set avatar_path = session.get('user_photo') or (user.photo if user and user.photo) %}
         <div class="avatar-circle shadow-sm"
-             {% if user and user.photo %}
-               style="background-image: url('{{ url_for('static', filename=user.photo) }}');
+             {% if avatar_path %}
+               style="background-image: url('{{ url_for('static', filename=avatar_path) }}');
                       background-size: cover;
                       background-position: center;"
              {% endif %}>
