@@ -41,8 +41,9 @@
             </span>
           {% endif %}
         </div>
-        <!-- Кнопка загрузки фото. При клике откроется диалог выбора изображения. -->
-        <button type="button" class="btn btn-light btn-sm upload-photo-button shadow rounded-pill" id="uploadPhotoBtn">
+        <!-- Кнопка загрузки фото. При клике откроется диалог выбора изображения. 
+             По умолчанию скрыта и появляется только в режиме редактирования. -->
+        <button type="button" class="btn btn-light btn-sm upload-photo-button shadow rounded-pill d-none" id="uploadPhotoBtn">
           <i class="bi bi-camera-fill me-1"></i>Добавить
         </button>
       </div>
@@ -223,6 +224,12 @@
             input.classList.remove('d-none');
           }
         });
+
+        // Показать кнопку загрузки фотографии при входе в режим редактирования
+        var photoBtn = document.getElementById('uploadPhotoBtn');
+        if (photoBtn) {
+          photoBtn.classList.remove('d-none');
+        }
       }
 
       /**
@@ -244,6 +251,12 @@
             span.classList.remove('d-none');
           }
         });
+
+        // Скрыть кнопку загрузки фотографии при выходе из режима редактирования
+        var photoBtn2 = document.getElementById('uploadPhotoBtn');
+        if (photoBtn2) {
+          photoBtn2.classList.add('d-none');
+        }
       }
 
       if (block1EditBtn && block1Display && block1Edit) {
