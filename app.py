@@ -2268,6 +2268,9 @@ def ensure_profile_columns(conn: sqlite3.Connection) -> None:
         'zodiac_sign': 'TEXT',
         'city': 'TEXT',
         'about_me': 'TEXT',
+        # Store additional profile questions/answers as JSON (TEXT).  This allows
+        # arbitrary key/value pairs without modifying the schema for each new field.
+        'profile_data': 'TEXT',
     }
     for col, col_type in desired_columns.items():
         try:
@@ -6537,6 +6540,34 @@ def account():
         about_me_raw = (request.form.get('about_me') or '').strip()
         about_me_val = about_me_raw or None
 
+        # Extract dynamic profile questions from the form.  These correspond
+        # to optional fields such as "Моя работа", "Питомцы" и т.д.  Only
+        # non-empty values are stored; empty strings remove existing entries.
+        # When merging, we ignore any previous values and take the submitted
+        # values as the new truth; empty values mean the key is omitted.
+        dynamic_fields = [
+            'work', 'dream_place', 'school_song', 'pets', 'generation',
+            'school_years', 'hours_activity', 'interesting_fact',
+            'useless_skill', 'languages', 'passion', 'life_story'
+        ]
+        profile_data: dict[str, str] = {}
+        for fld in dynamic_fields:
+            try:
+                val = (request.form.get(fld) or '').strip()
+            except Exception:
+                val = ''
+            if val:
+                profile_data[fld] = val
+        # Serialize profile data as JSON.  Use ensure_ascii=False to preserve
+        # Cyrillic characters and other Unicode.  If there are no entries,
+        # store NULL in the database to avoid cluttering with empty JSON.
+        profile_json: str | None = None
+        try:
+            if profile_data:
+                profile_json = json.dumps(profile_data, ensure_ascii=False)
+        except Exception:
+            profile_json = None
+
         # Perform the update.  Do not use a context manager on ``conn`` so that
         # the wrapper does not close the connection before we are done.  Commit
         # explicitly so changes persist.  On any exception, roll back the
@@ -6545,16 +6576,17 @@ def account():
             # Perform the update.  Insert or update the photo column only when
             # a new file was uploaded to avoid overwriting the existing path with NULL.
             if photo_path:
+                # Update with photo and profile_data
                 conn.execute(
-                    'UPDATE users SET name=?, contact_info=?, photo=?, birth_date=?, zodiac_sign=?, city=?, about_me=? WHERE id=?',
-                    (full_name, contact, photo_path, birth_date, zodiac_sign, city_val, about_me_val, user_id)
+                    'UPDATE users SET name=?, contact_info=?, photo=?, birth_date=?, zodiac_sign=?, city=?, about_me=?, profile_data=? WHERE id=?',
+                    (full_name, contact, photo_path, birth_date, zodiac_sign, city_val, about_me_val, profile_json, user_id)
                 )
                 # Immediately update the session so the new avatar is visible without reload
                 session['user_photo'] = photo_path
             else:
                 conn.execute(
-                    'UPDATE users SET name=?, contact_info=?, birth_date=?, zodiac_sign=?, city=?, about_me=? WHERE id=?',
-                    (full_name, contact, birth_date, zodiac_sign, city_val, about_me_val, user_id)
+                    'UPDATE users SET name=?, contact_info=?, birth_date=?, zodiac_sign=?, city=?, about_me=?, profile_data=? WHERE id=?',
+                    (full_name, contact, birth_date, zodiac_sign, city_val, about_me_val, profile_json, user_id)
                 )
             # Explicitly commit the transaction to persist changes
             conn.commit()
@@ -6681,13 +6713,50 @@ def account():
             first_name_value = parts[0]
             if len(parts) > 1:
                 last_name_value = ' '.join(parts[1:])
+    # Compute age in years from the birth_date if available.  Age is
+    # calculated relative to today's date, decreasing by one if the
+    # birthday has not yet occurred this year.  If the birth date
+    # cannot be parsed, age_years remains None.
+    age_years = None
+    try:
+        if user and user['birth_date']:
+            bd = None
+            try:
+                # Accept either string or date objects; convert to date
+                if isinstance(user['birth_date'], str):
+                    bd = datetime.strptime(user['birth_date'], '%Y-%m-%d').date()
+                else:
+                    # Already a date-like object
+                    bd = user['birth_date']
+            except Exception:
+                bd = None
+            if bd:
+                today = date.today()
+                age_years = today.year - bd.year - ((today.month, today.day) < (bd.month, bd.day))
+    except Exception:
+        age_years = None
+
+    # Parse dynamic profile data (JSON) into a dictionary for template use
+    profile_data_dict: dict[str, str] = {}
+    try:
+        if user and user['profile_data']:
+            # user['profile_data'] may be a str or bytes; decode accordingly
+            raw = user['profile_data']
+            if isinstance(raw, bytes):
+                raw = raw.decode('utf-8', 'ignore')
+            profile_data_dict = json.loads(raw)
+    except Exception:
+        profile_data_dict = {}
+
     return render_template(
         'account.html',
         user=user,
         phone_country_code=phone_country_code,
         phone_digits=phone_digits_display,
         first_name=first_name_value,
-        last_name=last_name_value
+        last_name=last_name_value,
+        age_years=age_years,
+        profile_data=profile_data_dict
     )
 
 
