@@ -6550,23 +6550,33 @@ def account():
 
         # Perform the update.  Do not use a context manager on ``conn`` so that
         # the wrapper does not close the connection before we are done.  Commit
-        # explicitly so changes persist on SQLite and remain harmless on PostgreSQL.
+        # explicitly so changes persist.  On any exception, roll back the
+        # transaction, close the connection and surface an error message to the user.
         try:
             if photo_path:
                 conn.execute(
                     'UPDATE users SET name=?, contact_info=?, photo=?, birth_date=?, zodiac_sign=?, city=?, about_me=? WHERE id=?',
                     (full_name, contact, photo_path, birth_date, zodiac_sign, city_val, about_me_val, user_id)
                 )
+                # Store the new photo path in the session so it is used immediately
                 session['user_photo'] = photo_path
             else:
                 conn.execute(
                     'UPDATE users SET name=?, contact_info=?, birth_date=?, zodiac_sign=?, city=?, about_me=? WHERE id=?',
                     (full_name, contact, birth_date, zodiac_sign, city_val, about_me_val, user_id)
                 )
+            # Commit the transaction to persist the changes
             conn.commit()
-        except Exception:
-            pass
-        # Close connection after update
+        except Exception as e:
+            # Roll back any partial changes on error and inform the user
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+            conn.close()
+            flash('Не удалось обновить профиль. Попробуйте ещё раз.')
+            return redirect(url_for('account'))
+        # Close connection after successful update
         conn.close()
         flash('Профиль обновлён.')
         return redirect(url_for('account'))
