@@ -149,6 +149,23 @@
             <label for="aboutMeTextarea" class="form-label fw-semibold">Обо мне</label>
             <textarea id="aboutMeTextarea" name="about_me" class="form-control rounded-4" rows="5" placeholder="Напишите о себе">{{ user.about_me or '' }}</textarea>
           </div>
+          {#
+            Скрытые поля для динамических пунктов профиля.  Эти значения
+            заполняются скриптом перед отправкой формы.  Имена должны
+            соответствовать ключам из списка dynamic_fields в app.py.
+          #}
+          <input type="hidden" name="work" id="hidden-work" value="{{ profile_data.get('work','') }}">
+          <input type="hidden" name="dream_place" id="hidden-dream_place" value="{{ profile_data.get('dream_place','') }}">
+          <input type="hidden" name="school_song" id="hidden-school_song" value="{{ profile_data.get('school_song','') }}">
+          <input type="hidden" name="pets" id="hidden-pets" value="{{ profile_data.get('pets','') }}">
+          <input type="hidden" name="generation" id="hidden-generation" value="{{ profile_data.get('generation','') }}">
+          <input type="hidden" name="school_years" id="hidden-school_years" value="{{ profile_data.get('school_years','') }}">
+          <input type="hidden" name="hours_activity" id="hidden-hours_activity" value="{{ profile_data.get('hours_activity','') }}">
+          <input type="hidden" name="interesting_fact" id="hidden-interesting_fact" value="{{ profile_data.get('interesting_fact','') }}">
+          <input type="hidden" name="useless_skill" id="hidden-useless_skill" value="{{ profile_data.get('useless_skill','') }}">
+          <input type="hidden" name="languages" id="hidden-languages" value="{{ profile_data.get('languages','') }}">
+          <input type="hidden" name="passion" id="hidden-passion" value="{{ profile_data.get('passion','') }}">
+          <input type="hidden" name="life_story" id="hidden-life_story" value="{{ profile_data.get('life_story','') }}">
           <div class="text-end">
             <button type="submit" class="btn btn-primary px-4">Сохранить</button>
             <button type="button" id="block1-cancel" class="btn btn-secondary ms-2">Отмена</button>
@@ -160,85 +177,157 @@
           <i class="bi bi-briefcase-fill profile-icon me-3"></i>
           <!-- Контейнер для текста и поля ввода. Под ним рисуется линия -->
           <div class="profile-field flex-grow-1">
-            <span class="profile-value" data-label="Моя работа">Моя работа</span>
-            <input type="text" class="profile-input form-control d-none" data-label="Моя работа" placeholder="Моя работа" />
+            <span class="profile-value" data-label="Моя работа">
+              {% if profile_data.get('work') %}
+                Моя работа: {{ profile_data['work'] }}
+              {% else %}
+                Моя работа
+              {% endif %}
+            </span>
+            <input type="text" class="profile-input form-control d-none" name="work" data-label="Моя работа" placeholder="Моя работа" value="{{ profile_data.get('work','') }}" />
           </div>
         </div>
         <div class="profile-item d-flex align-items-center p-3" data-label="Где мне всегда хотелось побывать">
           <i class="bi bi-geo-alt-fill profile-icon me-3"></i>
           <div class="profile-field flex-grow-1">
-            <span class="profile-value" data-label="Где мне всегда хотелось побывать">Где мне всегда хотелось побывать</span>
-            <input type="text" class="profile-input form-control d-none" data-label="Где мне всегда хотелось побывать" placeholder="Где мне всегда хотелось побывать" />
+            <span class="profile-value" data-label="Где мне всегда хотелось побывать">
+              {% if profile_data.get('dream_place') %}
+                Где мне всегда хотелось побывать: {{ profile_data['dream_place'] }}
+              {% else %}
+                Где мне всегда хотелось побывать
+              {% endif %}
+            </span>
+            <input type="text" class="profile-input form-control d-none" name="dream_place" data-label="Где мне всегда хотелось побывать" placeholder="Где мне всегда хотелось побывать" value="{{ profile_data.get('dream_place','') }}" />
           </div>
         </div>
         <div class="profile-item d-flex align-items-center p-3" data-label="Любимая песня в школе">
           <i class="bi bi-music-note-beamed profile-icon me-3"></i>
           <div class="profile-field flex-grow-1">
-            <span class="profile-value" data-label="Любимая песня в школе">Любимая песня в школе</span>
-            <input type="text" class="profile-input form-control d-none" data-label="Любимая песня в школе" placeholder="Любимая песня в школе" />
+            <span class="profile-value" data-label="Любимая песня в школе">
+              {% if profile_data.get('school_song') %}
+                Любимая песня в школе: {{ profile_data['school_song'] }}
+              {% else %}
+                Любимая песня в школе
+              {% endif %}
+            </span>
+            <input type="text" class="profile-input form-control d-none" name="school_song" data-label="Любимая песня в школе" placeholder="Любимая песня в школе" value="{{ profile_data.get('school_song','') }}" />
           </div>
         </div>
         <div class="profile-item d-flex align-items-center p-3" data-label="Питомцы">
           <i class="bi bi-emoji-smile-fill profile-icon me-3"></i>
           <div class="profile-field flex-grow-1">
-            <span class="profile-value" data-label="Питомцы">Питомцы</span>
-            <input type="text" class="profile-input form-control d-none" data-label="Питомцы" placeholder="Питомцы" />
+            <span class="profile-value" data-label="Питомцы">
+              {% if profile_data.get('pets') %}
+                Питомцы: {{ profile_data['pets'] }}
+              {% else %}
+                Питомцы
+              {% endif %}
+            </span>
+            <input type="text" class="profile-input form-control d-none" name="pets" data-label="Питомцы" placeholder="Питомцы" value="{{ profile_data.get('pets','') }}" />
           </div>
         </div>
         <div class="profile-item d-flex align-items-center p-3" data-label="Из какого я поколения">
           <i class="bi bi-people-fill profile-icon me-3"></i>
           <div class="profile-field flex-grow-1">
-            <span class="profile-value" data-label="Из какого я поколения">Из какого я поколения</span>
-            <input type="text" class="profile-input form-control d-none" data-label="Из какого я поколения" placeholder="Из какого я поколения" />
+            <span class="profile-value" data-label="Из какого я поколения">
+              {% if profile_data.get('generation') %}
+                Из какого я поколения: {{ profile_data['generation'] }}
+              {% else %}
+                Из какого я поколения
+              {% endif %}
+            </span>
+            <input type="text" class="profile-input form-control d-none" name="generation" data-label="Из какого я поколения" placeholder="Из какого я поколения" value="{{ profile_data.get('generation','') }}" />
           </div>
         </div>
         <div class="profile-item d-flex align-items-center p-3" data-label="Школьные годы">
           <i class="bi bi-book-fill profile-icon me-3"></i>
           <div class="profile-field flex-grow-1">
-            <span class="profile-value" data-label="Школьные годы">Школьные годы</span>
-            <input type="text" class="profile-input form-control d-none" data-label="Школьные годы" placeholder="Школьные годы" />
+            <span class="profile-value" data-label="Школьные годы">
+              {% if profile_data.get('school_years') %}
+                Школьные годы: {{ profile_data['school_years'] }}
+              {% else %}
+                Школьные годы
+              {% endif %}
+            </span>
+            <input type="text" class="profile-input form-control d-none" name="school_years" data-label="Школьные годы" placeholder="Школьные годы" value="{{ profile_data.get('school_years','') }}" />
           </div>
         </div>
         <div class="profile-item d-flex align-items-center p-3" data-label="Что я делаю часами">
           <i class="bi bi-clock-fill profile-icon me-3"></i>
           <div class="profile-field flex-grow-1">
-            <span class="profile-value" data-label="Что я делаю часами">Что я делаю часами</span>
-            <input type="text" class="profile-input form-control d-none" data-label="Что я делаю часами" placeholder="Что я делаю часами" />
+            <span class="profile-value" data-label="Что я делаю часами">
+              {% if profile_data.get('hours_activity') %}
+                Что я делаю часами: {{ profile_data['hours_activity'] }}
+              {% else %}
+                Что я делаю часами
+              {% endif %}
+            </span>
+            <input type="text" class="profile-input form-control d-none" name="hours_activity" data-label="Что я делаю часами" placeholder="Что я делаю часами" value="{{ profile_data.get('hours_activity','') }}" />
           </div>
         </div>
         <div class="profile-item d-flex align-items-center p-3" data-label="Интересный факт обо мне">
           <i class="bi bi-lightbulb-fill profile-icon me-3"></i>
           <div class="profile-field flex-grow-1">
-            <span class="profile-value" data-label="Интересный факт обо мне">Интересный факт обо мне</span>
-            <input type="text" class="profile-input form-control d-none" data-label="Интересный факт обо мне" placeholder="Интересный факт обо мне" />
+            <span class="profile-value" data-label="Интересный факт обо мне">
+              {% if profile_data.get('interesting_fact') %}
+                Интересный факт обо мне: {{ profile_data['interesting_fact'] }}
+              {% else %}
+                Интересный факт обо мне
+              {% endif %}
+            </span>
+            <input type="text" class="profile-input form-control d-none" name="interesting_fact" data-label="Интересный факт обо мне" placeholder="Интересный факт обо мне" value="{{ profile_data.get('interesting_fact','') }}" />
           </div>
         </div>
         <div class="profile-item d-flex align-items-center p-3" data-label="Мой самый бесполезный навык">
           <i class="bi bi-pencil-fill profile-icon me-3"></i>
           <div class="profile-field flex-grow-1">
-            <span class="profile-value" data-label="Мой самый бесполезный навык">Мой самый бесполезный навык</span>
-            <input type="text" class="profile-input form-control d-none" data-label="Мой самый бесполезный навык" placeholder="Мой самый бесполезный навык" />
+            <span class="profile-value" data-label="Мой самый бесполезный навык">
+              {% if profile_data.get('useless_skill') %}
+                Мой самый бесполезный навык: {{ profile_data['useless_skill'] }}
+              {% else %}
+                Мой самый бесполезный навык
+              {% endif %}
+            </span>
+            <input type="text" class="profile-input form-control d-none" name="useless_skill" data-label="Мой самый бесполезный навык" placeholder="Мой самый бесполезный навык" value="{{ profile_data.get('useless_skill','') }}" />
           </div>
         </div>
         <div class="profile-item d-flex align-items-center p-3" data-label="Языки, на которых я говорю">
           <i class="bi bi-chat-square-dots-fill profile-icon me-3"></i>
           <div class="profile-field flex-grow-1">
-            <span class="profile-value" data-label="Языки, на которых я говорю">Языки, на которых я говорю</span>
-            <input type="text" class="profile-input form-control d-none" data-label="Языки, на которых я говорю" placeholder="Языки, на которых я говорю" />
+            <span class="profile-value" data-label="Языки, на которых я говорю">
+              {% if profile_data.get('languages') %}
+                Языки, на которых я говорю: {{ profile_data['languages'] }}
+              {% else %}
+                Языки, на которых я говорю
+              {% endif %}
+            </span>
+            <input type="text" class="profile-input form-control d-none" name="languages" data-label="Языки, на которых я говорю" placeholder="Языки, на которых я говорю" value="{{ profile_data.get('languages','') }}" />
           </div>
         </div>
         <div class="profile-item d-flex align-items-center p-3" data-label="Что я безумно люблю">
           <i class="bi bi-heart-fill profile-icon me-3"></i>
           <div class="profile-field flex-grow-1">
-            <span class="profile-value" data-label="Что я безумно люблю">Что я безумно люблю</span>
-            <input type="text" class="profile-input form-control d-none" data-label="Что я безумно люблю" placeholder="Что я безумно люблю" />
+            <span class="profile-value" data-label="Что я безумно люблю">
+              {% if profile_data.get('passion') %}
+                Что я безумно люблю: {{ profile_data['passion'] }}
+              {% else %}
+                Что я безумно люблю
+              {% endif %}
+            </span>
+            <input type="text" class="profile-input form-control d-none" name="passion" data-label="Что я безумно люблю" placeholder="Что я безумно люблю" value="{{ profile_data.get('passion','') }}" />
           </div>
         </div>
         <div class="profile-item d-flex align-items-center p-3" data-label="История моей жизни">
           <i class="bi bi-bookmark-fill profile-icon me-3"></i>
           <div class="profile-field flex-grow-1">
-            <span class="profile-value" data-label="История моей жизни">История моей жизни</span>
-            <input type="text" class="profile-input form-control d-none" data-label="История моей жизни" placeholder="История моей жизни" />
+            <span class="profile-value" data-label="История моей жизни">
+              {% if profile_data.get('life_story') %}
+                История моей жизни: {{ profile_data['life_story'] }}
+              {% else %}
+                История моей жизни
+              {% endif %}
+            </span>
+            <input type="text" class="profile-input form-control d-none" name="life_story" data-label="История моей жизни" placeholder="История моей жизни" value="{{ profile_data.get('life_story','') }}" />
           </div>
         </div>
       </div>
@@ -432,6 +521,21 @@
 
       if (block1SaveBtn) {
         block1SaveBtn.addEventListener('click', function () {
+          // Перед отправкой формы копируем значения из видимых
+          // полей profile-input в скрытые поля внутри формы.  Это
+          // гарантирует, что динамические пункты профиля отправятся
+          // на сервер.  Каждое скрытое поле имеет id вида
+          // "hidden-<name>".
+          profileItems.forEach(function (item) {
+            var input = item.querySelector('.profile-input');
+            if (!input) return;
+            var nameAttr = input.getAttribute('name');
+            if (!nameAttr) return;
+            var hidden = document.getElementById('hidden-' + nameAttr);
+            if (hidden) {
+              hidden.value = input.value.trim();
+            }
+          });
           // Обновляем текстовые значения перед отправкой формы
           exitEditMode(true);
         });
