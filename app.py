@@ -6553,28 +6553,36 @@ def account():
         # explicitly so changes persist.  On any exception, roll back the
         # transaction, close the connection and surface an error message to the user.
         try:
+            # Perform the update.  Insert or update the photo column only when
+            # a new file was uploaded to avoid overwriting the existing path with NULL.
             if photo_path:
                 conn.execute(
                     'UPDATE users SET name=?, contact_info=?, photo=?, birth_date=?, zodiac_sign=?, city=?, about_me=? WHERE id=?',
                     (full_name, contact, photo_path, birth_date, zodiac_sign, city_val, about_me_val, user_id)
                 )
-                # Store the new photo path in the session so it is used immediately
+                # Immediately update the session so the new avatar is visible without reload
                 session['user_photo'] = photo_path
             else:
                 conn.execute(
                     'UPDATE users SET name=?, contact_info=?, birth_date=?, zodiac_sign=?, city=?, about_me=? WHERE id=?',
                     (full_name, contact, birth_date, zodiac_sign, city_val, about_me_val, user_id)
                 )
-            # Commit the transaction to persist the changes
+            # Explicitly commit the transaction to persist changes
             conn.commit()
         except Exception as e:
-            # Roll back any partial changes on error and inform the user
+            # Roll back on error and include the exception message in the flash
             try:
                 conn.rollback()
             except Exception:
                 pass
             conn.close()
-            flash('Не удалось обновить профиль. Попробуйте ещё раз.')
+            # Log the error for debugging; include only the message in the UI
+            try:
+                import logging
+                logging.exception("Failed to update user profile: %s", e)
+            except Exception:
+                pass
+            flash(f'Не удалось обновить профиль: {e}')
             return redirect(url_for('account'))
         # Close connection after successful update
         conn.close()
