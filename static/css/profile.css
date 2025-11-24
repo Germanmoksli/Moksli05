@@ -185,11 +185,15 @@ footer.footer a:hover {
   /* Используем тот же серый цвет, что и в верхнем меню навигации */
   background-color: #f0f2f5;
   border-radius: 1.5rem;
-  padding: 0.75rem 1rem;
+  /* Убираем лишний отступ сверху, чтобы текст примыкал ближе к краю */
+  padding: 0.5rem 1rem;
   display: inline-block;
   max-width: 100%;
   color: #000;
   white-space: pre-line;
+
+  /* Лёгкая тень вокруг пузыря, чтобы он не сливался с фоном */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 .about-bubble::after {
   content: "";
