@@ -513,7 +513,11 @@
   <body class="bg-light">
     <!-- Верхняя навигационная панель -->
     <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom mb-3">
-      <div class="container-fluid">
+      <!-- Используем flex‑контейнер, чтобы логотип и гамбургер распределялись по краям.  
+           Без d-flex элемент .navbar-toggler с ms-auto оставался рядом с логотипом, 
+           потому что контейнер по умолчанию не является flex.  
+           Добавляем d-flex и align-items-center для вертикального выравнивания. -->
+      <div class="container-fluid d-flex align-items-center">
         <!-- Логотип/бренд -->
         {% if session.get('user_role') == 'guest' %}
         <!-- Заменяем текстовый логотип на изображение + название. Изображение
