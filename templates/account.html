@@ -175,10 +175,13 @@
           <input type="hidden" name="languages" id="hidden-languages" value="{{ profile_data.get('languages','') }}">
           <input type="hidden" name="passion" id="hidden-passion" value="{{ profile_data.get('passion','') }}">
           <input type="hidden" name="life_story" id="hidden-life_story" value="{{ profile_data.get('life_story','') }}">
-          <div class="text-end">
-            <button type="submit" class="btn btn-primary px-4">Сохранить</button>
-            <button type="button" id="block1-cancel" class="btn btn-secondary ms-2">Отмена</button>
-          </div>
+          {#
+            Контейнер с кнопками сохранения и отмены перенесён в самый низ
+            страницы, поэтому здесь он удалён.  Кнопки внизу будут
+            самостоятельно вызывать отправку формы и переключать режим
+            редактирования.  Скрытые поля динамических пунктов остаются
+            в форме.
+          #}
         </form>
         <!-- Сетка с пунктами профиля -->
       <div class="row row-cols-1 row-cols-md-2 g-2 g-md-3 profile-grid">
@@ -340,6 +343,13 @@
           </div>
         </div>
       </div>
+      <!-- Нижняя панель с кнопками сохранения и отмены.  Появляется
+           только в режиме редактирования. -->
+      <div id="block1-bottom-controls" class="text-end mt-3 d-none">
+        <button type="button" id="block1-save-bottom" class="btn btn-primary px-4">Сохранить</button>
+        <button type="button" id="block1-cancel-bottom" class="btn btn-secondary ms-2">Отмена</button>
+      </div>
+
       <!-- Кнопка добавления места проживания -->
       <a href="#" class="btn btn-light w-100 mt-4 profile-add p-3 d-flex align-items-center justify-content-center">
         <i class="bi bi-house-door-fill me-2"></i>
@@ -360,6 +370,11 @@
       var block1Cancel = document.getElementById('block1-cancel');
       var block1Form = block1Edit;
       var block1SaveBtn = block1Form ? block1Form.querySelector('button[type="submit"]') : null;
+
+      // Нижняя панель с кнопками сохранения/отмены
+      var block1BottomControls = document.getElementById('block1-bottom-controls');
+      var block1SaveBottom = document.getElementById('block1-save-bottom');
+      var block1CancelBottom = document.getElementById('block1-cancel-bottom');
 
       // Коллекции элементов профиля: отображаемые значения и поля ввода
       var profileItems = document.querySelectorAll('.profile-item');
@@ -465,6 +480,11 @@
           photoBtn.classList.remove('d-none');
         }
 
+        // Показать нижнюю панель с кнопками сохранения и отмены при входе в режим редактирования
+        if (block1BottomControls) {
+          block1BottomControls.classList.remove('d-none');
+        }
+
         // Заполнить дополнительные поля из отображаемых значений
         prefillAdditionalInputs();
       }
@@ -510,6 +530,11 @@
         if (photoBtn2) {
           photoBtn2.classList.add('d-none');
         }
+
+        // Скрыть нижнюю панель с кнопками при выходе из режима редактирования
+        if (block1BottomControls) {
+          block1BottomControls.classList.add('d-none');
+        }
       }
 
       if (block1EditBtn && block1Display && block1Edit) {
@@ -547,6 +572,40 @@
           });
           // Обновляем текстовые значения перед отправкой формы
           exitEditMode(true);
+        });
+      }
+
+      // Сохранение через нижнюю панель.  Копируем значения,
+      // обновляем отображение и отправляем форму.
+      if (block1SaveBottom) {
+        block1SaveBottom.addEventListener('click', function () {
+          // Перенести значения из полей ввода в скрытые поля
+          profileItems.forEach(function (item) {
+            var input = item.querySelector('.profile-input');
+            if (!input) return;
+            var nameAttr = input.getAttribute('name');
+            if (!nameAttr) return;
+            var hidden = document.getElementById('hidden-' + nameAttr);
+            if (hidden) {
+              hidden.value = input.value.trim();
+            }
+          });
+          // Обновляем текстовые значения и скрываем поля
+          exitEditMode(true);
+          // Переключаем отображение блоков
+          if (block1Edit) block1Edit.classList.add('d-none');
+          if (block1Display) block1Display.classList.remove('d-none');
+          // Отправляем форму
+          if (block1Form) block1Form.submit();
+        });
+      }
+
+      // Отмена через нижнюю панель.  Возврат без сохранения.
+      if (block1CancelBottom) {
+        block1CancelBottom.addEventListener('click', function () {
+          exitEditMode(false);
+          if (block1Edit) block1Edit.classList.add('d-none');
+          if (block1Display) block1Display.classList.remove('d-none');
         });
       }
 
