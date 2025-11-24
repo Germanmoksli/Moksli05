@@ -72,10 +72,10 @@
               <span>Редактировать</span>
             </button>
           </div>
-          <!-- Описание пользователя -->
-          <p class="mb-0"><strong>Обо мне:</strong> {{ user.about_me or '' }}</p>
-          <!-- Дополнительная информация: дата рождения, знак зодиака и город. Эти элементы обновляются
-               динамически после сохранения формы.  Если значения пусты, строки скрываются с помощью CSS. -->
+          <!-- Дополнительная информация: дата рождения, знак зодиака и город.  Эти элементы
+               динамически обновляются после сохранения формы.  Если значения пусты,
+               строки скрываются с помощью CSS.  Размещаем эти поля перед
+               разделом «Обо мне», чтобы они отображались выше текстового описания. -->
           <p id="birthDateDisplay" class="mb-0 mt-2" {% if user and user.birth_date %}style=""{% else %}style="display:none;"{% endif %}>
             <strong>Дата рождения:</strong> <span>{{ user.birth_date or '' }}</span>
           </p>
@@ -85,6 +85,8 @@
           <p id="cityDisplay" class="mb-0" {% if user and user.city %}style=""{% else %}style="display:none;"{% endif %}>
             <strong>Город проживания:</strong> <span>{{ user.city or '' }}</span>
           </p>
+          <!-- Описание пользователя -->
+          <p class="mb-0 mt-2"><strong>Обо мне:</strong> {{ user.about_me or '' }}</p>
         </div>
         <!-- Блок 1: форма редактирования имени, фамилии и описания -->
         <form id="block1-edit" class="mb-4 d-none" action="{{ url_for('account') }}" method="post" enctype="multipart/form-data">
