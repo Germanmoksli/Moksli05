@@ -28,8 +28,8 @@
             {% endif %}
           </span>
         </div>
-        <!-- Кнопка загрузки фото (пока не активна) -->
-        <button type="button" class="btn btn-light btn-sm upload-photo-button shadow rounded-pill" disabled>
+        <!-- Кнопка загрузки фото. При клике откроется диалог выбора изображения. -->
+        <button type="button" class="btn btn-light btn-sm upload-photo-button shadow rounded-pill" id="uploadPhotoBtn">
           <i class="bi bi-camera-fill me-1"></i>Добавить
         </button>
       </div>
@@ -103,6 +103,8 @@
   <!-- Раздел ввода основной информации -->
   <h3 class="mt-5 mb-3 fw-bold">Основная информация</h3>
   <form action="{{ url_for('account') }}" method="post" enctype="multipart/form-data">
+    <!-- Поле для загрузки фотографии. Скрытый input будет открыт при клике на кнопку "Добавить" -->
+    <input type="file" name="photo" id="photoInput" accept="image/*" hidden>
     <!-- Имя пользователя -->
     <div class="mb-3">
       <label for="firstNameInput" class="form-label fw-semibold">Имя</label>
@@ -177,6 +179,36 @@
           bsModal.hide();
         }
       });
+
+      // Логика для кнопки загрузки фотографии: при клике на кнопку
+      // открываем скрытое поле выбора файла. Файл будет отправлен вместе с формой.
+      var uploadBtn = document.getElementById('uploadPhotoBtn');
+      var photoInput = document.getElementById('photoInput');
+      if (uploadBtn && photoInput) {
+        uploadBtn.addEventListener('click', function () {
+          photoInput.click();
+        });
+
+        // Обновляем превью аватарки, когда выбран новый файл.  
+        photoInput.addEventListener('change', function () {
+          if (this.files && this.files[0]) {
+            var reader = new FileReader();
+            reader.onload = function (e) {
+              var avatarCircle = document.querySelector('.avatar-circle');
+              if (avatarCircle) {
+                // Устанавливаем изображение в качестве фона и скрываем начальную букву
+                avatarCircle.style.backgroundImage = 'url(' + e.target.result + ')';
+                avatarCircle.style.backgroundSize = 'cover';
+                var span = avatarCircle.querySelector('span');
+                if (span) {
+                  span.style.display = 'none';
+                }
+              }
+            };
+            reader.readAsDataURL(this.files[0]);
+          }
+        });
+      }
     });
   </script>
 </div>
