@@ -51,8 +51,9 @@
               <h2 class="fw-bold mb-0">{{ (first_name or '') ~ ' ' ~ (last_name or '') }}</h2>
               <img src="{{ url_for('static', filename='uploads/verification_badge.png') }}" alt="Верифицированный аккаунт" class="ms-2" style="height: 1.5rem;">
             </div>
-            <button id="block1-edit-btn" type="button" class="btn btn-outline-primary btn-sm">
+            <button id="block1-edit-btn" type="button" class="block1-edit-btn">
               <i class="bi bi-pencil"></i>
+              <span>Редактировать</span>
             </button>
           </div>
           <!-- Описание пользователя -->

@@ -61,6 +61,28 @@
   color: #555;
   transition: background-color 0.15s ease-in-out;
 }
+
+/* Custom style for the block1 edit button with underline and larger icon/text */
+.block1-edit-btn {
+  border: none;
+  background: transparent;
+  color: var(--bs-primary);
+  font-weight: 600;
+  font-size: 1.25rem;
+  display: inline-flex;
+  align-items: center;
+  border-bottom: 2px solid var(--bs-primary);
+  padding: 0;
+  line-height: 1;
+}
+.block1-edit-btn i {
+  font-size: 1.5rem;
+  margin-right: 0.5rem;
+}
+.block1-edit-btn:hover {
+  color: var(--bs-primary);
+  text-decoration: none;
+}
 .profile-add:hover {
   background-color: #f2f2f2;
   text-decoration: none;
