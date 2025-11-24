@@ -41,79 +41,105 @@
         </button>
       </div>
     </div>
-    <!-- Правая колонка: форма редактирования имени, фамилии и описания, а ниже — настройки профиля -->
-    <div class="col-12 col-md-8">
-      <form action="{{ url_for('account') }}" method="post" enctype="multipart/form-data" class="mb-4">
-        <!-- Поле для загрузки фотографии. Скрытый input будет открыт при клике на кнопку \"Добавить\" -->
-        <input type="file" name="photo" id="photoInput" accept="image/*" hidden>
-        <!-- Имя пользователя -->
-        <div class="mb-3">
-          <label for="firstNameInput" class="form-label fw-semibold">Имя</label>
-          <input type="text" name="first_name" id="firstNameInput" class="form-control rounded-4" value="{{ first_name }}" placeholder="Введите ваше имя">
+      <!-- Правая колонка: информация о пользователе и настраиваемые блоки -->
+      <div class="col-12 col-md-8">
+        <!-- Блок 1: отображение имени, фамилии и описания -->
+        <div id="block1-display" class="mb-4">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h4 class="fw-semibold mb-0">Основная информация</h4>
+            <button id="block1-edit-btn" type="button" class="btn btn-outline-primary btn-sm">
+              <i class="bi bi-pencil"></i> Редактировать
+            </button>
+          </div>
+          <p class="mb-1"><strong>Имя:</strong> {{ first_name or '' }}</p>
+          <p class="mb-1"><strong>Фамилия:</strong> {{ last_name or '' }}</p>
+          <p class="mb-0"><strong>Обо мне:</strong> {{ user.about_me or '' }}</p>
         </div>
-        <!-- Фамилия пользователя -->
-        <div class="mb-3">
-          <label for="lastNameInput" class="form-label fw-semibold">Фамилия</label>
-          <input type="text" name="last_name" id="lastNameInput" class="form-control rounded-4" value="{{ last_name }}" placeholder="Введите вашу фамилию">
-        </div>
-        <!-- Поле «Обо мне». Пока не сохраняется в базе данных, но позволяет пользователю оставить заметку о себе. -->
-        <div class="mb-3">
-          <label for="aboutMeTextarea" class="form-label fw-semibold">Обо мне</label>
-          <textarea id="aboutMeTextarea" name="about_me" class="form-control rounded-4" rows="5" placeholder="Напишите о себе">{{ user.about_me or '' }}</textarea>
-        </div>
-        <div class="text-end">
-          <button type="submit" class="btn btn-primary px-4">Готово</button>
-        </div>
-      </form>
-      <!-- Сетка с пунктами профиля -->
+        <!-- Блок 1: форма редактирования имени, фамилии и описания -->
+        <form id="block1-edit" class="mb-4 d-none" action="{{ url_for('account') }}" method="post" enctype="multipart/form-data">
+          <!-- Поле для загрузки фотографии. Скрытый input будет открыт при клике на кнопку "Добавить" -->
+          <input type="file" name="photo" id="photoInput" accept="image/*" hidden>
+          <!-- Имя пользователя -->
+          <div class="mb-3">
+            <label for="firstNameInput" class="form-label fw-semibold">Имя</label>
+            <input type="text" name="first_name" id="firstNameInput" class="form-control rounded-4" value="{{ first_name }}" placeholder="Введите ваше имя">
+          </div>
+          <!-- Фамилия пользователя -->
+          <div class="mb-3">
+            <label for="lastNameInput" class="form-label fw-semibold">Фамилия</label>
+            <input type="text" name="last_name" id="lastNameInput" class="form-control rounded-4" value="{{ last_name }}" placeholder="Введите вашу фамилию">
+          </div>
+          <!-- Поле «Обо мне». Пока не сохраняется в базе данных, но позволяет пользователю оставить заметку о себе. -->
+          <div class="mb-3">
+            <label for="aboutMeTextarea" class="form-label fw-semibold">Обо мне</label>
+            <textarea id="aboutMeTextarea" name="about_me" class="form-control rounded-4" rows="5" placeholder="Напишите о себе">{{ user.about_me or '' }}</textarea>
+          </div>
+          <div class="text-end">
+            <button type="submit" class="btn btn-primary px-4">Сохранить</button>
+            <button type="button" id="block1-cancel" class="btn btn-secondary ms-2">Отмена</button>
+          </div>
+        </form>
+        <!-- Сетка с пунктами профиля -->
       <div class="row row-cols-1 row-cols-md-2 g-2 g-md-3 profile-grid">
         <a href="#" class="profile-item d-flex align-items-center p-3 profile-edit-item" data-label="Моя работа">
           <i class="bi bi-briefcase-fill profile-icon me-3"></i>
           <span data-label="Моя работа">Моя работа</span>
+          <i class="bi bi-pencil ms-auto text-primary"></i>
         </a>
         <a href="#" class="profile-item d-flex align-items-center p-3 profile-edit-item" data-label="Где мне всегда хотелось побывать">
           <i class="bi bi-geo-alt-fill profile-icon me-3"></i>
           <span data-label="Где мне всегда хотелось побывать">Где мне всегда хотелось побывать</span>
+          <i class="bi bi-pencil ms-auto text-primary"></i>
         </a>
-        <a href="#" class="profile-item d-flex align-items-center p-3">
+        <a href="#" class="profile-item d-flex align-items-center p-3 profile-edit-item" data-label="Любимая песня в школе">
           <i class="bi bi-music-note-beamed profile-icon me-3"></i>
-          <span>Любимая песня в школе</span>
+          <span data-label="Любимая песня в школе">Любимая песня в школе</span>
+          <i class="bi bi-pencil ms-auto text-primary"></i>
         </a>
         <a href="#" class="profile-item d-flex align-items-center p-3 profile-edit-item" data-label="Питомцы">
           <i class="bi bi-paw-fill profile-icon me-3"></i>
           <span data-label="Питомцы">Питомцы</span>
+          <i class="bi bi-pencil ms-auto text-primary"></i>
         </a>
         <a href="#" class="profile-item d-flex align-items-center p-3 profile-edit-item" data-label="Из какого я поколения">
           <i class="bi bi-people-fill profile-icon me-3"></i>
           <span data-label="Из какого я поколения">Из какого я поколения</span>
+          <i class="bi bi-pencil ms-auto text-primary"></i>
         </a>
         <a href="#" class="profile-item d-flex align-items-center p-3 profile-edit-item" data-label="Школьные годы">
           <i class="bi bi-book-fill profile-icon me-3"></i>
           <span data-label="Школьные годы">Школьные годы</span>
+          <i class="bi bi-pencil ms-auto text-primary"></i>
         </a>
         <a href="#" class="profile-item d-flex align-items-center p-3 profile-edit-item" data-label="Что я делаю часами">
           <i class="bi bi-clock-fill profile-icon me-3"></i>
           <span data-label="Что я делаю часами">Что я делаю часами</span>
+          <i class="bi bi-pencil ms-auto text-primary"></i>
         </a>
         <a href="#" class="profile-item d-flex align-items-center p-3 profile-edit-item" data-label="Интересный факт обо мне">
           <i class="bi bi-lightbulb-fill profile-icon me-3"></i>
           <span data-label="Интересный факт обо мне">Интересный факт обо мне</span>
+          <i class="bi bi-pencil ms-auto text-primary"></i>
         </a>
         <a href="#" class="profile-item d-flex align-items-center p-3 profile-edit-item" data-label="Мой самый бесполезный навык">
           <i class="bi bi-pencil-fill profile-icon me-3"></i>
           <span data-label="Мой самый бесполезный навык">Мой самый бесполезный навык</span>
+          <i class="bi bi-pencil ms-auto text-primary"></i>
         </a>
         <a href="#" class="profile-item d-flex align-items-center p-3 profile-edit-item" data-label="Языки, на которых я говорю">
           <i class="bi bi-chat-square-dots-fill profile-icon me-3"></i>
           <span data-label="Языки, на которых я говорю">Языки, на которых я говорю</span>
+          <i class="bi bi-pencil ms-auto text-primary"></i>
         </a>
         <a href="#" class="profile-item d-flex align-items-center p-3 profile-edit-item" data-label="Что я безумно люблю">
           <i class="bi bi-heart-fill profile-icon me-3"></i>
           <span data-label="Что я безумно люблю">Что я безумно люблю</span>
+          <i class="bi bi-pencil ms-auto text-primary"></i>
         </a>
         <a href="#" class="profile-item d-flex align-items-center p-3 profile-edit-item" data-label="История моей жизни">
           <i class="bi bi-bookmark-fill profile-icon me-3"></i>
           <span data-label="История моей жизни">История моей жизни</span>
+          <i class="bi bi-pencil ms-auto text-primary"></i>
         </a>
       </div>
       <!-- Кнопка добавления места проживания -->
@@ -179,6 +205,26 @@
           bsModal.hide();
         }
       });
+
+      // Логика для блока 1 (основная информация): переключение между режимом просмотра и редактирования.
+      // При нажатии на кнопку «Редактировать» скрываем блок отображения и показываем форму,
+      // а при нажатии на кнопку «Отмена» возвращаемся к исходному виду.
+      var block1EditBtn = document.getElementById('block1-edit-btn');
+      var block1Display = document.getElementById('block1-display');
+      var block1Edit = document.getElementById('block1-edit');
+      var block1Cancel = document.getElementById('block1-cancel');
+      if (block1EditBtn && block1Display && block1Edit) {
+        block1EditBtn.addEventListener('click', function () {
+          block1Display.classList.add('d-none');
+          block1Edit.classList.remove('d-none');
+        });
+      }
+      if (block1Cancel && block1Display && block1Edit) {
+        block1Cancel.addEventListener('click', function () {
+          block1Edit.classList.add('d-none');
+          block1Display.classList.remove('d-none');
+        });
+      }
 
       // Логика для кнопки загрузки фотографии: при клике на кнопку
       // открываем скрытое поле выбора файла. Файл будет отправлен вместе с формой.
