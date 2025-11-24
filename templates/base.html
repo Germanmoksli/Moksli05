@@ -508,6 +508,34 @@
         overflow: hidden;
       }
 
+      /*
+       * Переупорядочивание элементов верхней навигационной панели.
+       * По умолчанию логотип располагается слева, а кнопка‑«гамбургер»
+       * (navbar-toggler) прижимается к правому краю за счёт класса ms-auto.
+       * Мы убрали этот класс в HTML и задаём порядок элементов через CSS.
+       * Теперь кнопка располагается первой (слева), за ней следует
+       * раскрывающееся меню (navbar-collapse), затем логотип, который
+       * прижимается к правому краю благодаря margin-left: auto, и
+       * наконец блок аккаунта. Селекторы ограничены id
+       * #mainNavContainer, чтобы изменения не затронули другие панели.
+       */
+      #mainNavContainer > .navbar-toggler {
+        order: 1;
+        margin-left: 0;
+        margin-right: 1rem;
+      }
+      #mainNavContainer > .navbar-collapse {
+        order: 2;
+      }
+      #mainNavContainer > .navbar-brand {
+        order: 3;
+        margin-left: auto;
+        margin-right: 1rem;
+      }
+      #mainNavContainer > .nav-account {
+        order: 4;
+      }
+
     </style>
   </head>
   <body class="bg-light">
@@ -517,13 +545,14 @@
            Без d-flex элемент .navbar-toggler с ms-auto оставался рядом с логотипом, 
            потому что контейнер по умолчанию не является flex.  
            Добавляем d-flex и align-items-center для вертикального выравнивания. -->
-      <div class="container-fluid d-flex align-items-center">
+      <!-- Добавляем id для контейнера flex, чтобы управлять порядком элементов через CSS без влияния на другие панели -->
+      <div id="mainNavContainer" class="container-fluid d-flex align-items-center">
         <!-- Логотип/бренд -->
         {% if session.get('user_role') == 'guest' %}
         <!-- Заменяем текстовый логотип на изображение + название. Изображение
              берётся из каталога static/uploads/logo_moksli.png. Благодаря flex-контейнеру
              элементы выравниваются по центру по вертикали. -->
-        <a class="navbar-brand fw-bold d-flex align-items-center ms-4" href="{{ url_for('public_listings') }}">
+        <a class="navbar-brand fw-bold d-flex align-items-center" href="{{ url_for('public_listings') }}">
           <!-- Увеличиваем размер логотипа и смещаем его чуть вправо за счёт большего отступа слева.  
                Размер логотипа увеличен до 80px, чтобы он выглядел заметнее. -->
           <img src="{{ url_for('static', filename='uploads/logo_moksli.png') }}" alt="Moksli logo" height="80" class="me-2">
@@ -531,7 +560,7 @@
           {# Удаляем текстовое название рядом с логотипом, оставляя только изображение #}
         </a>
         {% else %}
-        <a class="navbar-brand fw-bold d-flex align-items-center ms-4" href="{{ url_for('dashboard') if session.get('user_id') else url_for('public_listings') }}">
+        <a class="navbar-brand fw-bold d-flex align-items-center" href="{{ url_for('dashboard') if session.get('user_id') else url_for('public_listings') }}">
           <!-- Аналогично увеличиваем размер логотипа и отступ слева в режиме владельца/менеджера -->
           <img src="{{ url_for('static', filename='uploads/logo_moksli.png') }}" alt="Moksli logo" height="80" class="me-2">
           {# Удаляем текстовое название рядом с логотипом, оставляя только изображение #}
@@ -539,7 +568,8 @@
         {% endif %}
         <!-- Переносим кнопку гамбургера вправо: добавляем класс ms-auto, чтобы отодвинуть
              её к краю.  Это предотвращает наложение кнопки на логотип. -->
-        <button class="navbar-toggler ms-auto" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar" aria-controls="mainNavbar" aria-expanded="false" aria-label="Toggle navigation">
+        <!-- Убираем ms-auto, чтобы кнопка не съезжала вправо. За порядок элементов отвечает CSS. -->
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar" aria-controls="mainNavbar" aria-expanded="false" aria-label="Toggle navigation">
           <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="mainNavbar">
@@ -630,7 +660,8 @@
 {% endif %}
 
           <!-- Правая часть: аккаунт или кнопки входа/регистрации -->
-          <div class="d-flex align-items-center">
+        <!-- Отмечаем блок аккаунта классом nav-account, чтобы задать порядок через CSS -->
+        <div class="d-flex align-items-center nav-account">
             {% if session.get('user_id') %}
               {% if session.get('user_role') == 'guest' %}
                 <!-- Гость: в правой части только иконка меню; аватар отображается в самом меню -->
