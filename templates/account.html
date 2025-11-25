@@ -469,8 +469,12 @@
         var chips = container.querySelectorAll('.interest-chip');
         chips.forEach(function(chip) {
           if (editing || chip.classList.contains('selected')) {
-            chip.style.display = 'inline-block';
+            // Show the chip in edit mode or if it is selected.  Use
+            // inline-flex to match our custom CSS; avoid inline-block so
+            // that the flex alignment remains intact.
+            chip.style.display = 'inline-flex';
           } else {
+            // Hide unselected chips when not editing
             chip.style.display = 'none';
           }
         });
@@ -555,8 +559,10 @@
         // Build a chip element with an icon and text
         interestsData.forEach(function(item) {
           var chip = document.createElement('span');
-          // Use flex display to align icon and text nicely
-          chip.className = 'interest-chip d-inline-flex align-items-center';
+          // Assign only the interest-chip class here.  Flex display and
+          // alignment are handled in the CSS to avoid using Bootstrap's
+          // d-inline-flex class (which uses !important).
+          chip.className = 'interest-chip';
           // Create the icon element
           var iconEl = document.createElement('i');
           iconEl.className = 'bi ' + item.icon + ' me-2';

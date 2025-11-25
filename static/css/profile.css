@@ -157,7 +157,11 @@
   cursor: pointer;
   user-select: none;
   transition: background-color 0.15s ease-in-out, color 0.15s ease-in-out;
-  display: inline-block;
+  /* Make chips flex containers so that icon and text align nicely.  This
+     also avoids using Bootstrap's d-inline-flex class, which uses
+     !important and interferes with hiding chips via inline styles. */
+  display: inline-flex;
+  align-items: center;
 }
 .interest-chip:hover {
   background-color: rgba(var(--bs-primary-rgb), 0.1);
