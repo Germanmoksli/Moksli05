@@ -459,6 +459,22 @@
       updateProfileItemVisibility();
 
       // ------ Секция выбора интересов ------
+      // Функция для переключения отображения плиток. Если editing=true,
+      // показываем все интересы; иначе оставляем только выбранные. Эта
+      // функция доступна глобально, чтобы её можно было вызвать при
+      // переходе в режим редактирования и обратно.
+      function toggleInterestChips(editing) {
+        var container = document.getElementById('interests-container');
+        if (!container) return;
+        var chips = container.querySelectorAll('.interest-chip');
+        chips.forEach(function(chip) {
+          if (editing || chip.classList.contains('selected')) {
+            chip.style.display = 'inline-block';
+          } else {
+            chip.style.display = 'none';
+          }
+        });
+      }
       // После загрузки страницы создаём плитки с интересами, перемешиваем
       // их в случайном порядке и ограничиваем выбор пяти пунктами. Это
       // выполняется в отдельной самовызывающейся функции, чтобы не
@@ -515,6 +531,8 @@
         });
         // Обновляем скрытый инпут после инициализации
         updateHidden();
+        // После создания плиток скрываем невыбранные в режиме просмотра
+        toggleInterestChips(false);
       })();
 
 
@@ -556,6 +574,10 @@
 
         // Заполнить дополнительные поля из отображаемых значений
         prefillAdditionalInputs();
+        // При входе в режим редактирования показываем все плитки интересов
+        if (typeof toggleInterestChips === 'function') {
+          toggleInterestChips(true);
+        }
       }
 
       /**
@@ -603,6 +625,10 @@
         // Скрыть нижнюю панель с кнопками при выходе из режима редактирования
         if (block1BottomControls) {
           block1BottomControls.classList.add('d-none');
+        }
+        // При выходе из режима редактирования скрываем невыбранные плитки интересов
+        if (typeof toggleInterestChips === 'function') {
+          toggleInterestChips(false);
         }
       }
 
