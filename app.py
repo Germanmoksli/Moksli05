@@ -1247,9 +1247,9 @@ def inject_current_user():
         ).fetchone()
         conn.close()
         if user:
-            # Determine the appropriate photo path.  Prefer the session value if set,
-            # since it updates immediately after an upload.  If the session does not
-            # contain a photo, fall back to the path stored in the database.  If a
+            # Determine the appropriate photo path. Prefer the session value if set,
+            # since it updates immediately after an upload. If the session does not
+            # contain a photo, fall back to the path stored in the database. If a
             # database photo exists and no session value is set, also write it into
             # the session so subsequent requests preserve the avatar.
             photo_path = session.get('user_photo')
@@ -1257,6 +1257,20 @@ def inject_current_user():
                 photo_path = user['photo']
                 if photo_path:
                     session['user_photo'] = photo_path
+            # Verify that the referenced photo file actually exists on disk.  If the
+            # file is missing (e.g. removed after a deletion), clear the session
+            # cache and treat the user as having no photo.  Without this check the
+            # templates may attempt to apply a missing background-image to the
+            # avatar circle, resulting in an empty coloured circle with no initial.
+            if photo_path:
+                try:
+                    file_path_check = os.path.join(app.root_path, 'static', photo_path)
+                    if not os.path.exists(file_path_check):
+                        photo_path = None
+                        session.pop('user_photo', None)
+                except Exception:
+                    photo_path = None
+                    session.pop('user_photo', None)
             return dict(
                 current_username=user['username'],
                 current_user_name=user['name'],
