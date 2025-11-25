@@ -2352,6 +2352,85 @@ def ensure_communication_columns(conn: sqlite3.Connection) -> None:
         except Exception:
             continue
 
+# Additional helper to create block and complaint tables
+def ensure_block_tables(conn: sqlite3.Connection) -> None:
+    """Ensure tables for user/room blocks and complaints exist.
+
+    The following tables are created if they do not already exist:
+      - user_blocklist(blocker_id, blocked_user_id): records which user blocked whom.
+      - room_blocklist(user_id, room_id): records which user blocked which room.
+      - user_complaints(id, reporter_id, reported_user_id, category, description, timestamp): user complaints.
+      - room_complaints(id, reporter_id, reported_room_id, category, description, timestamp): room complaints.
+    Primary and foreign keys are applied where appropriate.  Errors during
+    creation are ignored to make the function idempotent.
+    """
+    try:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS user_blocklist (
+                blocker_id INTEGER NOT NULL,
+                blocked_user_id INTEGER NOT NULL,
+                PRIMARY KEY (blocker_id, blocked_user_id),
+                FOREIGN KEY (blocker_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (blocked_user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+            """
+        )
+    except Exception:
+        pass
+    try:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS room_blocklist (
+                user_id INTEGER NOT NULL,
+                room_id INTEGER NOT NULL,
+                PRIMARY KEY (user_id, room_id),
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
+            )
+            """
+        )
+    except Exception:
+        pass
+    try:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS user_complaints (
+                id SERIAL PRIMARY KEY,
+                reporter_id INTEGER NOT NULL,
+                reported_user_id INTEGER NOT NULL,
+                category TEXT NOT NULL,
+                description TEXT,
+                timestamp TEXT NOT NULL,
+                FOREIGN KEY (reporter_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (reported_user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+            """
+        )
+    except Exception:
+        pass
+    try:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS room_complaints (
+                id SERIAL PRIMARY KEY,
+                reporter_id INTEGER NOT NULL,
+                reported_room_id INTEGER NOT NULL,
+                category TEXT NOT NULL,
+                description TEXT,
+                timestamp TEXT NOT NULL,
+                FOREIGN KEY (reporter_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (reported_room_id) REFERENCES rooms(id) ON DELETE CASCADE
+            )
+            """
+        )
+    except Exception:
+        pass
+    try:
+        conn.commit()
+    except Exception:
+        pass
+
 # ---------------------------------------------------------------------------
 # Chat rooms and memberships
 #
@@ -5906,9 +5985,10 @@ def settings_view():  # use a distinct name to avoid conflict with any variable
     # guarantees ``session['user_id']`` exists here.
     user_id = session.get('user_id')
     conn = get_db_connection()
-    # Ensure all relevant columns exist
+    # Ensure all relevant columns and tables exist
     ensure_privacy_columns(conn)
     ensure_communication_columns(conn)
+    ensure_block_tables(conn)
     # Attempt to fetch privacy settings; use defaults for missing values
     try:
         row_priv = conn.execute(
@@ -6071,6 +6151,190 @@ def update_privacy_settings() -> 'flask.Response':
             pass
         conn.close()
         return jsonify({'error': str(e)}), 500
+    return jsonify({'status': 'ok'})
+
+
+# ---------------------------------------------------------------------------
+# API endpoints for block lists and complaints
+
+@app.route('/settings/blocks', methods=['GET'])
+@login_required
+def get_blocks_and_complaints() -> 'flask.Response':
+    """Return JSON containing the current user's block lists and complaints.
+
+    Response format:
+    {
+      "blocked_users": [ {"id": int, "username": str} ],
+      "blocked_rooms": [ {"id": int, "room_number": str} ],
+      "user_reports": [ {"id": int, "reported_user_id": int, "username": str, "category": str, "description": str, "timestamp": str} ],
+      "room_reports": [ {"id": int, "reported_room_id": int, "room_number": str, "category": str, "description": str, "timestamp": str} ]
+    }
+    """
+    user_id = session.get('user_id')
+    conn = get_db_connection()
+    ensure_block_tables(conn)
+    # Fetch blocked users
+    blocked_users: list[dict[str, typing.Any]] = []
+    try:
+        rows = conn.execute(
+            'SELECT ub.blocked_user_id AS id, u.username FROM user_blocklist ub JOIN users u ON ub.blocked_user_id = u.id WHERE ub.blocker_id = ? ORDER BY u.username',
+            (user_id,)
+        ).fetchall()
+        for r in rows:
+            blocked_users.append({'id': r['id'], 'username': r['username']})
+    except Exception:
+        pass
+    # Fetch blocked rooms
+    blocked_rooms: list[dict[str, typing.Any]] = []
+    try:
+        rows = conn.execute(
+            'SELECT rb.room_id AS id, r.room_number FROM room_blocklist rb JOIN rooms r ON rb.room_id = r.id WHERE rb.user_id = ? ORDER BY r.room_number',
+            (user_id,)
+        ).fetchall()
+        for r in rows:
+            blocked_rooms.append({'id': r['id'], 'room_number': r['room_number']})
+    except Exception:
+        pass
+    # Fetch complaints filed by user against users
+    user_reports: list[dict[str, typing.Any]] = []
+    try:
+        rows = conn.execute(
+            'SELECT uc.id, uc.reported_user_id, u.username, uc.category, uc.description, uc.timestamp '
+            'FROM user_complaints uc JOIN users u ON uc.reported_user_id = u.id WHERE uc.reporter_id = ? ORDER BY uc.id DESC',
+            (user_id,)
+        ).fetchall()
+        for r in rows:
+            user_reports.append({
+                'id': r['id'],
+                'reported_user_id': r['reported_user_id'],
+                'username': r['username'],
+                'category': r['category'],
+                'description': r['description'],
+                'timestamp': r['timestamp'],
+            })
+    except Exception:
+        pass
+    # Fetch complaints filed by user against rooms
+    room_reports: list[dict[str, typing.Any]] = []
+    try:
+        rows = conn.execute(
+            'SELECT rc.id, rc.reported_room_id, r.room_number, rc.category, rc.description, rc.timestamp '
+            'FROM room_complaints rc JOIN rooms r ON rc.reported_room_id = r.id WHERE rc.reporter_id = ? ORDER BY rc.id DESC',
+            (user_id,)
+        ).fetchall()
+        for r in rows:
+            room_reports.append({
+                'id': r['id'],
+                'reported_room_id': r['reported_room_id'],
+                'room_number': r['room_number'],
+                'category': r['category'],
+                'description': r['description'],
+                'timestamp': r['timestamp'],
+            })
+    except Exception:
+        pass
+    conn.close()
+    return jsonify({
+        'blocked_users': blocked_users,
+        'blocked_rooms': blocked_rooms,
+        'user_reports': user_reports,
+        'room_reports': room_reports,
+    })
+
+
+@app.route('/settings/block_user/<int:blocked_id>', methods=['DELETE'])
+@login_required
+def unblock_user(blocked_id: int) -> 'flask.Response':
+    """Remove a user from the current user's block list."""
+    user_id = session.get('user_id')
+    conn = get_db_connection()
+    ensure_block_tables(conn)
+    try:
+        conn.execute('DELETE FROM user_blocklist WHERE blocker_id=? AND blocked_user_id=?', (user_id, blocked_id))
+        conn.commit()
+    except Exception as e:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        conn.close()
+        return jsonify({'error': str(e)}), 500
+    conn.close()
+    return jsonify({'status': 'ok'})
+
+
+@app.route('/settings/block_room/<int:room_id>', methods=['DELETE'])
+@login_required
+def unblock_room(room_id: int) -> 'flask.Response':
+    """Remove a room from the current user's block list."""
+    user_id = session.get('user_id')
+    conn = get_db_connection()
+    ensure_block_tables(conn)
+    try:
+        conn.execute('DELETE FROM room_blocklist WHERE user_id=? AND room_id=?', (user_id, room_id))
+        conn.commit()
+    except Exception as e:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        conn.close()
+        return jsonify({'error': str(e)}), 500
+    conn.close()
+    return jsonify({'status': 'ok'})
+
+
+@app.route('/settings/report', methods=['POST'])
+@login_required
+def submit_complaint() -> 'flask.Response':
+    """Submit a complaint against a user or room.
+
+    The request body must be JSON with the keys:
+      - target_type: 'user' or 'room'
+      - target_id: integer ID of the user or room being reported
+      - category: one of the allowed categories (insult, fraud, spam, rules_violation, other)
+      - description: optional text description
+    """
+    if not request.is_json:
+        return jsonify({'error': 'Invalid data; expected JSON'}), 400
+    data = request.get_json() or {}
+    target_type = data.get('target_type')
+    target_id = data.get('target_id')
+    category = data.get('category')
+    description = data.get('description', '')
+    allowed_categories = {'insult', 'fraud', 'spam', 'rules_violation', 'other'}
+    if not target_type or target_type not in {'user', 'room'}:
+        return jsonify({'error': 'Invalid target_type'}), 400
+    try:
+        target_id_int = int(target_id)
+    except Exception:
+        return jsonify({'error': 'Invalid target_id'}), 400
+    if category not in allowed_categories:
+        return jsonify({'error': 'Invalid category'}), 400
+    reporter_id = session.get('user_id')
+    timestamp = datetime.utcnow().isoformat()
+    conn = get_db_connection()
+    ensure_block_tables(conn)
+    try:
+        if target_type == 'user':
+            conn.execute(
+                'INSERT INTO user_complaints (reporter_id, reported_user_id, category, description, timestamp) VALUES (?, ?, ?, ?, ?)',
+                (reporter_id, target_id_int, category, description, timestamp)
+            )
+        else:
+            conn.execute(
+                'INSERT INTO room_complaints (reporter_id, reported_room_id, category, description, timestamp) VALUES (?, ?, ?, ?, ?)',
+                (reporter_id, target_id_int, category, description, timestamp)
+            )
+        conn.commit()
+    except Exception as e:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        conn.close()
+        return jsonify({'error': str(e)}), 500
+    conn.close()
     return jsonify({'status': 'ok'})
 
 

@@ -152,9 +152,49 @@
             </div>
           </div>
           <!-- Подраздел: Блокировки и жалобы -->
-          <div class="mb-4">
+          <div class="mb-4" id="blocks-and-complaints">
             <h4 class="mb-2">Блокировки и жалобы</h4>
-            <p>Содержимое этого раздела будет предоставлено позже.</p>
+            <!-- Чёрный список пользователей / список блокированных -->
+            <h5>Чёрный список пользователей</h5>
+            <ul id="blocked-users" class="list-group mb-3"></ul>
+            <!-- Заблокированные квартиры -->
+            <h5>Заблокированные квартиры</h5>
+            <ul id="blocked-rooms" class="list-group mb-3"></ul>
+            <!-- Форма подачи жалобы -->
+            <h5 class="mt-4">Подать жалобу</h5>
+            <form id="complaint-form" class="mb-3">
+              <div class="mb-3">
+                <label for="complaint_target_type" class="form-label">Тип жалобы</label>
+                <select id="complaint_target_type" class="form-select">
+                  <option value="user">На пользователя</option>
+                  <option value="room">На объявление</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label for="complaint_target_id" class="form-label" id="complaint_target_label">ID пользователя или объявления</label>
+                <input type="number" id="complaint_target_id" class="form-control" required>
+              </div>
+              <div class="mb-3">
+                <label for="complaint_category" class="form-label">Категория</label>
+                <select id="complaint_category" class="form-select">
+                  <option value="insult">Оскорбления</option>
+                  <option value="fraud">Мошенничество</option>
+                  <option value="spam">Спам</option>
+                  <option value="rules_violation">Нарушение правил</option>
+                  <option value="other">Прочее</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label for="complaint_description" class="form-label">Описание</label>
+                <textarea id="complaint_description" class="form-control" rows="3" required></textarea>
+              </div>
+              <button type="button" id="submit_complaint" class="btn btn-primary">Отправить жалобу</button>
+            </form>
+            <!-- Списки поданных жалоб -->
+            <h5 class="mt-4">Жалобы на пользователей</h5>
+            <ul id="user-reports" class="list-group mb-3"></ul>
+            <h5>Жалобы на объявления</h5>
+            <ul id="room-reports" class="list-group mb-3"></ul>
           </div>
         </div>
         <!-- Секция: Верификация (заглушка) -->
@@ -246,6 +286,143 @@
             });
         });
       });
+
+      // Функция для загрузки списков блокировок и жалоб
+      function loadBlockData() {
+        fetch('/settings/blocks', {
+          method: 'GET',
+          headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+          .then(function (response) { return response.json(); })
+          .then(function (data) {
+            // populate blocked users
+            const usersList = document.getElementById('blocked-users');
+            usersList.innerHTML = '';
+            data.blocked_users.forEach(function (item) {
+              const li = document.createElement('li');
+              li.className = 'list-group-item d-flex justify-content-between align-items-center';
+              li.dataset.id = item.id;
+              li.dataset.type = 'user';
+              li.innerHTML = `<span>${item.username} (ID: ${item.id})</span><button type="button" class="btn btn-sm btn-outline-danger unblock-btn">Удалить из блока</button>`;
+              usersList.appendChild(li);
+            });
+            // populate blocked rooms
+            const roomsList = document.getElementById('blocked-rooms');
+            roomsList.innerHTML = '';
+            data.blocked_rooms.forEach(function (item) {
+              const li = document.createElement('li');
+              li.className = 'list-group-item d-flex justify-content-between align-items-center';
+              li.dataset.id = item.id;
+              li.dataset.type = 'room';
+              li.innerHTML = `<span>${item.room_number} (ID: ${item.id})</span><button type="button" class="btn btn-sm btn-outline-danger unblock-btn">Удалить из блока</button>`;
+              roomsList.appendChild(li);
+            });
+            // populate user reports
+            const userReports = document.getElementById('user-reports');
+            userReports.innerHTML = '';
+            data.user_reports.forEach(function (r) {
+              const li = document.createElement('li');
+              li.className = 'list-group-item';
+              li.textContent = `${r.username} (ID: ${r.reported_user_id}) – ${r.category}: ${r.description}`;
+              userReports.appendChild(li);
+            });
+            // populate room reports
+            const roomReports = document.getElementById('room-reports');
+            roomReports.innerHTML = '';
+            data.room_reports.forEach(function (r) {
+              const li = document.createElement('li');
+              li.className = 'list-group-item';
+              li.textContent = `${r.room_number} (ID: ${r.reported_room_id}) – ${r.category}: ${r.description}`;
+              roomReports.appendChild(li);
+            });
+          })
+          .catch(function (error) {
+            console.error('Error loading block data', error);
+          });
+      }
+
+      // Обработчик для удаления из блокировки (делегирование события)
+      document.getElementById('blocks-and-complaints').addEventListener('click', function (event) {
+        const target = event.target;
+        if (target.classList.contains('unblock-btn')) {
+          const li = target.closest('li');
+          const id = li.dataset.id;
+          const type = li.dataset.type;
+          let url;
+          if (type === 'user') {
+            url = `/settings/block_user/${id}`;
+          } else {
+            url = `/settings/block_room/${id}`;
+          }
+          fetch(url, {
+            method: 'DELETE',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+          })
+            .then(function (response) { return response.json(); })
+            .then(function (data) {
+              console.log('Unblock result', data);
+              loadBlockData();
+            })
+            .catch(function (error) {
+              console.error('Error unblocking', error);
+            });
+        }
+      });
+
+      // Обработчик для отправки жалобы
+      document.getElementById('submit_complaint').addEventListener('click', function () {
+        const targetType = document.getElementById('complaint_target_type').value;
+        const targetIdEl = document.getElementById('complaint_target_id');
+        const targetId = targetIdEl.value;
+        const category = document.getElementById('complaint_category').value;
+        const description = document.getElementById('complaint_description').value.trim();
+        if (!targetId) {
+          alert('Укажите ID пользователя или объявления.');
+          return;
+        }
+        fetch('/settings/report', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          body: JSON.stringify({
+            target_type: targetType,
+            target_id: targetId,
+            category: category,
+            description: description
+          })
+        })
+          .then(function (response) { return response.json(); })
+          .then(function (data) {
+            if (data.status === 'ok') {
+              // clear form
+              targetIdEl.value = '';
+              document.getElementById('complaint_description').value = '';
+              loadBlockData();
+              alert('Жалоба отправлена.');
+            } else {
+              alert('Ошибка: ' + (data.error || 'не удалось отправить жалобу.'));
+            }
+          })
+          .catch(function (error) {
+            console.error('Error submitting complaint', error);
+            alert('Ошибка при отправке жалобы.');
+          });
+      });
+
+      // Изменение подписи для поля ID в зависимости от типа жалобы
+      document.getElementById('complaint_target_type').addEventListener('change', function () {
+        const label = document.getElementById('complaint_target_label');
+        if (this.value === 'user') {
+          label.textContent = 'ID пользователя';
+        } else {
+          label.textContent = 'ID объявления';
+        }
+      });
+
+      // Загрузка первоначальных данных блокировок и жалоб после загрузки страницы
+      loadBlockData();
     });
   </script>
 {% endblock %}
