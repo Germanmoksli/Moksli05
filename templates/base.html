@@ -674,7 +674,7 @@
 
           <!-- Правая часть: аккаунт или кнопки входа/регистрации -->
         <!-- Отмечаем блок аккаунта классом nav-account, чтобы задать порядок через CSS -->
-        <div class="d-flex align-items-center nav-account">
+        <div class="d-flex align-items-center ms-auto nav-account">
             {% if session.get('user_id') %}
               {% if session.get('user_role') == 'guest' %}
                 <!-- Гость: в правой части только иконка меню; аватар отображается в самом меню -->
