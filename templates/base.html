@@ -688,8 +688,11 @@
                       {% if user_photo %}
                         <img src="{{ url_for('static', filename=user_photo) }}" class="rounded-circle me-2" width="40" height="40" style="object-fit: cover;">
                       {% else %}
+                        {# Determine the letter from name or username.  Take the
+                           first character of the available value. #}
+                        {% set _name = current_user_name if current_user_name else current_username %}
                         <div class="avatar-placeholder me-2" style="width: 40px; height: 40px;">
-                          {{ (current_user_name or current_username)[0]|upper }}
+                          {{ _name[0]|upper }}
                         </div>
                       {% endif %}
                       <span>{{ current_user_name or current_username }}</span>
@@ -721,7 +724,7 @@
                     </li>
                     <!-- Настройки (ссылается на профиль) -->
                     <li>
-                      <a class="dropdown-item d-flex align-items-center" href="{{ url_for('account') }}">
+                      <a class="dropdown-item d-flex align-items-center" href="{{ url_for('settings_view') }}">
                         <i class="bi bi-gear-fill me-2"></i>Настройки
                       </a>
                     </li>
@@ -755,8 +758,9 @@
                       {% if user_photo %}
                         <img src="{{ url_for('static', filename=user_photo) }}" class="rounded-circle me-2" width="32" height="32" style="object-fit: cover;">
                       {% else %}
+                        {% set _name = current_user_name if current_user_name else current_username %}
                         <div class="avatar-placeholder me-2" style="width: 32px; height: 32px;">
-                          {{ (current_user_name or current_username)[0]|upper }}
+                          {{ _name[0]|upper }}
                         </div>
                       {% endif %}
                       <span>{{ current_user_name or current_username }}</span>
@@ -779,8 +783,9 @@
                   {% if user_photo %}
                     <img src="{{ url_for('static', filename=user_photo) }}" class="rounded-circle me-2" width="32" height="32" style="object-fit: cover;">
                   {% else %}
+                    {% set _name = current_user_name if current_user_name else current_username %}
                     <div class="avatar-placeholder me-2" style="width: 32px; height: 32px;">
-                      {{ (current_user_name or current_username)[0]|upper }}
+                      {{ _name[0]|upper }}
                     </div>
                   {% endif %}
                   <span class="me-3">{{ current_user_name or current_username }}</span>
