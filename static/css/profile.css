@@ -144,6 +144,29 @@
   padding-bottom: 0.5rem !important;
 }
 
+/* ---------------------------------------------------------------------------
+   Стили для плиток (чипсов) интересов.  Каждая плитка — это
+   закруглённый прямоугольник с рамкой в фирменном цвете. При выборе
+   меняется цвет фона и текста. */
+.interest-chip {
+  border: 1px solid var(--bs-primary);
+  border-radius: 20px;
+  padding: 0.375rem 0.75rem;
+  background-color: #ffffff;
+  color: var(--bs-primary);
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.15s ease-in-out, color 0.15s ease-in-out;
+  display: inline-block;
+}
+.interest-chip:hover {
+  background-color: rgba(var(--bs-primary-rgb), 0.1);
+}
+.interest-chip.selected {
+  background-color: var(--bs-primary);
+  color: #ffffff;
+}
+
 /* ---------------------------- Навигационная панель ---------------------------- */
 /* Уменьшаем высоту верхней навигационной панели и делаем её фон чуть темнее,
    чтобы она не сливалась с фоном страницы. Эти стили применяются ко всему

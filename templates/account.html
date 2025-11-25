@@ -175,6 +175,9 @@
           <input type="hidden" name="languages" id="hidden-languages" value="{{ profile_data.get('languages','') }}">
           <input type="hidden" name="passion" id="hidden-passion" value="{{ profile_data.get('passion','') }}">
           <input type="hidden" name="life_story" id="hidden-life_story" value="{{ profile_data.get('life_story','') }}">
+          <!-- Новое скрытое поле для выбранных интересов. Значения будут
+               записываться через запятую с помощью JavaScript. -->
+          <input type="hidden" name="interests" id="hidden-interests" value="{{ profile_data.get('interests','') }}">
           {#
             Контейнер с кнопками сохранения и отмены перенесён в самый низ
             страницы, поэтому здесь он удалён.  Кнопки внизу будут
@@ -343,6 +346,13 @@
           </div>
         </div>
       </div>
+      <!-- Секция выбора интересов. Пользователь может выбрать до 5 интересов.
+           Плитки отображаются в случайном порядке. -->
+      <div class="mt-4">
+        <h5 class="fw-semibold mb-2">Интересы (выберите до 5)</h5>
+        <div id="interests-container" class="d-flex flex-wrap gap-2"></div>
+      </div>
+
       <!-- Нижняя панель с кнопками сохранения и отмены.  Появляется
            только в режиме редактирования. -->
       <div id="block1-bottom-controls" class="text-end mt-3 d-none">
@@ -447,6 +457,65 @@
 
       // Первоначально скрываем пустые карточки
       updateProfileItemVisibility();
+
+      // ------ Секция выбора интересов ------
+      // После загрузки страницы создаём плитки с интересами, перемешиваем
+      // их в случайном порядке и ограничиваем выбор пяти пунктами. Это
+      // выполняется в отдельной самовызывающейся функции, чтобы не
+      // загрязнять глобальную область имён.
+      (function() {
+        var interestsList = [
+          'Путешествия ✈️', 'Прогулки 🚶', 'Природа', 'Кофейни', 'Фитнес', 'Бег', 'Велосипед', 'Йога', 'Плавание', 'Танцы', 'Здоровый образ жизни', 'Кулинария', 'Выпечка', 'Кофе', 'Вино', 'Фотография',
+          'Музыка 🎵', 'Игра на инструментах', 'Рисование', 'Письмо / дневники', 'Анимация', 'Видео-монтаж', 'Дизайн', 'Графика', 'Театр', 'Искусство',
+          'Кино 🎬', 'Сериалы', 'Комиксы', 'Аниме', 'Манга', 'Игры', 'Настольные игры', 'Книги', 'Подкасты',
+          'Программирование 👨‍💻', 'Искусственный интеллект', 'Гаджеты', 'Роботы', 'Космос', 'Стартапы', 'Финансы', 'Инвестиции', 'Криптовалюты', 'Наука',
+          'Волонтёрство', 'Животные', 'Психология', 'Благотворительность', 'Ментальное здоровье'
+        ];
+        // Перемешиваем массив интересов (алгоритм случайной сортировки)
+        interestsList.sort(function() { return Math.random() - 0.5; });
+        var container = document.getElementById('interests-container');
+        var hiddenInterests = document.getElementById('hidden-interests');
+        if (!container || !hiddenInterests) {
+          return;
+        }
+        // Восстанавливаем выбранные интересы из скрытого поля (если оно заполнено)
+        var selected = [];
+        if (hiddenInterests.value) {
+          selected = hiddenInterests.value.split(',').map(function(s) { return s.trim(); }).filter(function(s) { return s; });
+        }
+        // Функция для обновления значения скрытого поля
+        function updateHidden() {
+          hiddenInterests.value = selected.join(', ');
+        }
+        // Создаём плитку (chip) для каждого интереса
+        interestsList.forEach(function(item) {
+          var chip = document.createElement('span');
+          chip.className = 'interest-chip';
+          chip.textContent = item;
+          if (selected.indexOf(item) !== -1) {
+            chip.classList.add('selected');
+          }
+          chip.addEventListener('click', function() {
+            if (chip.classList.contains('selected')) {
+              // Снимаем выбор
+              chip.classList.remove('selected');
+              selected = selected.filter(function(v) { return v !== item; });
+            } else {
+              // Проверяем, что не выбрано более пяти интересов
+              if (selected.length >= 5) {
+                alert('Можно выбрать максимум 5 интересов');
+                return;
+              }
+              chip.classList.add('selected');
+              selected.push(item);
+            }
+            updateHidden();
+          });
+          container.appendChild(chip);
+        });
+        // Обновляем скрытый инпут после инициализации
+        updateHidden();
+      })();
 
 
       /**
