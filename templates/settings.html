@@ -13,8 +13,8 @@
 
 {% block content %}
   <style>
-    /* Стили для меню настроек.  Мы убираем рамки и фон от стандартного
-       списка, делаем вертикальное меню с иконками.  Активный пункт
+    /* Стили для меню настроек.  Убираем рамки и фон от стандартного списка,
+       создаём вертикальное меню с иконками.  Активный пункт
        выделяется увеличенным размером шрифта и синей подчёркнутой линией. */
     .settings-menu a {
       color: #6c757d;                 /* нейтральный серый цвет для неактивных пунктов */
@@ -38,6 +38,10 @@
     .settings-menu a i.bi {
       margin-right: 0.5rem;          /* небольшой отступ между иконкой и текстом */
       font-size: 1.25rem;            /* увеличенный размер иконки */
+    }
+    /* Секция настроек по умолчанию скрыта; она будет показываться при выборе соответствующего пункта меню */
+    .settings-section {
+      display: none;
     }
   </style>
   <div class="container py-4">
@@ -72,18 +76,68 @@
           </li>
         </ul>
       </nav>
-      <!-- Правая панель для содержимого разделов.  Пока здесь только заголовок -->
+      <!-- Правая панель для содержимого разделов.  Разные секции отображаются при выборе пункта меню. -->
       <div class="col-12 col-md-9">
-        <h3>Выберите раздел слева, чтобы увидеть настройки.</h3>
+        <!-- Секция: Конфиденциальность -->
+        <div id="privacy" class="settings-section">
+          <h3 class="mb-3">Конфиденциальность аккаунта</h3>
+          <!-- Используем переключатели form-switch из Bootstrap для отображения boolean настроек -->
+          <form id="privacy-form">
+            <div class="form-check form-switch mb-3">
+              <input class="form-check-input" type="checkbox" id="toggle_show_profile" data-field="show_profile" {% if privacy.show_profile %}checked{% endif %}>
+              <label class="form-check-label" for="toggle_show_profile">Показывать мой профиль другим пользователям</label>
+            </div>
+            <div class="form-check form-switch mb-3">
+              <input class="form-check-input" type="checkbox" id="toggle_show_interests" data-field="show_interests" {% if privacy.show_interests %}checked{% endif %}>
+              <label class="form-check-label" for="toggle_show_interests">Показывать мои интересы</label>
+            </div>
+            <div class="form-check form-switch mb-3">
+              <input class="form-check-input" type="checkbox" id="toggle_show_profile_photo" data-field="show_profile_photo" {% if privacy.show_profile_photo %}checked{% endif %}>
+              <label class="form-check-label" for="toggle_show_profile_photo">Показывать фото профиля</label>
+            </div>
+            <div class="form-check form-switch mb-3">
+              <input class="form-check-input" type="checkbox" id="toggle_show_registration_date" data-field="show_registration_date" {% if privacy.show_registration_date %}checked{% endif %}>
+              <label class="form-check-label" for="toggle_show_registration_date">Показывать дату регистрации</label>
+            </div>
+            <div class="form-check form-switch mb-3">
+              <input class="form-check-input" type="checkbox" id="toggle_show_verification_status" data-field="show_verification_status" {% if privacy.show_verification_status %}checked{% endif %}>
+              <label class="form-check-label" for="toggle_show_verification_status">Показывать статус верификации</label>
+            </div>
+            <div class="form-check form-switch mb-3">
+              <input class="form-check-input" type="checkbox" id="toggle_show_reviews" data-field="show_reviews" {% if privacy.show_reviews %}checked{% endif %}>
+              <label class="form-check-label" for="toggle_show_reviews">Показывать отзывы обо мне</label>
+            </div>
+          </form>
+        </div>
+        <!-- Секция: Верификация (заглушка) -->
+        <div id="verification" class="settings-section">
+          <h3 class="mb-3">Верификация</h3>
+          <p>Здесь будут настройки верификации.</p>
+        </div>
+        <!-- Секция: Информация (заглушка) -->
+        <div id="information" class="settings-section">
+          <h3 class="mb-3">Информация</h3>
+          <p>Здесь будет дополнительная информация о вашем аккаунте.</p>
+        </div>
+        <!-- Секция: Безопасность (заглушка) -->
+        <div id="security" class="settings-section">
+          <h3 class="mb-3">Безопасность</h3>
+          <p>Здесь будут настройки безопасности и управления доступом.</p>
+        </div>
       </div>
     </div>
   </div>
   <script>
-    // Добавляем обработчики кликов, чтобы подсвечивать выбранный пункт меню.
+    // Скрипт для работы меню настроек и отправки изменений приватности на сервер
     document.addEventListener('DOMContentLoaded', function () {
       const links = document.querySelectorAll('.settings-menu a');
-      // Функция для установки активного класса по хэшу URL
-      function setActiveLink(hash) {
+      const sections = document.querySelectorAll('.settings-section');
+      /**
+       * Устанавливаем активный класс и отображаем соответствующий раздел
+       * @param {string} hash Идентификатор раздела (например, '#privacy')
+       */
+      function setActiveSection(hash) {
+        // Подсветка активной ссылки
         links.forEach(function (link) {
           if (link.getAttribute('href') === hash) {
             link.classList.add('active');
@@ -91,18 +145,52 @@
             link.classList.remove('active');
           }
         });
+        // Отображение выбранной секции
+        sections.forEach(function (sec) {
+          if ('#' + sec.id === hash) {
+            sec.style.display = 'block';
+          } else {
+            sec.style.display = 'none';
+          }
+        });
       }
-      // Устанавливаем активный пункт при загрузке страницы
-      setActiveLink(window.location.hash || '#privacy');
-      // Добавляем обработку клика для переключения активного пункта
+      // При загрузке страницы отображаем секцию, соответствующую URL-хэшу или privacy
+      const initialHash = window.location.hash || '#privacy';
+      setActiveSection(initialHash);
+      // Обработчик для ссылок меню: изменяем хэш и отображаем секцию
       links.forEach(function (link) {
-        link.addEventListener('click', function () {
-          setActiveLink(this.getAttribute('href'));
+        link.addEventListener('click', function (event) {
+          event.preventDefault();
+          const target = this.getAttribute('href');
+          window.location.hash = target;
+          setActiveSection(target);
         });
       });
-      // При изменении хэша (например, через ссылку) обновляем активный пункт
+      // Обновляем отображение при изменении хэша (например, если пользователь вручную меняет URL)
       window.addEventListener('hashchange', function () {
-        setActiveLink(window.location.hash);
+        setActiveSection(window.location.hash);
+      });
+      // Добавляем обработчик изменения для всех переключателей приватности
+      document.querySelectorAll('#privacy-form input[type="checkbox"]').forEach(function (toggle) {
+        toggle.addEventListener('change', function () {
+          const field = this.dataset.field;
+          const value = this.checked;
+          fetch('/settings/privacy', {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({ [field]: value })
+          })
+            .then(function (response) { return response.json(); })
+            .then(function (data) {
+              console.log('Privacy setting updated', data);
+            })
+            .catch(function (error) {
+              console.error('Error updating privacy setting', error);
+            });
+        });
       });
     });
   </script>

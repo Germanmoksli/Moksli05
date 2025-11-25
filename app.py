@@ -2290,6 +2290,38 @@ def ensure_profile_columns(conn: sqlite3.Connection) -> None:
             # function idempotent and allows concurrent deployments to race.
             continue
 
+# Additional helper to ensure privacy columns exist on users table
+def ensure_privacy_columns(conn: sqlite3.Connection) -> None:
+    """Ensure the users table has boolean privacy columns.
+
+    These columns control whether various pieces of a user's profile are
+    visible to other users.  Each column is a BOOLEAN that defaults to
+    TRUE when first created.  The helper attempts to add each column
+    individually, suppressing errors if the column already exists so
+    that it can be called repeatedly without side effects.  After
+    successfully adding a column a commit is issued to persist the
+    schema change on both SQLite and PostgreSQL backends.
+    """
+    desired_privacy_cols: dict[str, str] = {
+        'show_profile': 'BOOLEAN DEFAULT TRUE',
+        'show_interests': 'BOOLEAN DEFAULT TRUE',
+        'show_profile_photo': 'BOOLEAN DEFAULT TRUE',
+        'show_registration_date': 'BOOLEAN DEFAULT TRUE',
+        'show_verification_status': 'BOOLEAN DEFAULT TRUE',
+        'show_reviews': 'BOOLEAN DEFAULT TRUE',
+    }
+    for col, col_type in desired_privacy_cols.items():
+        try:
+            conn.execute(f"ALTER TABLE users ADD COLUMN {col} {col_type};")
+            try:
+                conn.commit()
+            except Exception:
+                pass
+        except Exception:
+            # Ignore if the column already exists or ALTER fails; this
+            # makes the function safe to call on every connection.
+            continue
+
 # ---------------------------------------------------------------------------
 # Chat rooms and memberships
 #
@@ -5831,8 +5863,121 @@ def subscribe():
 @app.route('/settings')
 @login_required
 def settings_view():  # use a distinct name to avoid conflict with any variable
-    """Display the user settings page with navigation menu."""
-    return render_template('settings.html')
+    """Display the user settings page with navigation menu.
+
+    This view also passes the current user's privacy settings to the template
+    so that the toggle switches can reflect the saved state.  If the
+    privacy columns do not yet exist on the ``users`` table they are
+    created on the fly via ``ensure_privacy_columns``.  When fetching
+    privacy flags a missing value will be treated as ``True`` to
+    preserve backwards compatibility for existing users.
+    """
+    # Ensure the user is authenticated; the @login_required decorator
+    # guarantees ``session['user_id']`` exists here.
+    user_id = session.get('user_id')
+    conn = get_db_connection()
+    ensure_privacy_columns(conn)
+    # Attempt to fetch privacy settings; use default True for missing
+    try:
+        row = conn.execute(
+            'SELECT show_profile, show_interests, show_profile_photo, '\
+            'show_registration_date, show_verification_status, show_reviews '\
+            'FROM users WHERE id = ?',
+            (user_id,)
+        ).fetchone()
+    except Exception:
+        row = None
+    conn.close()
+    privacy: dict[str, bool] = {
+        'show_profile': True,
+        'show_interests': True,
+        'show_profile_photo': True,
+        'show_registration_date': True,
+        'show_verification_status': True,
+        'show_reviews': True,
+    }
+    if row:
+        for key in privacy.keys():
+            try:
+                val = row[key]
+                # SQLite returns 0/1 or None; treat None as True by default
+                privacy[key] = bool(val) if val is not None else True
+            except Exception:
+                # If the column is missing or any error occurs, keep default
+                continue
+    return render_template('settings.html', privacy=privacy)
+
+
+# ---------------------------------------------------------------------------
+# Privacy settings API
+
+@app.route('/settings/privacy', methods=['PUT', 'PATCH'])
+@login_required
+def update_privacy_settings() -> 'flask.Response':
+    """Update the current user's privacy preferences.
+
+    Expects a JSON object in the request body containing one or more
+    privacy fields (e.g. ``{"show_profile": false}``).  Only the
+    allowed keys are updated; extra keys are ignored.  Returns a JSON
+    object indicating success.  This endpoint is intended for use via
+    asynchronous fetch calls from the settings page.  When the privacy
+    columns do not yet exist on the ``users`` table they are created on
+    demand via ``ensure_privacy_columns``.
+    """
+    # Require a JSON payload
+    if not request.is_json:
+        return jsonify({'error': 'Invalid data; expected JSON'}), 400
+    data = request.get_json() or {}
+    # Allowed columns that may be updated
+    allowed_cols = {
+        'show_profile',
+        'show_interests',
+        'show_profile_photo',
+        'show_registration_date',
+        'show_verification_status',
+        'show_reviews',
+    }
+    # Build dynamic update statement
+    set_parts: list[str] = []
+    values: list[typing.Any] = []
+    for key, val in data.items():
+        if key in allowed_cols:
+            set_parts.append(f"{key}=?")
+            # Coerce to integer 1/0 to store in boolean column; treat
+            # truthy values (True, 'true', 1) as 1; everything else as 0
+            try:
+                if isinstance(val, bool):
+                    values.append(1 if val else 0)
+                elif isinstance(val, (int, float)):
+                    values.append(1 if val else 0)
+                elif isinstance(val, str):
+                    lowered = val.lower()
+                    values.append(1 if lowered in ('1', 'true', 'yes', 'on') else 0)
+                else:
+                    values.append(0)
+            except Exception:
+                values.append(0)
+    # If no valid keys provided, return success without update
+    if not set_parts:
+        return jsonify({'status': 'no_changes'}), 200
+    user_id = session.get('user_id')
+    conn = get_db_connection()
+    ensure_privacy_columns(conn)
+    # Compose and execute the update
+    sql = f"UPDATE users SET {', '.join(set_parts)} WHERE id=?"
+    values.append(user_id)
+    try:
+        conn.execute(sql, tuple(values))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        conn.close()
+        return jsonify({'error': str(e)}), 500
+    return jsonify({'status': 'ok'})
 
 
 # ---------------------------------------------------------------------------
