@@ -9,8 +9,11 @@
   width: 200px;
   height: 200px;
   border-radius: 50%;
-  background-color: var(--bs-primary);
-  color: #fff;
+  /* Use a neutral grey background when no user photo is available.  This
+     matches the colour of the top navigation bar.  The initial letter
+     itself is drawn in the primary colour for contrast. */
+  background-color: #f0f2f5;
+  color: var(--bs-primary);
   display: flex;
   align-items: center;
   justify-content: center;
