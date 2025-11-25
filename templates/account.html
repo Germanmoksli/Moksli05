@@ -55,23 +55,29 @@
             </span>
           {% endif %}
         </div>
-        <!-- Кнопки управления аватаром.  При клике на кнопку загрузки откроется
-             диалог выбора изображения.  Кнопка удаления появляется только
-             если у пользователя уже есть фотография.  Обе кнопки скрыты по
-             умолчанию и отображаются при входе в режим редактирования. -->
-        <button type="button"
-                class="btn btn-light btn-sm upload-photo-button shadow rounded-pill d-none"
-                id="uploadPhotoBtn">
-          <i class="bi bi-camera-fill me-1"></i>
-          {{ 'Сменить' if avatar_path else 'Добавить' }}
-        </button>
-        {% if avatar_path %}
-        <a href="{{ url_for('delete_photo') }}"
-           class="btn btn-light btn-sm delete-photo-button shadow rounded-pill d-none ms-2"
-           id="deletePhotoBtn">
-          <i class="bi bi-trash me-1"></i>Удалить
-        </a>
-        {% endif %}
+        <!-- Кнопки управления аватаром.  Кнопка "Добавить" всегда отображает
+             одну и ту же подпись; если фотография отсутствует, она позволит
+             загрузить первую аватарку, а если есть — заменить её.  Кнопка
+             "Удалить" появляется только когда у пользователя уже есть
+             фотография.  Обе кнопки скрыты по умолчанию и показываются
+             при переходе в режим редактирования.  Кнопка удаления
+             расположена под кнопкой добавления. -->
+        <div class="d-flex flex-column align-items-center mt-2">
+          <button type="button"
+                  class="btn btn-light btn-sm upload-photo-button shadow rounded-pill d-none"
+                  id="uploadPhotoBtn">
+            <i class="bi bi-camera-fill me-1"></i>
+            Добавить
+          </button>
+          {% if avatar_path %}
+          <a href="{{ url_for('delete_photo') }}"
+             class="delete-photo-button d-none mt-2"
+             id="deletePhotoBtn"
+             style="color: #dc3545; background-color: #fff; border: none; border-bottom: 1px solid #dc3545; font-size: 0.9rem; padding: 4px 12px; border-radius: 20px; text-decoration: none;">
+            <i class="bi bi-trash me-1"></i>Удалить
+          </a>
+          {% endif %}
+        </div>
       </div>
     </div>
       <!-- Правая колонка: информация о пользователе и настраиваемые блоки -->
