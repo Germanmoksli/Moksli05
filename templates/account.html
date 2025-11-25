@@ -480,58 +480,117 @@
       // выполняется в отдельной самовызывающейся функции, чтобы не
       // загрязнять глобальную область имён.
       (function() {
-        var interestsList = [
-          'Путешествия ✈️', 'Прогулки 🚶', 'Природа', 'Кофейни', 'Фитнес', 'Бег', 'Велосипед', 'Йога', 'Плавание', 'Танцы', 'Здоровый образ жизни', 'Кулинария', 'Выпечка', 'Кофе', 'Вино', 'Фотография',
-          'Музыка 🎵', 'Игра на инструментах', 'Рисование', 'Письмо / дневники', 'Анимация', 'Видео-монтаж', 'Дизайн', 'Графика', 'Театр', 'Искусство',
-          'Кино 🎬', 'Сериалы', 'Комиксы', 'Аниме', 'Манга', 'Игры', 'Настольные игры', 'Книги', 'Подкасты',
-          'Программирование 👨‍💻', 'Искусственный интеллект', 'Гаджеты', 'Роботы', 'Космос', 'Стартапы', 'Финансы', 'Инвестиции', 'Криптовалюты', 'Наука',
-          'Волонтёрство', 'Животные', 'Психология', 'Благотворительность', 'Ментальное здоровье'
+        /* Define the list of all available interests along with an
+           associated Bootstrap icon.  The label is used both for
+           display and as the key when storing the selection.  Feel free to
+           adjust icons to better suit your project. */
+        var interestsData = [
+          { label: 'Путешествия', icon: 'bi-airplane' },
+          { label: 'Прогулки', icon: 'bi-person-walking' },
+          { label: 'Природа', icon: 'bi-tree' },
+          { label: 'Кофейни', icon: 'bi-cup-hot' },
+          { label: 'Фитнес', icon: 'bi-dumbbell' },
+          { label: 'Бег', icon: 'bi-person-running' },
+          { label: 'Велосипед', icon: 'bi-bicycle' },
+          { label: 'Йога', icon: 'bi-peace' },
+          { label: 'Плавание', icon: 'bi-droplet' },
+          { label: 'Танцы', icon: 'bi-music-note-beamed' },
+          { label: 'Здоровый образ жизни', icon: 'bi-heart-pulse' },
+          { label: 'Кулинария', icon: 'bi-egg-fried' },
+          { label: 'Выпечка', icon: 'bi-cupcake' },
+          { label: 'Кофе', icon: 'bi-cup-hot' },
+          { label: 'Вино', icon: 'bi-wine' },
+          { label: 'Фотография', icon: 'bi-camera' },
+          { label: 'Музыка', icon: 'bi-music-note' },
+          { label: 'Игра на инструментах', icon: 'bi-guitar' },
+          { label: 'Рисование', icon: 'bi-brush' },
+          { label: 'Письмо / дневники', icon: 'bi-journal-text' },
+          { label: 'Анимация', icon: 'bi-camera-reels' },
+          { label: 'Видео-монтаж', icon: 'bi-scissors' },
+          { label: 'Дизайн', icon: 'bi-palette' },
+          { label: 'Графика', icon: 'bi-image' },
+          { label: 'Театр', icon: 'bi-mask' },
+          { label: 'Искусство', icon: 'bi-easel' },
+          { label: 'Кино', icon: 'bi-film' },
+          { label: 'Сериалы', icon: 'bi-tv' },
+          { label: 'Комиксы', icon: 'bi-book' },
+          { label: 'Аниме', icon: 'bi-tv' },
+          { label: 'Манга', icon: 'bi-book' },
+          { label: 'Игры', icon: 'bi-controller' },
+          { label: 'Настольные игры', icon: 'bi-puzzle' },
+          { label: 'Книги', icon: 'bi-book' },
+          { label: 'Подкасты', icon: 'bi-mic' },
+          { label: 'Программирование', icon: 'bi-code-slash' },
+          { label: 'Искусственный интеллект', icon: 'bi-brain' },
+          { label: 'Гаджеты', icon: 'bi-phone' },
+          { label: 'Роботы', icon: 'bi-robot' },
+          { label: 'Космос', icon: 'bi-rocket' },
+          { label: 'Стартапы', icon: 'bi-lightbulb' },
+          { label: 'Финансы', icon: 'bi-currency-dollar' },
+          { label: 'Инвестиции', icon: 'bi-graph-up' },
+          { label: 'Криптовалюты', icon: 'bi-currency-bitcoin' },
+          { label: 'Наука', icon: 'bi-beaker' },
+          { label: 'Волонтёрство', icon: 'bi-people' },
+          { label: 'Животные', icon: 'bi-paw' },
+          { label: 'Психология', icon: 'bi-emoji-smile' },
+          { label: 'Благотворительность', icon: 'bi-hand-thumbs-up' },
+          { label: 'Ментальное здоровье', icon: 'bi-heart' }
         ];
-        // Перемешиваем массив интересов (алгоритм случайной сортировки)
-        interestsList.sort(function() { return Math.random() - 0.5; });
+        // Randomize the array to display interests in a different order each time
+        interestsData.sort(function() { return Math.random() - 0.5; });
         var container = document.getElementById('interests-container');
         var hiddenInterests = document.getElementById('hidden-interests');
         if (!container || !hiddenInterests) {
           return;
         }
-        // Восстанавливаем выбранные интересы из скрытого поля (если оно заполнено)
+        // Restore previously selected interests from the hidden input
         var selected = [];
         if (hiddenInterests.value) {
           selected = hiddenInterests.value.split(',').map(function(s) { return s.trim(); }).filter(function(s) { return s; });
         }
-        // Функция для обновления значения скрытого поля
+        // Helper to update the hidden input value
         function updateHidden() {
           hiddenInterests.value = selected.join(', ');
         }
-        // Создаём плитку (chip) для каждого интереса
-        interestsList.forEach(function(item) {
+        // Build a chip element with an icon and text
+        interestsData.forEach(function(item) {
           var chip = document.createElement('span');
-          chip.className = 'interest-chip';
-          chip.textContent = item;
-          if (selected.indexOf(item) !== -1) {
+          // Use flex display to align icon and text nicely
+          chip.className = 'interest-chip d-inline-flex align-items-center';
+          // Create the icon element
+          var iconEl = document.createElement('i');
+          iconEl.className = 'bi ' + item.icon + ' me-2';
+          chip.appendChild(iconEl);
+          // Append the text node
+          chip.appendChild(document.createTextNode(item.label));
+          // Mark as selected if present in the selected array
+          if (selected.indexOf(item.label) !== -1) {
             chip.classList.add('selected');
           }
+          // Click handler to toggle selection
           chip.addEventListener('click', function() {
+            var idx = selected.indexOf(item.label);
             if (chip.classList.contains('selected')) {
-              // Снимаем выбор
               chip.classList.remove('selected');
-              selected = selected.filter(function(v) { return v !== item; });
+              if (idx !== -1) {
+                selected.splice(idx, 1);
+              }
             } else {
-              // Проверяем, что не выбрано более пяти интересов
               if (selected.length >= 5) {
                 alert('Можно выбрать максимум 5 интересов');
                 return;
               }
               chip.classList.add('selected');
-              selected.push(item);
+              if (idx === -1) {
+                selected.push(item.label);
+              }
             }
             updateHidden();
           });
           container.appendChild(chip);
         });
-        // Обновляем скрытый инпут после инициализации
         updateHidden();
-        // После создания плиток скрываем невыбранные в режиме просмотра
+        // After creating chips, hide unselected ones when not editing
         toggleInterestChips(false);
       })();
 

@@ -162,9 +162,15 @@
 .interest-chip:hover {
   background-color: rgba(var(--bs-primary-rgb), 0.1);
 }
+/* When an interest is selected we flip the colours: the chip
+   background becomes the same grey as the navigation bar (#f0f2f5),
+   while the text and border remain in the primary blue.  This way
+   selected chips blend with the UI palette but still stand out via
+   the coloured outline and text. */
 .interest-chip.selected {
-  background-color: var(--bs-primary);
-  color: #ffffff;
+  background-color: #f0f2f5;
+  color: var(--bs-primary);
+  border-color: var(--bs-primary);
 }
 
 /* ---------------------------- Навигационная панель ---------------------------- */
