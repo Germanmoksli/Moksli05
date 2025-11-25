@@ -262,6 +262,9 @@ nav.navbar .navbar-toggler {
   width: 1rem;
   height: 1rem;
   background-color: #f0f2f5;
+  /* Добавляем границу, чтобы «хвостик» также имел синюю обводку.
+     Используем ту же толщину и цвет, что и у основной рамки пузыря. */
+  border: 1px solid var(--bs-primary);
   border-bottom-right-radius: 0.8rem;
   transform: rotate(45deg);
 }
