@@ -12,22 +12,63 @@
 #}
 
 {% block content %}
+  <style>
+    /* Стили для меню настроек.  Мы убираем рамки и фон от стандартного
+       списка, делаем вертикальное меню с иконками.  Активный пункт
+       выделяется увеличенным размером шрифта и синей подчёркнутой линией. */
+    .settings-menu a {
+      color: #6c757d;                 /* нейтральный серый цвет для неактивных пунктов */
+      font-size: 1rem;               /* стандартный размер текста */
+      padding: 0.5rem 0;             /* вертикальные отступы */
+      display: flex;                 /* размещаем иконку и текст в одной строке */
+      align-items: center;
+      border-bottom: 1px solid transparent; /* место для подчёркивания у активного пункта */
+      text-decoration: none;        /* убираем стандартное подчёркивание ссылок */
+      transition: all 0.2s ease;
+    }
+    .settings-menu a:hover {
+      color: var(--bs-primary);      /* подсвечиваем ссылку при наведении */
+    }
+    .settings-menu a.active {
+      color: var(--bs-primary);      /* основной цвет для активного пункта */
+      font-size: 1.05rem;           /* немного увеличиваем размер шрифта */
+      font-weight: 600;             /* делаем текст жирнее */
+      border-bottom-color: var(--bs-primary); /* синяя линия под активным пунктом */
+    }
+    .settings-menu a i.bi {
+      margin-right: 0.5rem;          /* небольшой отступ между иконкой и текстом */
+      font-size: 1.25rem;            /* увеличенный размер иконки */
+    }
+  </style>
   <div class="container py-4">
     <div class="row">
-      <!-- Левое меню -->
-      <nav class="col-12 col-md-3 mb-3 mb-md-0" aria-label="Настройки профиля">
-        <ul class="list-group">
-          <li class="list-group-item list-group-item-action">
-            <a href="#privacy" class="text-decoration-none d-block">Конфиденциальность аккаунта</a>
+      <!-- Левое меню с иконками.  Каждая ссылка имеет класс settings-menu для стилизации.
+           Активный пункт будет выделяться синим цветом и подчёркнутой линией. -->
+      <nav class="col-12 col-md-3 mb-3 mb-md-0">
+        <ul class="nav flex-column settings-menu">
+          <li class="nav-item">
+            <a href="#privacy" class="nav-link">
+              <i class="bi bi-shield-lock"></i>
+              Конфиденциальность аккаунта
+            </a>
           </li>
-          <li class="list-group-item list-group-item-action">
-            <a href="#verification" class="text-decoration-none d-block">Верификация</a>
+          <li class="nav-item">
+            <a href="#verification" class="nav-link">
+              <i class="bi bi-patch-check"></i>
+              Верификация
+            </a>
           </li>
-          <li class="list-group-item list-group-item-action">
-            <a href="#information" class="text-decoration-none d-block">Информация</a>
+          <li class="nav-item">
+            <a href="#information" class="nav-link">
+              <i class="bi bi-info-circle"></i>
+              Информация
+            </a>
           </li>
-          <li class="list-group-item list-group-item-action">
-            <a href="#security" class="text-decoration-none d-block">Безопасность</a>
+          <li class="nav-item">
+            <a href="#security" class="nav-link">
+              <i class="bi bi-shield-exclamation"></i>
+              Безопасность
+            </a>
           </li>
         </ul>
       </nav>
@@ -37,4 +78,32 @@
       </div>
     </div>
   </div>
+  <script>
+    // Добавляем обработчики кликов, чтобы подсвечивать выбранный пункт меню.
+    document.addEventListener('DOMContentLoaded', function () {
+      const links = document.querySelectorAll('.settings-menu a');
+      // Функция для установки активного класса по хэшу URL
+      function setActiveLink(hash) {
+        links.forEach(function (link) {
+          if (link.getAttribute('href') === hash) {
+            link.classList.add('active');
+          } else {
+            link.classList.remove('active');
+          }
+        });
+      }
+      // Устанавливаем активный пункт при загрузке страницы
+      setActiveLink(window.location.hash || '#privacy');
+      // Добавляем обработку клика для переключения активного пункта
+      links.forEach(function (link) {
+        link.addEventListener('click', function () {
+          setActiveLink(this.getAttribute('href'));
+        });
+      });
+      // При изменении хэша (например, через ссылку) обновляем активный пункт
+      window.addEventListener('hashchange', function () {
+        setActiveLink(window.location.hash);
+      });
+    });
+  </script>
 {% endblock %}
