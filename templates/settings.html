@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Настройки{% endblock %}
+
+{#
+  Страница настроек профиля.  Содержит вертикальное меню слева и область
+  содержания справа.  Пока содержимое разделов пустое; вы можете
+  заполнить его позже.  Меню включает четыре пункта: конфиденциальность
+  аккаунта, верификация, информация и безопасность.  При желании
+  расширить функциональность можно добавить соответствующие
+  JavaScript‑обработчики или отдельные страницы.
+#}
+
+{% block content %}
+  <div class="container py-4">
+    <div class="row">
+      <!-- Левое меню -->
+      <nav class="col-12 col-md-3 mb-3 mb-md-0" aria-label="Настройки профиля">
+        <ul class="list-group">
+          <li class="list-group-item list-group-item-action">
+            <a href="#privacy" class="text-decoration-none d-block">Конфиденциальность аккаунта</a>
+          </li>
+          <li class="list-group-item list-group-item-action">
+            <a href="#verification" class="text-decoration-none d-block">Верификация</a>
+          </li>
+          <li class="list-group-item list-group-item-action">
+            <a href="#information" class="text-decoration-none d-block">Информация</a>
+          </li>
+          <li class="list-group-item list-group-item-action">
+            <a href="#security" class="text-decoration-none d-block">Безопасность</a>
+          </li>
+        </ul>
+      </nav>
+      <!-- Правая панель для содержимого разделов.  Пока здесь только заголовок -->
+      <div class="col-12 col-md-9">
+        <h3>Выберите раздел слева, чтобы увидеть настройки.</h3>
+      </div>
+    </div>
+  </div>
+{% endblock %}

@@ -5821,6 +5821,20 @@ def subscribe():
     return render_template('subscribe.html', current_sub=current_sub)
 
 
+# -----------------------------------------------------------------------------
+# Settings page
+#
+# A simple settings page with a vertical navigation menu for different profile
+# sections.  Requires login to ensure that only authenticated users can
+# access their settings.  The corresponding template is ``settings.html``.
+
+@app.route('/settings')
+@login_required
+def settings_view():  # use a distinct name to avoid conflict with any variable
+    """Display the user settings page with navigation menu."""
+    return render_template('settings.html')
+
+
 # ---------------------------------------------------------------------------
 # Payment callback simulation
 #
