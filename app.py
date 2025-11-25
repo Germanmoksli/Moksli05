@@ -2322,6 +2322,36 @@ def ensure_privacy_columns(conn: sqlite3.Connection) -> None:
             # makes the function safe to call on every connection.
             continue
 
+# Additional helper to ensure communication-related columns exist on users table
+def ensure_communication_columns(conn: sqlite3.Connection) -> None:
+    """Ensure the users table has columns for communication preferences.
+
+    This helper adds columns to store how users wish to handle incoming
+    messages and booking requests as well as flags for showing activity
+    status and read receipts.  String columns default to 'all'; boolean
+    columns default to TRUE.  Any errors during ALTER TABLE are ignored
+    so the function may be called repeatedly.
+    """
+    desired_comm_cols: dict[str, str] = {
+        # Who can send messages: all, verified_only, contacts_only, booked_host_only
+        'message_permissions': "TEXT DEFAULT 'all'",
+        # Who can send booking requests: same enumeration for simplicity
+        'booking_permissions': "TEXT DEFAULT 'all'",
+        # Whether to display online/offline status
+        'show_activity_status': 'BOOLEAN DEFAULT TRUE',
+        # Whether to show read receipts in chats
+        'show_read_receipts': 'BOOLEAN DEFAULT TRUE',
+    }
+    for col, col_type in desired_comm_cols.items():
+        try:
+            conn.execute(f"ALTER TABLE users ADD COLUMN {col} {col_type};")
+            try:
+                conn.commit()
+            except Exception:
+                pass
+        except Exception:
+            continue
+
 # ---------------------------------------------------------------------------
 # Chat rooms and memberships
 #
@@ -5876,18 +5906,30 @@ def settings_view():  # use a distinct name to avoid conflict with any variable
     # guarantees ``session['user_id']`` exists here.
     user_id = session.get('user_id')
     conn = get_db_connection()
+    # Ensure all relevant columns exist
     ensure_privacy_columns(conn)
-    # Attempt to fetch privacy settings; use default True for missing
+    ensure_communication_columns(conn)
+    # Attempt to fetch privacy settings; use defaults for missing values
     try:
-        row = conn.execute(
+        row_priv = conn.execute(
             'SELECT show_profile, show_interests, show_profile_photo, '\
             'show_registration_date, show_verification_status, show_reviews '\
             'FROM users WHERE id = ?',
             (user_id,)
         ).fetchone()
     except Exception:
-        row = None
+        row_priv = None
+    # Attempt to fetch communication settings; use defaults for missing values
+    try:
+        row_comm = conn.execute(
+            'SELECT message_permissions, booking_permissions, show_activity_status, show_read_receipts '
+            'FROM users WHERE id = ?',
+            (user_id,)
+        ).fetchone()
+    except Exception:
+        row_comm = None
     conn.close()
+    # Build privacy dictionary with defaults (True)
     privacy: dict[str, bool] = {
         'show_profile': True,
         'show_interests': True,
@@ -5896,16 +5938,43 @@ def settings_view():  # use a distinct name to avoid conflict with any variable
         'show_verification_status': True,
         'show_reviews': True,
     }
-    if row:
+    if row_priv:
         for key in privacy.keys():
             try:
-                val = row[key]
-                # SQLite returns 0/1 or None; treat None as True by default
+                val = row_priv[key]
                 privacy[key] = bool(val) if val is not None else True
             except Exception:
-                # If the column is missing or any error occurs, keep default
                 continue
-    return render_template('settings.html', privacy=privacy)
+    # Build communication dictionary with defaults
+    communication: dict[str, typing.Any] = {
+        'message_permissions': 'all',
+        'booking_permissions': 'all',
+        'show_activity_status': True,
+        'show_read_receipts': True,
+    }
+    if row_comm:
+        # Strings come as is; booleans may be 0/1
+        try:
+            val = row_comm['message_permissions']
+            communication['message_permissions'] = val if val is not None else 'all'
+        except Exception:
+            pass
+        try:
+            val = row_comm['booking_permissions']
+            communication['booking_permissions'] = val if val is not None else 'all'
+        except Exception:
+            pass
+        try:
+            val = row_comm['show_activity_status']
+            communication['show_activity_status'] = bool(val) if val is not None else True
+        except Exception:
+            pass
+        try:
+            val = row_comm['show_read_receipts']
+            communication['show_read_receipts'] = bool(val) if val is not None else True
+        except Exception:
+            pass
+    return render_template('settings.html', privacy=privacy, communication=communication)
 
 
 # ---------------------------------------------------------------------------
@@ -5928,23 +5997,31 @@ def update_privacy_settings() -> 'flask.Response':
     if not request.is_json:
         return jsonify({'error': 'Invalid data; expected JSON'}), 400
     data = request.get_json() or {}
-    # Allowed columns that may be updated
-    allowed_cols = {
+    # Define which columns are allowed and whether they store boolean (True/False) or string values
+    boolean_cols = {
         'show_profile',
         'show_interests',
         'show_profile_photo',
         'show_registration_date',
         'show_verification_status',
         'show_reviews',
+        'show_activity_status',
+        'show_read_receipts',
     }
+    string_cols = {
+        'message_permissions',
+        'booking_permissions',
+    }
+    allowed_cols = boolean_cols.union(string_cols)
     # Build dynamic update statement
     set_parts: list[str] = []
     values: list[typing.Any] = []
     for key, val in data.items():
-        if key in allowed_cols:
-            set_parts.append(f"{key}=?")
-            # Coerce to integer 1/0 to store in boolean column; treat
-            # truthy values (True, 'true', 1) as 1; everything else as 0
+        if key not in allowed_cols:
+            continue
+        set_parts.append(f"{key}=?")
+        if key in boolean_cols:
+            # Coerce to integer 1/0 for boolean columns
             try:
                 if isinstance(val, bool):
                     values.append(1 if val else 0)
@@ -5957,12 +6034,29 @@ def update_privacy_settings() -> 'flask.Response':
                     values.append(0)
             except Exception:
                 values.append(0)
+        else:
+            # Store string values as is for enumerated columns
+            try:
+                # Accept only known values; fallback to 'all' if invalid
+                if key == 'message_permissions' or key == 'booking_permissions':
+                    valid_options = {'all', 'verified_only', 'contacts_only', 'booked_host_only'}
+                    if isinstance(val, str) and val in valid_options:
+                        values.append(val)
+                    else:
+                        values.append('all')
+                else:
+                    # For any other string column, store as str
+                    values.append(str(val))
+            except Exception:
+                values.append('all')
     # If no valid keys provided, return success without update
     if not set_parts:
         return jsonify({'status': 'no_changes'}), 200
     user_id = session.get('user_id')
     conn = get_db_connection()
+    # Ensure columns exist
     ensure_privacy_columns(conn)
+    ensure_communication_columns(conn)
     # Compose and execute the update
     sql = f"UPDATE users SET {', '.join(set_parts)} WHERE id=?"
     values.append(user_id)

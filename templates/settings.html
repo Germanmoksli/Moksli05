@@ -118,9 +118,38 @@
             <p>Содержимое этого раздела будет предоставлено позже.</p>
           </div>
           <!-- Подраздел: Контроль коммуникаций -->
-          <div class="mb-4">
+          <div class="mb-4" id="communication-control">
             <h4 class="mb-2">Контроль коммуникаций</h4>
-            <p>Содержимое этого раздела будет предоставлено позже.</p>
+            <!-- Настройка: кто может отправлять сообщения -->
+            <div class="mb-3">
+              <label for="message_permissions" class="form-label">Кто может отправлять сообщения</label>
+              <select id="message_permissions" class="form-select" data-field="message_permissions">
+                <option value="all" {% if communication.message_permissions == 'all' %}selected{% endif %}>Все</option>
+                <option value="verified_only" {% if communication.message_permissions == 'verified_only' %}selected{% endif %}>Только верифицированные пользователи</option>
+                <option value="contacts_only" {% if communication.message_permissions == 'contacts_only' %}selected{% endif %}>Только те, кому пользователь писал</option>
+                <option value="booked_host_only" {% if communication.message_permissions == 'booked_host_only' %}selected{% endif %}>Владелец квартиры, которую я забронировал(-а)</option>
+              </select>
+            </div>
+            <!-- Настройка: кто может отправлять запросы на бронирование -->
+            <div class="mb-3">
+              <label for="booking_permissions" class="form-label">Кто может отправлять запросы на бронирование</label>
+              <select id="booking_permissions" class="form-select" data-field="booking_permissions">
+                <option value="all" {% if communication.booking_permissions == 'all' %}selected{% endif %}>Все</option>
+                <option value="verified_only" {% if communication.booking_permissions == 'verified_only' %}selected{% endif %}>Только верифицированные пользователи</option>
+                <option value="contacts_only" {% if communication.booking_permissions == 'contacts_only' %}selected{% endif %}>Только те, кому пользователь писал</option>
+                <option value="booked_host_only" {% if communication.booking_permissions == 'booked_host_only' %}selected{% endif %}>Владелец квартиры, которую я забронировал(-а)</option>
+              </select>
+            </div>
+            <!-- Переключатель: показать статус активности -->
+            <div class="form-check form-switch mb-3">
+              <input class="form-check-input" type="checkbox" id="toggle_show_activity_status" data-field="show_activity_status" {% if communication.show_activity_status %}checked{% endif %}>
+              <label class="form-check-label" for="toggle_show_activity_status">Показать статус активности (онлайн/офлайн)</label>
+            </div>
+            <!-- Переключатель: показывать «прочитано» -->
+            <div class="form-check form-switch mb-3">
+              <input class="form-check-input" type="checkbox" id="toggle_show_read_receipts" data-field="show_read_receipts" {% if communication.show_read_receipts %}checked{% endif %}>
+              <label class="form-check-label" for="toggle_show_read_receipts">Показывать «прочитано» в чатах</label>
+            </div>
           </div>
           <!-- Подраздел: Блокировки и жалобы -->
           <div class="mb-4">
@@ -189,11 +218,17 @@
       window.addEventListener('hashchange', function () {
         setActiveSection(window.location.hash);
       });
-      // Добавляем обработчик изменения для всех переключателей приватности
-      document.querySelectorAll('#privacy-form input[type="checkbox"]').forEach(function (toggle) {
-        toggle.addEventListener('change', function () {
+      // Добавляем обработчики изменения для всех элементов, помеченных data-field
+      document.querySelectorAll('[data-field]').forEach(function (elem) {
+        elem.addEventListener('change', function () {
           const field = this.dataset.field;
-          const value = this.checked;
+          // Определяем значение: для чекбоксов это true/false, для select — строка
+          let value;
+          if (this.type === 'checkbox') {
+            value = this.checked;
+          } else {
+            value = this.value;
+          }
           fetch('/settings/privacy', {
             method: 'PUT',
             headers: {
@@ -204,10 +239,10 @@
           })
             .then(function (response) { return response.json(); })
             .then(function (data) {
-              console.log('Privacy setting updated', data);
+              console.log('Setting updated', data);
             })
             .catch(function (error) {
-              console.error('Error updating privacy setting', error);
+              console.error('Error updating setting', error);
             });
         });
       });
