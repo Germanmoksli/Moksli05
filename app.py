@@ -6545,10 +6545,20 @@ def account():
         # non-empty values are stored; empty strings remove existing entries.
         # When merging, we ignore any previous values and take the submitted
         # values as the new truth; empty values mean the key is omitted.
+        # List of additional form fields that should be persisted in the
+        # ``users.profile_data`` JSON column.  Each entry corresponds to a
+        # hidden <input> in the account.html template.  When new profile
+        # features are introduced (e.g. interests), add the key here so
+        # submitted values are merged into the stored JSON.
         dynamic_fields = [
             'work', 'dream_place', 'school_song', 'pets', 'generation',
             'school_years', 'hours_activity', 'interesting_fact',
-            'useless_skill', 'languages', 'passion', 'life_story'
+            'useless_skill', 'languages', 'passion', 'life_story',
+            # Store the comma‑separated list of selected interests.  Without
+            # including "interests" here, the values submitted from the
+            # front‑end would be discarded, resulting in no interests being
+            # shown after saving the profile.
+            'interests'
         ]
         profile_data: dict[str, str] = {}
         for fld in dynamic_fields:
