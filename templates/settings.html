@@ -81,33 +81,52 @@
         <!-- Секция: Конфиденциальность -->
         <div id="privacy" class="settings-section">
           <h3 class="mb-3">Конфиденциальность аккаунта</h3>
-          <!-- Используем переключатели form-switch из Bootstrap для отображения boolean настроек -->
-          <form id="privacy-form">
-            <div class="form-check form-switch mb-3">
-              <input class="form-check-input" type="checkbox" id="toggle_show_profile" data-field="show_profile" {% if privacy.show_profile %}checked{% endif %}>
-              <label class="form-check-label" for="toggle_show_profile">Показывать мой профиль другим пользователям</label>
-            </div>
-            <div class="form-check form-switch mb-3">
-              <input class="form-check-input" type="checkbox" id="toggle_show_interests" data-field="show_interests" {% if privacy.show_interests %}checked{% endif %}>
-              <label class="form-check-label" for="toggle_show_interests">Показывать мои интересы</label>
-            </div>
-            <div class="form-check form-switch mb-3">
-              <input class="form-check-input" type="checkbox" id="toggle_show_profile_photo" data-field="show_profile_photo" {% if privacy.show_profile_photo %}checked{% endif %}>
-              <label class="form-check-label" for="toggle_show_profile_photo">Показывать фото профиля</label>
-            </div>
-            <div class="form-check form-switch mb-3">
-              <input class="form-check-input" type="checkbox" id="toggle_show_registration_date" data-field="show_registration_date" {% if privacy.show_registration_date %}checked{% endif %}>
-              <label class="form-check-label" for="toggle_show_registration_date">Показывать дату регистрации</label>
-            </div>
-            <div class="form-check form-switch mb-3">
-              <input class="form-check-input" type="checkbox" id="toggle_show_verification_status" data-field="show_verification_status" {% if privacy.show_verification_status %}checked{% endif %}>
-              <label class="form-check-label" for="toggle_show_verification_status">Показывать статус верификации</label>
-            </div>
-            <div class="form-check form-switch mb-3">
-              <input class="form-check-input" type="checkbox" id="toggle_show_reviews" data-field="show_reviews" {% if privacy.show_reviews %}checked{% endif %}>
-              <label class="form-check-label" for="toggle_show_reviews">Показывать отзывы обо мне</label>
-            </div>
-          </form>
+          <!-- Подраздел: Видимость профиля -->
+          <div class="mb-4">
+            <h4 class="mb-2">Видимость профиля</h4>
+            <!-- Используем переключатели form-switch из Bootstrap для отображения boolean настроек -->
+            <form id="privacy-form">
+              <div class="form-check form-switch mb-3">
+                <input class="form-check-input" type="checkbox" id="toggle_show_profile" data-field="show_profile" {% if privacy.show_profile %}checked{% endif %}>
+                <label class="form-check-label" for="toggle_show_profile">Показывать мой профиль другим пользователям</label>
+              </div>
+              <div class="form-check form-switch mb-3">
+                <input class="form-check-input" type="checkbox" id="toggle_show_interests" data-field="show_interests" {% if privacy.show_interests %}checked{% endif %}>
+                <label class="form-check-label" for="toggle_show_interests">Показывать мои интересы</label>
+              </div>
+              <div class="form-check form-switch mb-3">
+                <input class="form-check-input" type="checkbox" id="toggle_show_profile_photo" data-field="show_profile_photo" {% if privacy.show_profile_photo %}checked{% endif %}>
+                <label class="form-check-label" for="toggle_show_profile_photo">Показывать фото профиля</label>
+              </div>
+              <div class="form-check form-switch mb-3">
+                <input class="form-check-input" type="checkbox" id="toggle_show_registration_date" data-field="show_registration_date" {% if privacy.show_registration_date %}checked{% endif %}>
+                <label class="form-check-label" for="toggle_show_registration_date">Показывать дату регистрации</label>
+              </div>
+              <div class="form-check form-switch mb-3">
+                <input class="form-check-input" type="checkbox" id="toggle_show_verification_status" data-field="show_verification_status" {% if privacy.show_verification_status %}checked{% endif %}>
+                <label class="form-check-label" for="toggle_show_verification_status">Показывать статус верификации</label>
+              </div>
+              <div class="form-check form-switch mb-3">
+                <input class="form-check-input" type="checkbox" id="toggle_show_reviews" data-field="show_reviews" {% if privacy.show_reviews %}checked{% endif %}>
+                <label class="form-check-label" for="toggle_show_reviews">Показывать отзывы обо мне</label>
+              </div>
+            </form>
+          </div>
+          <!-- Подраздел: Управление персональными данными -->
+          <div class="mb-4">
+            <h4 class="mb-2">Управление персональными данными</h4>
+            <p>Содержимое этого раздела будет предоставлено позже.</p>
+          </div>
+          <!-- Подраздел: Контроль коммуникаций -->
+          <div class="mb-4">
+            <h4 class="mb-2">Контроль коммуникаций</h4>
+            <p>Содержимое этого раздела будет предоставлено позже.</p>
+          </div>
+          <!-- Подраздел: Блокировки и жалобы -->
+          <div class="mb-4">
+            <h4 class="mb-2">Блокировки и жалобы</h4>
+            <p>Содержимое этого раздела будет предоставлено позже.</p>
+          </div>
         </div>
         <!-- Секция: Верификация (заглушка) -->
         <div id="verification" class="settings-section">
