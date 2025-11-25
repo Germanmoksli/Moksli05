@@ -356,9 +356,10 @@
           </div>
         </div>
       </div>
-      <!-- Секция выбора интересов. Пользователь может выбрать до 5 интересов.
-           Плитки отображаются в случайном порядке. -->
-      <div class="mt-4">
+      <!-- Секция выбора интересов.  Показывается только в режиме
+           редактирования.  Содержит заголовок и контейнер с плитками.  
+           Изначально скрыта (d-none), появляется при вызове enterEditMode(). -->
+      <div id="interests-edit-section" class="mt-4 d-none">
         <h5 class="fw-semibold mb-2">Интересы (выберите до 5)</h5>
         <div id="interests-container" class="d-flex flex-wrap gap-2"></div>
       </div>
@@ -699,9 +700,14 @@
 
         // Заполнить дополнительные поля из отображаемых значений
         prefillAdditionalInputs();
-        // При входе в режим редактирования показываем все плитки интересов
+        // При входе в режим редактирования показываем всё в секции интересов
         if (typeof toggleInterestChips === 'function') {
           toggleInterestChips(true);
+        }
+        // Показываем весь блок редактирования интересов
+        var interestsSection = document.getElementById('interests-edit-section');
+        if (interestsSection) {
+          interestsSection.classList.remove('d-none');
         }
       }
 
@@ -754,6 +760,11 @@
         // При выходе из режима редактирования скрываем невыбранные плитки интересов
         if (typeof toggleInterestChips === 'function') {
           toggleInterestChips(false);
+        }
+        // Скрываем секцию выбора интересов
+        var interestsSection2 = document.getElementById('interests-edit-section');
+        if (interestsSection2) {
+          interestsSection2.classList.add('d-none');
         }
         // Обновляем отображение выбранных интересов в блоке
         if (typeof updateSelectedInterestsDisplay === 'function') {
