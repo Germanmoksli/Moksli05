@@ -27,21 +27,11 @@
       <div class="position-relative mb-3">
         <!-- Аватар: если загружена фотография, показываем её; иначе инициалы -->
         {#
-          Используем фотографию из базы данных (user.photo) или из сессии (session['user_photo']).
-          session['user_photo'] обновляется при загрузке нового снимка и служит временной подстановкой
-          до тех пор, пока пользователь не перезагрузит страницу и фото не будет считано из базы данных.
+          Отображение аватара: в текущей версии приложение больше не
+          поддерживает загрузку пользовательских фотографий.  Всегда
+          показываем круглый placeholder с первой буквой имени (или
+          имени пользователя).  Цвет фона и текста задаются через CSS.
         #}
-        {% set avatar_path = session.get('user_photo') or (user.photo if user and user.photo) %}
-        {# Render the user's photo as an <img> element when a photo path is available.
-           Otherwise show a coloured circle with the initial letter.  Using
-           <img> avoids layering issues where a background-image could be
-           obscured by the background colour. #}
-        {% if avatar_path %}
-        <img src="{{ url_for('static', filename=avatar_path) }}"
-             alt="Аватар"
-             class="rounded-circle shadow-sm"
-             style="width: 200px; height: 200px; object-fit: cover;">
-        {% else %}
         <div class="avatar-circle shadow-sm">
           <span>
             {% if user and user.name %}
@@ -52,31 +42,6 @@
               U
             {% endif %}
           </span>
-        </div>
-        {% endif %}
-        <!-- Кнопки управления аватаром.  Кнопка "Добавить" всегда отображает
-             одну и ту же подпись; если фотография отсутствует, она позволит
-             загрузить первую аватарку, а если есть — заменить её.  Кнопка
-             "Удалить" появляется только когда у пользователя уже есть
-             фотография.  Обе кнопки скрыты по умолчанию и показываются
-             при переходе в режим редактирования.  Кнопка удаления
-             расположена под кнопкой добавления. -->
-        <div class="d-flex flex-column align-items-center mt-2">
-          <button type="button"
-                  class="btn btn-light btn-sm upload-photo-button shadow rounded-pill d-none"
-                  id="uploadPhotoBtn"
-                  style="margin-top: -10px;">
-            <i class="bi bi-camera-fill me-1"></i>
-            Добавить
-          </button>
-          {% if avatar_path %}
-          <a href="{{ url_for('delete_photo') }}"
-             class="delete-photo-button d-none mt-2"
-             id="deletePhotoBtn"
-             style="color: #dc3545; background-color: #fff; border: none; border-bottom: 1px solid #dc3545; font-size: 0.9rem; padding: 4px 12px; border-radius: 20px; text-decoration: none;">
-            <i class="bi bi-trash me-1"></i>Удалить
-          </a>
-          {% endif %}
         </div>
       </div>
     </div>
@@ -146,8 +111,7 @@
         </div>
         <!-- Блок 1: форма редактирования имени, фамилии и описания -->
         <form id="block1-edit" class="mb-4 d-none" action="{{ url_for('account') }}" method="post" enctype="multipart/form-data">
-          <!-- Поле для загрузки фотографии. Скрытый input будет открыт при клике на кнопку "Добавить" -->
-          <input type="file" name="photo" id="photoInput" accept="image/*" hidden>
+          <!-- Функция загрузки фотографии удалена.  Больше нет скрытого поля photoInput. -->
           <!-- Имя пользователя -->
           <div class="mb-3">
             <label for="firstNameInput" class="form-label fw-semibold">Имя</label>
@@ -701,17 +665,7 @@
           }
         });
 
-        // Показать кнопку загрузки фотографии при входе в режим редактирования
-        var photoBtn = document.getElementById('uploadPhotoBtn');
-        if (photoBtn) {
-          photoBtn.classList.remove('d-none');
-        }
-
-        // Показать кнопку удаления фотографии при входе в режим редактирования
-        var deleteBtn = document.getElementById('deletePhotoBtn');
-        if (deleteBtn) {
-          deleteBtn.classList.remove('d-none');
-        }
+        // Кнопки загрузки и удаления фотографии больше не используются.
 
         // Показать нижнюю панель с кнопками сохранения и отмены при входе в режим редактирования
         if (block1BottomControls) {
@@ -767,17 +721,7 @@
           updateProfileItemVisibility();
         }
 
-        // Скрыть кнопку загрузки фотографии при выходе из режима редактирования
-        var photoBtn2 = document.getElementById('uploadPhotoBtn');
-        if (photoBtn2) {
-          photoBtn2.classList.add('d-none');
-        }
-
-        // Скрыть кнопку удаления фотографии при выходе из режима редактирования
-        var deleteBtn2 = document.getElementById('deletePhotoBtn');
-        if (deleteBtn2) {
-          deleteBtn2.classList.add('d-none');
-        }
+        // Кнопки загрузки и удаления фотографии больше не используются.
 
         // Скрыть нижнюю панель с кнопками при выходе из режима редактирования
         if (block1BottomControls) {
@@ -870,34 +814,7 @@
         });
       }
 
-      // Логика для кнопки загрузки фотографии: при клике на кнопку
-      // открываем скрытое поле выбора файла. Файл будет отправлен вместе с формой.
-      var uploadBtn = document.getElementById('uploadPhotoBtn');
-      var photoInput = document.getElementById('photoInput');
-      if (uploadBtn && photoInput) {
-        uploadBtn.addEventListener('click', function () {
-          photoInput.click();
-        });
-
-        // Обновляем превью аватарки, когда выбран новый файл.
-        photoInput.addEventListener('change', function () {
-          if (this.files && this.files[0]) {
-            var reader = new FileReader();
-            reader.onload = function (e) {
-              var avatarCircle = document.querySelector('.avatar-circle');
-              if (avatarCircle) {
-                avatarCircle.style.backgroundImage = 'url(' + e.target.result + ')';
-                avatarCircle.style.backgroundSize = 'cover';
-                var span = avatarCircle.querySelector('span');
-                if (span) {
-                  span.style.display = 'none';
-                }
-              }
-            };
-            reader.readAsDataURL(this.files[0]);
-          }
-        });
-      }
+      // Загрузка фотографий больше не поддерживается, поэтому логика выбора файла удалена.
 
       // Автоматическое определение знака зодиака по выбранной дате рождения
       var birthDateInput = document.getElementById('birthDateInput');
