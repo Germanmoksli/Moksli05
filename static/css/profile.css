@@ -19,6 +19,21 @@
   position: relative;
 }
 
+/* Smaller avatar placeholder used in navigation menus when the user has no
+   uploaded photo.  Displays the first letter of the user's name on
+   a coloured circle matching the primary colour.  The size is set via
+   inline style on each instance (width/height). */
+.avatar-placeholder {
+  border-radius: 50%;
+  background-color: var(--bs-primary);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  overflow: hidden;
+}
+
 /* Upload photo button positioned below the avatar */
 .upload-photo-button {
   position: absolute;

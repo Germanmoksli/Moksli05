@@ -685,8 +685,13 @@
                   <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="guestMenuButton">
                     <!-- Заголовок с именем пользователя и крупной аватаркой -->
                     <li class="px-3 py-2 d-flex align-items-center fw-semibold">
-                      {% set avatar = user_photo if user_photo else 'default_avatar.png' %}
-                      <img src="{{ url_for('static', filename=avatar) }}" class="rounded-circle me-2" width="40" height="40" style="object-fit: cover;">
+                      {% if user_photo %}
+                        <img src="{{ url_for('static', filename=user_photo) }}" class="rounded-circle me-2" width="40" height="40" style="object-fit: cover;">
+                      {% else %}
+                        <div class="avatar-placeholder me-2" style="width: 40px; height: 40px;">
+                          {{ (current_user_name or current_username)[0]|upper }}
+                        </div>
+                      {% endif %}
                       <span>{{ current_user_name or current_username }}</span>
                     </li>
                     <li><hr class="dropdown-divider"></li>
@@ -750,7 +755,9 @@
                       {% if user_photo %}
                         <img src="{{ url_for('static', filename=user_photo) }}" class="rounded-circle me-2" width="32" height="32" style="object-fit: cover;">
                       {% else %}
-                        <img src="{{ url_for('static', filename='default_avatar.png') }}" class="rounded-circle me-2" width="32" height="32" style="object-fit: cover;">
+                        <div class="avatar-placeholder me-2" style="width: 32px; height: 32px;">
+                          {{ (current_user_name or current_username)[0]|upper }}
+                        </div>
                       {% endif %}
                       <span>{{ current_user_name or current_username }}</span>
                     </a>
@@ -772,7 +779,9 @@
                   {% if user_photo %}
                     <img src="{{ url_for('static', filename=user_photo) }}" class="rounded-circle me-2" width="32" height="32" style="object-fit: cover;">
                   {% else %}
-                    <img src="{{ url_for('static', filename='default_avatar.png') }}" class="rounded-circle me-2" width="32" height="32" style="object-fit: cover;">
+                    <div class="avatar-placeholder me-2" style="width: 32px; height: 32px;">
+                      {{ (current_user_name or current_username)[0]|upper }}
+                    </div>
                   {% endif %}
                   <span class="me-3">{{ current_user_name or current_username }}</span>
                   <a href="{{ url_for('logout') }}" class="btn btn-outline-secondary">Выход</a>
