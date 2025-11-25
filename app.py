@@ -7288,6 +7288,67 @@ def account():
 
 
 # ---------------------------------------------------------------------------
+# Photo deletion for profile avatars
+#
+# Users can remove their current profile photo.  When this route is
+# invoked, the server clears the ``photo`` column in the ``users`` table
+# for the authenticated user, removes the corresponding file from disk
+# (if it exists) and clears the ``session['user_photo']`` value so that
+# future requests render the placeholder avatar.  After deletion the user
+# is redirected back to the account page with a flash message.
+
+@app.route('/delete_photo')
+def delete_photo():
+    """Delete the current user's profile photo and redirect back to /account.
+
+    Requires that the user is logged in.  If no photo exists, a message
+    is flashed and no changes are made.  This route uses a GET request
+    intentionally to simplify invocation from a hyperlink without requiring
+    a form.  In a production application, consider using POST/DELETE with
+    CSRF protection.
+    """
+    # Ensure the user is authenticated
+    if not session.get('user_id'):
+        return redirect(url_for('login'))
+    user_id = session['user_id']
+    conn = get_db_connection()
+    ensure_photo_column(conn)
+    try:
+        user_row = conn.execute('SELECT photo FROM users WHERE id = ?', (user_id,)).fetchone()
+    except Exception:
+        user_row = None
+    if user_row and user_row['photo']:
+        photo_path = user_row['photo']
+        # Attempt to remove the file from the static/uploads directory.  The
+        # photo path stored in the database is relative to the ``static``
+        # folder (e.g. ``uploads/<filename>``).  Construct the absolute
+        # filesystem path and remove it if it exists.
+        try:
+            file_path = os.path.join(app.root_path, 'static', photo_path)
+            if os.path.exists(file_path):
+                os.remove(file_path)
+        except Exception:
+            pass
+        # Clear the photo from the database
+        try:
+            conn.execute('UPDATE users SET photo = NULL WHERE id = ?', (user_id,))
+            conn.commit()
+        except Exception:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+        conn.close()
+        # Remove the cached value from the session so the placeholder is used
+        session.pop('user_photo', None)
+        flash('Фотография профиля удалена.')
+    else:
+        conn.close()
+        flash('Фотография профиля отсутствует.')
+    return redirect(url_for('account'))
+
+
+# ---------------------------------------------------------------------------
 # Employee profile viewing
 #
 # This route displays the profile of a specific employee in read‑only mode.

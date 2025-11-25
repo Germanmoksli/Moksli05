@@ -40,12 +40,8 @@
              {% endif %}>
           {#
             Show the initial letter only when there is no photo available in either
-            the user's record or the session.  Previously the condition checked
-            ``not (user and user.photo)``, which failed to account for a newly
-            uploaded photo stored in ``session['user_photo']``.  This prevented
-            the letter from disappearing immediately after an upload and caused
-            confusion when the page was refreshed.  We now check ``avatar_path``
-            directly since it reflects both the session and the database.
+            the user's record or the session.  We check ``avatar_path`` directly
+            since it reflects both the session and the database.
           #}
           {% if not avatar_path %}
             <span>
@@ -59,11 +55,23 @@
             </span>
           {% endif %}
         </div>
-        <!-- Кнопка загрузки фото. При клике откроется диалог выбора изображения. 
-             По умолчанию скрыта и появляется только в режиме редактирования. -->
-        <button type="button" class="btn btn-light btn-sm upload-photo-button shadow rounded-pill d-none" id="uploadPhotoBtn">
-          <i class="bi bi-camera-fill me-1"></i>Добавить
+        <!-- Кнопки управления аватаром.  При клике на кнопку загрузки откроется
+             диалог выбора изображения.  Кнопка удаления появляется только
+             если у пользователя уже есть фотография.  Обе кнопки скрыты по
+             умолчанию и отображаются при входе в режим редактирования. -->
+        <button type="button"
+                class="btn btn-light btn-sm upload-photo-button shadow rounded-pill d-none"
+                id="uploadPhotoBtn">
+          <i class="bi bi-camera-fill me-1"></i>
+          {{ 'Сменить' if avatar_path else 'Добавить' }}
         </button>
+        {% if avatar_path %}
+        <a href="{{ url_for('delete_photo') }}"
+           class="btn btn-light btn-sm delete-photo-button shadow rounded-pill d-none ms-2"
+           id="deletePhotoBtn">
+          <i class="bi bi-trash me-1"></i>Удалить
+        </a>
+        {% endif %}
       </div>
     </div>
       <!-- Правая колонка: информация о пользователе и настраиваемые блоки -->
@@ -693,6 +701,12 @@
           photoBtn.classList.remove('d-none');
         }
 
+        // Показать кнопку удаления фотографии при входе в режим редактирования
+        var deleteBtn = document.getElementById('deletePhotoBtn');
+        if (deleteBtn) {
+          deleteBtn.classList.remove('d-none');
+        }
+
         // Показать нижнюю панель с кнопками сохранения и отмены при входе в режим редактирования
         if (block1BottomControls) {
           block1BottomControls.classList.remove('d-none');
@@ -751,6 +765,12 @@
         var photoBtn2 = document.getElementById('uploadPhotoBtn');
         if (photoBtn2) {
           photoBtn2.classList.add('d-none');
+        }
+
+        // Скрыть кнопку удаления фотографии при выходе из режима редактирования
+        var deleteBtn2 = document.getElementById('deletePhotoBtn');
+        if (deleteBtn2) {
+          deleteBtn2.classList.add('d-none');
         }
 
         // Скрыть нижнюю панель с кнопками при выходе из режима редактирования
