@@ -99,6 +99,16 @@
           {% else %}
           <p id="profileSummary" class="mb-0 mt-2" style="display:none;"></p>
           {% endif %}
+
+          {#
+            Контейнер для отображения выбранных интересов в режиме просмотра.
+            Плитки с интересами будут вставляться сюда через JavaScript.  Он
+            находится сразу под сводкой (возраст, знак зодиака, город) и
+            перед блоком "Обо мне".  В режиме редактирования этот
+            контейнер не используется, так как все интересы отображаются в
+            секции выбора ниже.
+          #}
+          <div id="selected-interests-display" class="d-flex flex-wrap gap-2 mt-2"></div>
           <!-- Скрытые элементы отображения даты рождения, знака зодиака и города для
                поддержки существующей логики редактирования. Их контент и стиль не
                видны пользователю. -->
@@ -479,6 +489,47 @@
           }
         });
       }
+
+      /**
+       * Заполняет контейнер #selected-interests-display плитками из
+       * выбранных интересов.  Этот контейнер отображается в режиме
+       * просмотра профиля под сводкой (возраст, знак, город) и над
+       * разделом «Обо мне».  При отсутствии выбранных интересов
+       * контейнер скрывается.
+       */
+      function updateSelectedInterestsDisplay() {
+        var displayContainer = document.getElementById('selected-interests-display');
+        var chipsContainer = document.getElementById('interests-container');
+        if (!displayContainer || !chipsContainer) {
+          return;
+        }
+        // Очищаем содержимое перед заполнением
+        displayContainer.innerHTML = '';
+        var selectedChips = chipsContainer.querySelectorAll('.interest-chip.selected');
+        selectedChips.forEach(function(chip) {
+          var clone = document.createElement('span');
+          // Используем те же классы, что и у исходного чипа, чтобы
+          // сохранить стили.  Класс selected нужен для серого фона.
+          clone.className = 'interest-chip selected';
+          // Клонируем иконку
+          var icon = chip.querySelector('i');
+          if (icon) {
+            clone.appendChild(icon.cloneNode(true));
+          }
+          // Добавляем текстовую часть.  trim() нужен, чтобы убрать
+          // лишние пробелы и переносы
+          var labelText = chip.textContent.trim();
+          clone.appendChild(document.createTextNode(labelText));
+          displayContainer.appendChild(clone);
+        });
+        // Показываем или скрываем контейнер в зависимости от наличия
+        // выбранных интересов
+        if (selectedChips.length > 0) {
+          displayContainer.style.display = '';
+        } else {
+          displayContainer.style.display = 'none';
+        }
+      }
       // После загрузки страницы создаём плитки с интересами, перемешиваем
       // их в случайном порядке и ограничиваем выбор пяти пунктами. Это
       // выполняется в отдельной самовызывающейся функции, чтобы не
@@ -592,10 +643,19 @@
               }
             }
             updateHidden();
+            // After toggling selection, refresh the displayed list of
+            // selected interests in view mode
+            if (typeof updateSelectedInterestsDisplay === 'function') {
+              updateSelectedInterestsDisplay();
+            }
           });
           container.appendChild(chip);
         });
         updateHidden();
+        // Update the read-only display of selected interests
+        if (typeof updateSelectedInterestsDisplay === 'function') {
+          updateSelectedInterestsDisplay();
+        }
         // After creating chips, hide unselected ones when not editing
         toggleInterestChips(false);
       })();
@@ -694,6 +754,10 @@
         // При выходе из режима редактирования скрываем невыбранные плитки интересов
         if (typeof toggleInterestChips === 'function') {
           toggleInterestChips(false);
+        }
+        // Обновляем отображение выбранных интересов в блоке
+        if (typeof updateSelectedInterestsDisplay === 'function') {
+          updateSelectedInterestsDisplay();
         }
       }
 
