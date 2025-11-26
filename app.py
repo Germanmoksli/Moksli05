@@ -7747,7 +7747,7 @@ def new_room_step2():
     back_url = url_for('new_room_step1')
     # As step 2 is currently the final step, we send the user back to
     # the rooms list upon completion. This can be updated when new steps are added.
-    next_url: typing.Optional[str] = url_for('rooms')
+    next_url: typing.Optional[str] = url_for('list_rooms')
     return render_template('new_room_step2.html', property_type=property_type, progress=progress, back_url=back_url, next_url=next_url, hide_nav=True)
 
 # Endpoint to cancel the current listing creation wizard. Clears any stored
@@ -7759,7 +7759,7 @@ def cancel_new_room():
     # Remove any wizard-related session variables
     session.pop('new_listing_property_type', None)
     flash('Создание объявления отменено.', 'info')
-    return redirect(url_for('rooms'))
+    return redirect(url_for('list_rooms'))
 
 
 # Endpoint to save the current state of the new listing as a draft. Only
@@ -7794,7 +7794,7 @@ def save_new_room_draft():
         flash('Черновик объявления сохранён.', 'success')
     except Exception:
         flash('Не удалось сохранить черновик.', 'danger')
-    return redirect(url_for('rooms'))
+    return redirect(url_for('list_rooms'))
 
 
 # Create the draft_listings table if it does not exist. This function is
