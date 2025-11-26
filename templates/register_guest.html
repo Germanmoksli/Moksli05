@@ -32,12 +32,74 @@
           <input type="password" class="form-control" id="password" name="password"
                  pattern="(?=.*[0-9!@#$%^&*]).{8,}" minlength="8" required>
           <div class="invalid-feedback">Пароль должен содержать не менее 8 символов, включая цифру или специальный символ.</div>
+          <!-- Дополнительные подсказки для динамической проверки пароля -->
+          <small id="guestPasswordHelp" class="form-text text-danger" style="display: none;">
+            Пароль должен содержать не менее 8 символов, включая цифру или специальный символ.
+          </small>
+          <div id="guestPasswordSuccess" class="mt-1 d-flex align-items-center" style="display: none;">
+            <span class="d-inline-flex align-items-center justify-content-center"
+                  style="width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--bs-success); background-color: #fff;">
+              <i class="bi bi-check-lg text-success"></i>
+            </span>
+            <span class="ms-2 text-success">Это безопасный пароль</span>
+          </div>
         </div>
         <div class="d-flex justify-content-center gap-2 mt-2">
-          <!-- Кнопка регистрации оставлена. Ссылка на страницу входа убрана, чтобы страница регистрации не содержала переход на вход. -->
-          <button type="submit" class="btn btn-primary">Зарегистрироваться</button>
+          <!-- Кнопка регистрации остаётся, но будет заблокирована до выполнения правил пароля -->
+          <button type="submit" class="btn btn-secondary" id="guest-register-btn" disabled>Зарегистрироваться</button>
         </div>
       </form>
     </div>
   </div>
+  <!-- Скрипт для динамической проверки пароля и управления состоянием кнопки -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const passwordInput = document.getElementById('password');
+      const passwordHelp = document.getElementById('guestPasswordHelp');
+      const passwordSuccess = document.getElementById('guestPasswordSuccess');
+      const registerBtn = document.getElementById('guest-register-btn');
+
+      /**
+       * Проверка пароля для гостя: длина не менее 8 символов
+       * и наличие хотя бы одной цифры или специального символа из набора !@#$%^&*.
+       * В зависимости от результата подсвечивает поле, показывает подсказку
+       * или успешное сообщение и управляет состоянием кнопки регистрации.
+       */
+      function checkGuestPassword() {
+        const pw = passwordInput ? passwordInput.value : '';
+        const hasLength = pw.length >= 8;
+        const hasDigitOrSpecial = /[0-9!@#$%^&*]/.test(pw);
+        const valid = hasLength && hasDigitOrSpecial;
+        if (passwordInput) {
+          if (valid) {
+            passwordInput.classList.add('is-valid');
+            passwordInput.classList.remove('is-invalid');
+            if (passwordHelp) passwordHelp.style.display = 'none';
+            if (passwordSuccess) passwordSuccess.style.display = 'flex';
+            // Активируем кнопку и окрашиваем её в наш основной цвет
+            registerBtn.disabled = false;
+            registerBtn.classList.remove('btn-secondary');
+            registerBtn.classList.add('btn-primary');
+          } else {
+            passwordInput.classList.add('is-invalid');
+            passwordInput.classList.remove('is-valid');
+            if (passwordHelp) passwordHelp.style.display = 'block';
+            if (passwordSuccess) passwordSuccess.style.display = 'none';
+            // Блокируем кнопку и делаем её серой
+            registerBtn.disabled = true;
+            registerBtn.classList.remove('btn-primary');
+            registerBtn.classList.add('btn-secondary');
+          }
+        }
+      }
+
+      // Запускаем проверку при вводе пароля
+      if (passwordInput) {
+        passwordInput.addEventListener('input', checkGuestPassword);
+      }
+
+      // Выполняем начальную проверку для правильного состояния кнопки
+      checkGuestPassword();
+    });
+  </script>
 {% endblock %}

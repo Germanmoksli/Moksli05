@@ -43,12 +43,21 @@
       <div class="mb-3">
         <label for="password" class="form-label">Пароль</label>
         <!-- Задаём шаблон для пароля: минимум 8 символов и хотя бы одна цифра или
-             специальный символ из набора !@#$%^&*. Также добавляем minlength
-             для явной проверки длины на уровне браузера. -->
-        <input type="password" class="form-control"
-               id="password" name="password"
+             специальный символ из набора !@#$%^&*. -->
+        <input type="password" class="form-control" id="password" name="password"
                pattern="(?=.*[0-9!@#$%^&*]).{8,}" minlength="8" required>
         <div class="invalid-feedback">Пароль должен содержать не менее 8 символов, включая цифру или специальный символ.</div>
+        <!-- Дополнительные подсказки для динамической проверки -->
+        <small id="passwordHelp" class="form-text text-danger" style="display: none;">
+          Пароль должен содержать не менее 8 символов, включая цифру или специальный символ.
+        </small>
+        <div id="passwordSuccess" class="mt-1 d-flex align-items-center" style="display: none;">
+          <span class="d-inline-flex align-items-center justify-content-center"
+                style="width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--bs-success); background-color: #fff;">
+            <i class="bi bi-check-lg text-success"></i>
+          </span>
+          <span class="ms-2 text-success">Это безопасный пароль</span>
+        </div>
       </div>
       <!-- Блок ввода кода подтверждения; скрыт до отправки кода -->
         <div class="mb-3" id="code-group" style="display: none;">
@@ -73,13 +82,49 @@
       const emailInput = document.getElementById('email');
       const codeGroup = document.getElementById('code-group');
       const registerBtn = document.getElementById('register-btn');
+      const passwordInput = document.getElementById('password');
+      const passwordHelp = document.getElementById('passwordHelp');
+      const passwordSuccess = document.getElementById('passwordSuccess');
+
+      // Проверка пароля на соответствие требованиям
+      function checkPassword() {
+        const pw = passwordInput ? passwordInput.value : '';
+        const valid = pw.length >= 8 && /[0-9!@#$%^&*]/.test(pw);
+        if (valid) {
+          passwordInput.classList.add('is-valid');
+          passwordInput.classList.remove('is-invalid');
+          if (passwordHelp) passwordHelp.style.display = 'none';
+          if (passwordSuccess) passwordSuccess.style.display = 'flex';
+          // Если кнопка отображается, делаем её активной и синией
+          if (registerBtn.style.display !== 'none') {
+            registerBtn.disabled = false;
+            registerBtn.classList.remove('btn-secondary');
+            registerBtn.classList.add('btn-primary');
+          }
+        } else {
+          passwordInput.classList.add('is-invalid');
+          passwordInput.classList.remove('is-valid');
+          if (passwordHelp) passwordHelp.style.display = 'block';
+          if (passwordSuccess) passwordSuccess.style.display = 'none';
+          // Если кнопка отображается, блокируем её и делаем серой
+          if (registerBtn.style.display !== 'none') {
+            registerBtn.disabled = true;
+            registerBtn.classList.remove('btn-primary');
+            registerBtn.classList.add('btn-secondary');
+          }
+        }
+      }
+
+      if (passwordInput) {
+        passwordInput.addEventListener('input', checkPassword);
+      }
+
       sendBtn.addEventListener('click', function () {
         const email = emailInput.value.trim();
         if (!email) {
           alert('Введите e‑mail.');
           return;
         }
-        // Build the verification endpoint separately to avoid nested quotes.
         const verifyUrl = "{{ url_for('send_verification_code') }}";
         fetch(verifyUrl, {
           method: 'POST',
@@ -103,6 +148,11 @@
             alert('Код отправлен на ваш e‑mail.');
             codeGroup.style.display = '';
             registerBtn.style.display = '';
+            // По умолчанию блокируем кнопку и выполняем проверку пароля
+            registerBtn.disabled = true;
+            registerBtn.classList.remove('btn-primary');
+            registerBtn.classList.add('btn-secondary');
+            checkPassword();
           } else {
             alert(data.message || 'Не удалось отправить код.');
           }
