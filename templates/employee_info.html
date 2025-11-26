@@ -5,13 +5,16 @@
   <div class="mx-auto" style="max-width: 600px;">
     <h2 class="text-primary fw-bold fs-4 mb-4">Профиль сотрудника</h2>
     <div class="d-flex align-items-start mb-3">
-      <!-- Display a coloured placeholder with the first letter of the user's name.
-           Profile photos are no longer supported in the application. -->
+      <!-- Display avatar; fall back to a coloured placeholder with the first letter -->
       <div class="me-3 text-center">
-        {% set _emp_name = user.name if user.name else user.username %}
-        <div class="avatar-placeholder d-flex align-items-center justify-content-center" style="width: 150px; height: 150px; border-radius: 50%; font-size: 4rem;">
-          {{ _emp_name[0]|upper }}
-        </div>
+        {% if user.photo %}
+          <img src="{{ url_for('static', filename=user.photo) }}" class="rounded-circle" style="width: 150px; height: 150px; object-fit: cover;" alt="Аватар">
+        {% else %}
+          {% set _emp_name = user.name if user.name else user.username %}
+          <div class="avatar-placeholder d-flex align-items-center justify-content-center" style="width: 150px; height: 150px; border-radius: 50%; font-size: 4rem;">
+            {{ _emp_name[0]|upper }}
+          </div>
+        {% endif %}
       </div>
       <div class="flex-grow-1">
         <p class="mb-2"><strong>Имя пользователя:</strong> {{ user.username }}</p>

@@ -46,13 +46,20 @@
           {% endif %}
           <div id="msg-{{ msg.id }}" class="d-flex mb-2 {% if msg.user_id == session.get('user_id') %}justify-content-end{% else %}justify-content-start{% endif %}">
             {% if msg.user_id != session.get('user_id') %}
-              {# Always display a coloured placeholder with the first letter of the author's name.
-                 Profile photos are no longer supported. #}
+              {# Показываем фотографию автора сообщения, если она есть.  Если
+                 фотографии нет, отображаем coloured placeholder с первой
+                 буквой имени автора. #}
+              {% if msg.author_photo %}
+              <a href="{{ url_for('employee_profile', user_id=msg.user_id) }}" class="me-2" title="Профиль">
+                <img src="{{ url_for('static', filename=msg.author_photo) }}" class="rounded-circle" alt="" style="width: 40px; height: 40px; object-fit: cover;">
+              </a>
+              {% else %}
               <a href="{{ url_for('employee_profile', user_id=msg.user_id) }}" class="me-2 text-decoration-none" title="Профиль">
                 <div class="avatar-placeholder d-flex align-items-center justify-content-center rounded-circle" style="width: 40px; height: 40px;">
                   {{ msg.author_name[0]|upper }}
                 </div>
               </a>
+              {% endif %}
             {% endif %}
             <div class="d-flex flex-column" style="max-width: 70%;">
               {% if msg.user_id != session.get('user_id') %}

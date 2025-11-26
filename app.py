@@ -1247,30 +1247,28 @@ def inject_current_user():
         ).fetchone()
         conn.close()
         if user:
-            # Determine the appropriate photo path. Prefer the session value if set,
-            # since it updates immediately after an upload. If the session does not
-            # contain a photo, fall back to the path stored in the database. If a
-            # database photo exists and no session value is set, also write it into
-            # the session so subsequent requests preserve the avatar.
-            photo_path = session.get('user_photo')
-            if not photo_path:
-                photo_path = user['photo']
-                if photo_path:
-                    session['user_photo'] = photo_path
-            # Verify that the referenced photo file actually exists on disk.  If the
-            # file is missing (e.g. removed after a deletion), clear the session
-            # cache and treat the user as having no photo.  Without this check the
-            # templates may attempt to apply a missing background-image to the
-            # avatar circle, resulting in an empty coloured circle with no initial.
+            # Determine the path to the user's profile photo.  Prefer any override
+            # stored in the session (e.g. after uploading a new photo) and fall
+            # back to the value stored in the database.  If the file does not
+            # exist on disk, clear the session override and treat as no photo.
+            photo_path = session.get('user_photo') or user['photo']
             if photo_path:
                 try:
-                    file_path_check = os.path.join(app.root_path, 'static', photo_path)
-                    if not os.path.exists(file_path_check):
+                    file_path = os.path.join(app.static_folder, photo_path)
+                    if not os.path.exists(file_path):
+                        # Remove stale session value if present and reset path
+                        try:
+                            session.pop('user_photo', None)
+                        except Exception:
+                            pass
                         photo_path = None
-                        session.pop('user_photo', None)
                 except Exception:
+                    # On any error determining the file path, clear and ignore
+                    try:
+                        session.pop('user_photo', None)
+                    except Exception:
+                        pass
                     photo_path = None
-                    session.pop('user_photo', None)
             return dict(
                 current_username=user['username'],
                 current_user_name=user['name'],
@@ -7041,24 +7039,39 @@ def account():
         else:
             contact = user_row['contact_info'] if user_row else None
 
-        # Handle uploaded photo.  Save the file into ``static/uploads`` and build a
-        # relative path for storage in the database.  When saving, ensure the
-        # directory exists and optionally prefix the filename with a timestamp to
-        # avoid collisions.
-        photo_file = request.files.get('photo')
+        # Handle a newly uploaded profile photo, if provided.  When a user selects
+        # a file via the hidden photo input, it will be present in
+        # ``request.files['photo']``.  Save the file into the ``static/uploads``
+        # directory with a unique name and remember the relative path.  Store
+        # the path in the session so that it is immediately available after
+        # redirecting back to the profile page.  If no file is uploaded, the
+        # existing photo is preserved.
+        photo_file = None
+        try:
+            photo_file = request.files.get('photo')
+        except Exception:
+            photo_file = None
         photo_path: str | None = None
-        if photo_file and photo_file.filename:
+        if photo_file and getattr(photo_file, 'filename', ''):
             filename = secure_filename(photo_file.filename)
-            timestamp = datetime.utcnow().strftime('%Y%m%d%H%M%S')
-            unique_name = f"{timestamp}_{filename}"
-            upload_dir = os.path.join(app.root_path, 'static', 'uploads')
-            os.makedirs(upload_dir, exist_ok=True)
-            file_path = os.path.join(upload_dir, unique_name)
-            try:
-                photo_file.save(file_path)
-                photo_path = f'uploads/{unique_name}'
-            except Exception:
-                photo_path = None
+            if filename:
+                # Prefix the filename with a UUID to reduce the chance of
+                # collisions.  Use hex to avoid invalid characters.
+                unique_name = f"{uuid.uuid4().hex}_{filename}"
+                upload_folder = os.path.join(app.static_folder, 'uploads')
+                try:
+                    os.makedirs(upload_folder, exist_ok=True)
+                except Exception:
+                    pass
+                save_path = os.path.join(upload_folder, unique_name)
+                try:
+                    photo_file.save(save_path)
+                    photo_path = f"uploads/{unique_name}"
+                    # Store the path in the session so templates can show the
+                    # updated avatar immediately without reloading from the DB.
+                    session['user_photo'] = photo_path
+                except Exception:
+                    photo_path = None
 
         # Extract additional profile fields from the form.  Empty strings are
         # converted to None so that NULL is stored instead of an empty string.
@@ -7114,16 +7127,15 @@ def account():
         # explicitly so changes persist.  On any exception, roll back the
         # transaction, close the connection and surface an error message to the user.
         try:
-            # Perform the update.  Insert or update the photo column only when
-            # a new file was uploaded to avoid overwriting the existing path with NULL.
+            # Perform the update.  If a new photo was uploaded, update the
+            # ``photo`` column as well; otherwise leave it unchanged.  Use
+            # separate SQL statements to ensure the parameter order matches
+            # the placeholders.
             if photo_path:
-                # Update with photo and profile_data
                 conn.execute(
-                    'UPDATE users SET name=?, contact_info=?, photo=?, birth_date=?, zodiac_sign=?, city=?, about_me=?, profile_data=? WHERE id=?',
-                    (full_name, contact, photo_path, birth_date, zodiac_sign, city_val, about_me_val, profile_json, user_id)
+                    'UPDATE users SET name=?, contact_info=?, birth_date=?, zodiac_sign=?, city=?, about_me=?, profile_data=?, photo=? WHERE id=?',
+                    (full_name, contact, birth_date, zodiac_sign, city_val, about_me_val, profile_json, photo_path, user_id)
                 )
-                # Immediately update the session so the new avatar is visible without reload
-                session['user_photo'] = photo_path
             else:
                 conn.execute(
                     'UPDATE users SET name=?, contact_info=?, birth_date=?, zodiac_sign=?, city=?, about_me=?, profile_data=? WHERE id=?',
@@ -7301,65 +7313,6 @@ def account():
     )
 
 
-# ---------------------------------------------------------------------------
-# Photo deletion for profile avatars
-#
-# Users can remove their current profile photo.  When this route is
-# invoked, the server clears the ``photo`` column in the ``users`` table
-# for the authenticated user, removes the corresponding file from disk
-# (if it exists) and clears the ``session['user_photo']`` value so that
-# future requests render the placeholder avatar.  After deletion the user
-# is redirected back to the account page with a flash message.
-
-@app.route('/delete_photo')
-def delete_photo():
-    """Delete the current user's profile photo and redirect back to /account.
-
-    Requires that the user is logged in.  If no photo exists, a message
-    is flashed and no changes are made.  This route uses a GET request
-    intentionally to simplify invocation from a hyperlink without requiring
-    a form.  In a production application, consider using POST/DELETE with
-    CSRF protection.
-    """
-    # Ensure the user is authenticated
-    if not session.get('user_id'):
-        return redirect(url_for('login'))
-    user_id = session['user_id']
-    conn = get_db_connection()
-    ensure_photo_column(conn)
-    try:
-        user_row = conn.execute('SELECT photo FROM users WHERE id = ?', (user_id,)).fetchone()
-    except Exception:
-        user_row = None
-    if user_row and user_row['photo']:
-        photo_path = user_row['photo']
-        # Attempt to remove the file from the static/uploads directory.  The
-        # photo path stored in the database is relative to the ``static``
-        # folder (e.g. ``uploads/<filename>``).  Construct the absolute
-        # filesystem path and remove it if it exists.
-        try:
-            file_path = os.path.join(app.root_path, 'static', photo_path)
-            if os.path.exists(file_path):
-                os.remove(file_path)
-        except Exception:
-            pass
-        # Clear the photo from the database
-        try:
-            conn.execute('UPDATE users SET photo = NULL WHERE id = ?', (user_id,))
-            conn.commit()
-        except Exception:
-            try:
-                conn.rollback()
-            except Exception:
-                pass
-        conn.close()
-        # Remove the cached value from the session so the placeholder is used
-        session.pop('user_photo', None)
-        flash('Фотография профиля удалена.')
-    else:
-        conn.close()
-        flash('Фотография профиля отсутствует.')
-    return redirect(url_for('account'))
 
 
 # ---------------------------------------------------------------------------
