@@ -1,20 +1,12 @@
 {% extends "base.html" %}
 {% block title %}Вход{% endblock %}
 {% block content %}
-  <!-- Центрируем форму авторизации как по горизонтали, так и по вертикали. Используем flex‑контейнер
-       с минимальной высотой, равной высоте окна, чтобы разместить форму в самом центре. -->
+  <!-- Центрируем форму авторизации по центру экрана.  Верхнее меню скрывается через hide_nav -->
   <div class="d-flex align-items-center justify-content-center min-vh-100">
     <div style="max-width: 400px; width: 100%;">
-      <!-- Показываем фирменный логотип вместо текстового названия -->
+      <!-- Логотип в верхней части формы -->
       <div class="mb-4 text-center">
-        <img src="{{ url_for('static', filename='uploads/logo.png') }}" alt="Moksli logo" height="60">
-      </div>
-      <!-- Социальная авторизация. Предлагаем альтернативный способ входа через Google. -->
-      <div class="mb-3">
-        <p class="text-center mb-2">Или войдите через социальную сеть</p>
-        <a href="{{ url_for('login_google') }}" class="btn btn-outline-danger w-100 mb-2">
-          <i class="bi bi-google me-1"></i> Google
-        </a>
+        <img src="{{ url_for('static', filename='uploads/logo_moksli.png') }}" alt="Moksli logo" height="80">
       </div>
       <form method="post" class="needs-validation" novalidate>
         <div class="mb-3">
@@ -22,14 +14,14 @@
           <input type="email" class="form-control" id="email" name="email" required>
           <div class="invalid-feedback">Введите e‑mail.</div>
         </div>
-        <div class="mb-3">
+        <div class="mb-4">
           <label for="password" class="form-label">Пароль</label>
           <input type="password" class="form-control" id="password" name="password" required>
           <div class="invalid-feedback">Введите пароль.</div>
         </div>
-        <!-- Кнопка регистрации удалена; форма предназначена только для входа. -->
-        <div class="d-flex justify-content-center align-items-center gap-2 mt-2">
+        <div class="d-grid gap-2">
           <button type="submit" class="btn btn-primary">Войти</button>
+          <a href="#" class="btn btn-link p-0 text-decoration-none">Забыли пароль?</a>
         </div>
       </form>
     </div>
