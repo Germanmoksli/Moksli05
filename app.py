@@ -3160,37 +3160,56 @@ def add_guest():
 @login_required
 @roles_required('owner')
 def list_rooms():
-    # Ensure the draft table exists before querying it
-    ensure_draft_table()
     user_id = session.get('user_id')
     conn = get_db_connection()
+    # Ensure the draft_listings table exists within the same connection.  This
+    # avoids race conditions across different connections where a newly
+    # created table may not yet be visible.
+    try:
+        conn.execute(
+            'CREATE TABLE IF NOT EXISTS draft_listings ('
+            'id INTEGER PRIMARY KEY AUTOINCREMENT, '
+            'user_id INTEGER NOT NULL, '
+            'data TEXT, '
+            'created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
+            ')'  
+        )
+        conn.commit()
+    except Exception:
+        # If creation fails (e.g. due to missing permissions), ignore and
+        # proceed.  Subsequent SELECT will handle missing table gracefully.
+        pass
     # Fetch published rooms owned by the current user
     rooms = conn.execute(
         "SELECT * FROM rooms WHERE owner_id = ? ORDER BY id",
         (user_id,)
     ).fetchall()
-    # Fetch draft listings for the current user
-    drafts_raw = conn.execute(
-        "SELECT id, data FROM draft_listings WHERE user_id = ? ORDER BY created_at DESC",
-        (user_id,)
-    ).fetchall()
-    conn.close()
-    # Parse draft data into a list of dicts with a human‑friendly title
+    # Attempt to fetch draft listings; if the table doesn't exist or query
+    # fails, simply treat as no drafts
     drafts: list[dict] = []
     import json
-    for dr in drafts_raw:
-        try:
-            payload = json.loads(dr[1]) if dr[1] else {}
-        except Exception:
-            payload = {}
-        prop_type = payload.get('property_type')
-        if prop_type == 'flat':
-            title = 'Квартира'
-        elif prop_type == 'house':
-            title = 'Дом'
-        else:
-            title = 'Объявление'
-        drafts.append({'id': dr[0], 'property_type': prop_type, 'title': title})
+    try:
+        drafts_raw = conn.execute(
+            "SELECT id, data FROM draft_listings WHERE user_id = ? ORDER BY created_at DESC",
+            (user_id,),
+        ).fetchall()
+        for dr in drafts_raw:
+            try:
+                payload = json.loads(dr[1]) if dr[1] else {}
+            except Exception:
+                payload = {}
+            prop_type = payload.get('property_type')
+            if prop_type == 'flat':
+                title = 'Квартира'
+            elif prop_type == 'house':
+                title = 'Дом'
+            else:
+                title = 'Объявление'
+            drafts.append({'id': dr[0], 'property_type': prop_type, 'title': title})
+    except Exception:
+        # If querying drafts fails (e.g. table not found), leave drafts empty
+        drafts = []
+    conn.close()
     return render_template("rooms.html", rooms=rooms, drafts=drafts)
 
 
