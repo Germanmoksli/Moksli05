@@ -11,7 +11,7 @@
       <form method="post">
         <input type="hidden" name="property_type" value="flat">
         <button type="submit" class="w-100 border-0 bg-transparent p-0">
-          <div class="card text-center h-100 shadow-sm selectable-card">
+          <div class="card text-center h-100 shadow-sm selectable-card {% if selected_type == 'flat' %}border-primary border-2{% endif %}">
             <div class="card-body py-4">
               <i class="bi bi-building fs-1 text-primary"></i>
               <h5 class="card-title mt-3 fw-bold">Квартира</h5>
@@ -26,7 +26,7 @@
       <form method="post">
         <input type="hidden" name="property_type" value="house">
         <button type="submit" class="w-100 border-0 bg-transparent p-0">
-          <div class="card text-center h-100 shadow-sm selectable-card">
+          <div class="card text-center h-100 shadow-sm selectable-card {% if selected_type == 'house' %}border-primary border-2{% endif %}">
             <div class="card-body py-4">
               <i class="bi bi-house fs-1 text-primary"></i>
               <h5 class="card-title mt-3 fw-bold">Дом</h5>
@@ -36,6 +36,22 @@
         </button>
       </form>
     </div>
+  </div>
+  <!-- Progress and navigation -->
+  <div class="d-flex align-items-center justify-content-between mt-4">
+    {% if back_url %}
+      <a href="{{ back_url }}" class="btn btn-link">Назад</a>
+    {% else %}
+      <span class="btn btn-link invisible">Назад</span>
+    {% endif %}
+    <div class="progress flex-grow-1 mx-3" style="height: 6px;">
+      <div class="progress-bar bg-primary" role="progressbar" style="width: {{ progress }}%;" aria-valuenow="{{ progress }}" aria-valuemin="0" aria-valuemax="100"></div>
+    </div>
+    {% if next_url %}
+      <a href="{{ next_url }}" class="btn btn-primary">Далее</a>
+    {% else %}
+      <span class="btn btn-primary disabled">Далее</span>
+    {% endif %}
   </div>
 </div>
 {% endblock %}

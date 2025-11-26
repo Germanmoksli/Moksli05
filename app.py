@@ -7719,7 +7719,16 @@ def new_room_step1():
             return redirect(url_for('new_room_step1'))
         session['new_listing_property_type'] = property_type
         return redirect(url_for('new_room_step2'))
-    return render_template('new_room_step1.html')
+    # Determine selected property type from session for highlighting cards
+    selected_type = session.get('new_listing_property_type')
+    # Set progress (out of 100) for step 1. Assume 2 steps for now.
+    progress = 50
+    # In the first step there is no previous page in the wizard, but we use
+    # None to indicate the back button should be hidden.
+    back_url: typing.Optional[str] = None
+    # Next step goes to step 2
+    next_url = url_for('new_room_step2')
+    return render_template('new_room_step1.html', selected_type=selected_type, progress=progress, back_url=back_url, next_url=next_url)
 
 @app.route("/rooms/new/step2", methods=["GET", "POST"])
 @login_required
@@ -7732,7 +7741,14 @@ def new_room_step2():
     about the listing.
     """
     property_type = session.get('new_listing_property_type')
-    return render_template('new_room_step2.html', property_type=property_type)
+    # Progress for step 2 of 2: 100%
+    progress = 100
+    # Back goes to step 1 to review selection
+    back_url = url_for('new_room_step1')
+    # As step 2 is currently the final step, we send the user back to
+    # the rooms list upon completion. This can be updated when new steps are added.
+    next_url: typing.Optional[str] = url_for('rooms')
+    return render_template('new_room_step2.html', property_type=property_type, progress=progress, back_url=back_url, next_url=next_url)
 
 
 

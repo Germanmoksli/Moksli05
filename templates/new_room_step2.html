@@ -21,5 +21,21 @@
     <p>Тип жилья не выбран. Пожалуйста, начните процесс создания объявления заново.</p>
     <a href="{{ url_for('new_room_step1') }}" class="btn btn-primary mt-3">Вернуться к выбору</a>
   {% endif %}
+  <!-- Progress and navigation bar -->
+  <div class="d-flex align-items-center justify-content-between mt-4">
+    {% if back_url %}
+      <a href="{{ back_url }}" class="btn btn-link">Назад</a>
+    {% else %}
+      <span class="btn btn-link invisible">Назад</span>
+    {% endif %}
+    <div class="progress flex-grow-1 mx-3" style="height: 6px;">
+      <div class="progress-bar bg-primary" role="progressbar" style="width: {{ progress }}%;" aria-valuenow="{{ progress }}" aria-valuemin="0" aria-valuemax="100"></div>
+    </div>
+    {% if next_url %}
+      <a href="{{ next_url }}" class="btn btn-primary">Далее</a>
+    {% else %}
+      <span class="btn btn-primary disabled">Далее</span>
+    {% endif %}
+  </div>
 </div>
 {% endblock %}
