@@ -1475,9 +1475,18 @@ def register():
         # Create the user and add them to the global chat
         with conn:
             cur = conn.cursor()
+            # Ensure the users table has a photo column so that we can explicitly
+            # set the value to NULL for new accounts.  Without this, some
+            # deployments may default the photo column to a placeholder filename.
+            try:
+                ensure_photo_column(conn)
+            except Exception:
+                pass
+            # Explicitly set the photo column to NULL so that no default avatar
+            # filename is stored for new users.
             cur.execute(
-                'INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)',
-                (email, password_hash, final_role)
+                'INSERT INTO users (username, password_hash, role, photo) VALUES (?, ?, ?, ?)',
+                (email, password_hash, final_role, None)
             )
             new_user_id = cur.lastrowid
             # Ensure chat rooms and membership tables exist
@@ -6500,6 +6509,18 @@ def chat(room_id: int):
     message_list = []
     for row in rows:
         msg = dict(row)
+        # Sanitize the author photo: if the file referenced in the database does not
+        # exist on disk, treat it as missing so that the UI falls back to an
+        # initial placeholder instead of showing a broken image or default avatar.
+        try:
+            photo_val = msg.get('author_photo')
+            if photo_val:
+                file_path = os.path.join(app.static_folder, photo_val)
+                if not os.path.exists(file_path):
+                    msg['author_photo'] = None
+        except Exception:
+            # On any error, simply clear the author_photo key
+            msg['author_photo'] = None
         msg['show_ticks'] = (current_user_id is not None and msg['user_id'] == current_user_id)
         msg['read_by_all'] = False
         try:
