@@ -1391,6 +1391,11 @@ def require_login():
         'static',
         # Permit sending verification codes during registration without a session
         'send_verification_code',
+        # Allow password reset endpoints without login
+        'forgot_password',
+        'send_reset_password_code',
+        'verify_reset_password_code',
+        'reset_password',
         # Allow public access to the listings page so guests can browse
         'public_listings',
         'index',
