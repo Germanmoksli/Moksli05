@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Новое объявление – Шаг 2{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <h2 class="mb-4 text-primary fw-bold fs-4">Шаг 2: Детали объявления</h2>
+  {% if property_type %}
+    <p>Вы выбрали:
+      {% if property_type == 'flat' %}
+        квартиру.
+      {% elif property_type == 'house' %}
+        дом.
+      {% else %}
+        {{ property_type }}.
+      {% endif %}
+      На следующем шаге будет возможность добавить подробную информацию о вашем жилье.
+    </p>
+    <p class="mt-4">Этот шаг ещё не реализован. Здесь появится форма для заполнения характеристик объекта.</p>
+  {% else %}
+    <p>Тип жилья не выбран. Пожалуйста, начните процесс создания объявления заново.</p>
+    <a href="{{ url_for('new_room_step1') }}" class="btn btn-primary mt-3">Вернуться к выбору</a>
+  {% endif %}
+</div>
+{% endblock %}

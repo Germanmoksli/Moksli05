@@ -7694,6 +7694,46 @@ def user_bookings():
     conn.close()
     return render_template('user_bookings.html', bookings=bookings)
 
+# ----------------------------------------------------------------------------
+# New listing creation workflow
+# Owners now create listings via a multi‑step wizard. The first step asks for
+# the type of property being listed (e.g. flat or house). Subsequent steps
+# will collect detailed information. This approach replaces the legacy form
+# used at `/rooms/add` and is accessed via `/rooms/new`.
+
+@app.route("/rooms/new", methods=["GET", "POST"])
+@login_required
+@roles_required('owner')
+def new_room_step1():
+    """Step 1 of the new listing wizard.
+
+    Presents the owner with a choice between "flat" (квартира) and "house"
+    (дом). When a selection is made, it is stored in the session and the
+    owner is redirected to the next step. Invalid selections reload the
+    page with a flash message.
+    """
+    if request.method == "POST":
+        property_type = request.form.get("property_type")
+        if property_type not in {"flat", "house"}:
+            flash("Пожалуйста, выберите тип жилья из предложенных вариантов.", "warning")
+            return redirect(url_for('new_room_step1'))
+        session['new_listing_property_type'] = property_type
+        return redirect(url_for('new_room_step2'))
+    return render_template('new_room_step1.html')
+
+@app.route("/rooms/new/step2", methods=["GET", "POST"])
+@login_required
+@roles_required('owner')
+def new_room_step2():
+    """Step 2 of the new listing wizard (placeholder).
+
+    Displays the selected property type from step 1. This template will
+    eventually contain additional fields to collect detailed information
+    about the listing.
+    """
+    property_type = session.get('new_listing_property_type')
+    return render_template('new_room_step2.html', property_type=property_type)
+
 
 
 if __name__ == "__main__":

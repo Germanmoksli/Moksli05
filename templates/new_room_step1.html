@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %}Новое объявление – Шаг 1{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <h2 class="mb-4 text-primary fw-bold fs-4">Шаг 1: Выберите тип жилья</h2>
+  <div class="row g-4">
+    <!-- Option for a flat/apartment -->
+    <div class="col-12 col-md-6">
+      <form method="post">
+        <input type="hidden" name="property_type" value="flat">
+        <button type="submit" class="w-100 border-0 bg-transparent p-0">
+          <div class="card text-center h-100 shadow-sm selectable-card">
+            <div class="card-body py-4">
+              <i class="bi bi-building fs-1 text-primary"></i>
+              <h5 class="card-title mt-3 fw-bold">Квартира</h5>
+              <p class="card-text">Жильё в многоквартирном доме</p>
+            </div>
+          </div>
+        </button>
+      </form>
+    </div>
+    <!-- Option for a house -->
+    <div class="col-12 col-md-6">
+      <form method="post">
+        <input type="hidden" name="property_type" value="house">
+        <button type="submit" class="w-100 border-0 bg-transparent p-0">
+          <div class="card text-center h-100 shadow-sm selectable-card">
+            <div class="card-body py-4">
+              <i class="bi bi-house fs-1 text-primary"></i>
+              <h5 class="card-title mt-3 fw-bold">Дом</h5>
+              <p class="card-text">Отдельно стоящий жилой дом</p>
+            </div>
+          </div>
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
