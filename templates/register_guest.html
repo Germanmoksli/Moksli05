@@ -89,7 +89,9 @@
           return;
         }
         if (valid) {
-          passwordInput.classList.add('is-valid');
+          // Не применяем классы 'is-valid'/'is-invalid', чтобы убрать
+          // иконки в поле. Показываем только текстовые сообщения и
+          // управляем кнопкой.
           passwordInput.classList.remove('is-invalid');
           if (passwordError) passwordError.style.display = 'none';
           if (passwordHelp) passwordHelp.style.display = 'none';
@@ -100,7 +102,9 @@
             registerBtn.classList.add('btn-primary');
           }
         } else {
-          passwordInput.classList.add('is-invalid');
+          // Не добавляем классы для валидации, чтобы не показывать
+          // иконку красного восклицания. Показываем текстовые подсказки
+          // и блокируем кнопку.
           passwordInput.classList.remove('is-valid');
           if (passwordError) passwordError.style.display = 'block';
           if (passwordHelp) passwordHelp.style.display = 'block';
