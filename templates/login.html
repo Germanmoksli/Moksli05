@@ -26,8 +26,24 @@
         </div>
         <div class="mb-4">
           <label for="password" class="form-label">Пароль</label>
-          <input type="password" class="form-control" id="password" name="password" required>
-          <div class="invalid-feedback">Введите пароль.</div>
+          <!-- Оборачиваем поле пароля в позиционирующий контейнер, чтобы разместить
+               кнопку-переключатель в правой части ввода. Класс pe-5 добавляет
+               правый внутренний отступ, чтобы текст не перекрывался с иконкой. -->
+          <div class="position-relative">
+            <input type="password" class="form-control pe-5" id="password" name="password" required>
+            <!-- Кнопка для показа/скрытия пароля. Используем bg-transparent и border-0,
+                 чтобы она выглядела как иконка без фона и границ. Располагаем
+                 её по правому краю и центрируем по вертикали с помощью utilities
+                 top-50 и translate-middle-y. -->
+            <button type="button" class="position-absolute top-50 end-0 translate-middle-y me-2 p-0 border-0 bg-transparent"
+                    id="togglePassword" aria-label="Показать/скрыть пароль" tabindex="-1">
+              <!-- Иконка глаза. По умолчанию показываем закрытый глаз (пароль скрыт).
+                   Класс text-primary окрашивает иконку в фирменный синий цвет, который
+                   определяется в переменных темы. -->
+              <i id="togglePasswordIcon" class="bi bi-eye-slash text-primary"></i>
+            </button>
+            <div class="invalid-feedback">Введите пароль.</div>
+          </div>
         </div>
         <div class="d-grid gap-2">
           <button type="submit" class="btn btn-primary">Войти</button>
@@ -36,4 +52,25 @@
       </form>
     </div>
   </div>
+  <!-- Скрипт для переключения видимости пароля. По клику на иконку глаза
+       тип поля меняется с "password" на "text" и обратно, а сама иконка
+       переключается между закрытым и открытым глазом. Оборачиваем
+       обработчик в DOMContentLoaded, чтобы элементы существовали на момент
+       назначения событий. -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      var passwordInput = document.getElementById('password');
+      var toggleBtn = document.getElementById('togglePassword');
+      var toggleIcon = document.getElementById('togglePasswordIcon');
+      if (toggleBtn && passwordInput) {
+        toggleBtn.addEventListener('click', function () {
+          var isPassword = passwordInput.getAttribute('type') === 'password';
+          passwordInput.setAttribute('type', isPassword ? 'text' : 'password');
+          // Переключаем класс иконки между bi-eye и bi-eye-slash
+          toggleIcon.classList.toggle('bi-eye');
+          toggleIcon.classList.toggle('bi-eye-slash');
+        });
+      }
+    });
+  </script>
 {% endblock %}
