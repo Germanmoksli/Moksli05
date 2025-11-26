@@ -39,13 +39,15 @@
 
 /* Upload photo button positioned below the avatar */
 .upload-photo-button {
+  /* Position the upload button so that it overlaps the bottom of the avatar. */
   position: absolute;
   left: 50%;
   top: 100%;
   transform: translate(-50%, -50%);
   white-space: nowrap;
-  padding: 6px 12px;
-  font-size: 0.8rem;
+  /* Increase padding and font size to match the design shown in the mockup. */
+  padding: 8px 20px;
+  font-size: 1rem;
 }
 
 /* Profile item styling: card-like links with icons */
