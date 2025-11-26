@@ -534,6 +534,13 @@ def reset_password():
     if session.get('password_reset_code') != code or session.get('password_reset_email') != email:
         flash('Неверный код подтверждения.')
         return redirect(url_for('forgot_password'))
+    # Validate password complexity: at least 8 characters and at least one digit or
+    # special character (!@#$%^&*). If requirements are not met, inform
+    # the user and redirect back to the reset page. This server‑side check
+    # supplements the client‑side pattern defined in the HTML form.
+    if len(new_password) < 8 or not re.search(r"[0-9!@#$%^&*]", new_password):
+        flash('Пароль должен содержать не менее 8 символов и включать цифру или специальный символ.')
+        return redirect(url_for('forgot_password'))
     # Update password in database
     conn = get_db_connection()
     hashed_pw = generate_password_hash(new_password)
@@ -1637,6 +1644,16 @@ def register():
             flash('Неверный код подтверждения.')
             conn.close()
             return redirect(url_for('register'))
+        # Check password complexity: must be at least 8 characters and contain
+        # at least one digit or special character from the set !@#$%^&*. If
+        # the password does not meet these requirements, inform the user and
+        # prompt them to try again. This check complements the client‑side
+        # validation in the registration form.
+        if len(password) < 8 or not re.search(r"[0-9!@#$%^&*]", password):
+            flash('Пароль должен содержать не менее 8 символов и включать цифру или специальный символ.')
+            conn.close()
+            return redirect(url_for('register'))
+
         # Check if email exists in users or pending requests
         # Use the correct SQLite placeholder.  The psycopg2 wrapper will
         # translate '?' into '%s' on PostgreSQL.  The previous version
@@ -1720,6 +1737,12 @@ def register_guest():
         password = (request.form.get('password') or '').strip()
         if not name or not email or not password:
             flash('Введите имя, e‑mail и пароль.')
+            return redirect(url_for('register_guest'))
+        # Validate password complexity: minimum 8 characters and at least one digit or
+        # special character (!@#$%^&*). This mirrors the client‑side pattern and
+        # prevents weak passwords from being saved server‑side.
+        if len(password) < 8 or not re.search(r"[0-9!@#$%^&*]", password):
+            flash('Пароль должен содержать не менее 8 символов и включать цифру или специальный символ.')
             return redirect(url_for('register_guest'))
         conn = get_db_connection()
         # Check if user already exists

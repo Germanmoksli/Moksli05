@@ -42,8 +42,13 @@
       </div>
       <div class="mb-3">
         <label for="password" class="form-label">Пароль</label>
-        <input type="password" class="form-control" id="password" name="password" required>
-        <div class="invalid-feedback">Введите пароль.</div>
+        <!-- Задаём шаблон для пароля: минимум 8 символов и хотя бы одна цифра или
+             специальный символ из набора !@#$%^&*. Также добавляем minlength
+             для явной проверки длины на уровне браузера. -->
+        <input type="password" class="form-control"
+               id="password" name="password"
+               pattern="(?=.*[0-9!@#$%^&*]).{8,}" minlength="8" required>
+        <div class="invalid-feedback">Пароль должен содержать не менее 8 символов, включая цифру или специальный символ.</div>
       </div>
       <!-- Блок ввода кода подтверждения; скрыт до отправки кода -->
         <div class="mb-3" id="code-group" style="display: none;">
