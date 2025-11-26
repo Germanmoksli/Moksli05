@@ -7824,16 +7824,20 @@ def save_new_room_draft():
 # idempotent and safe to call multiple times.
 def ensure_draft_table():
     try:
-        with get_db() as conn:
-            conn.execute(
-                'CREATE TABLE IF NOT EXISTS draft_listings ('
-                'id INTEGER PRIMARY KEY AUTOINCREMENT, '
-                'user_id INTEGER NOT NULL, '
-                'data TEXT, '
-                'created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
-                ')'
-            )
+        # Use get_db_connection rather than get_db (not defined in this module)
+        conn = get_db_connection()
+        conn.execute(
+            'CREATE TABLE IF NOT EXISTS draft_listings ('
+            'id INTEGER PRIMARY KEY AUTOINCREMENT, '
+            'user_id INTEGER NOT NULL, '
+            'data TEXT, '
+            'created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
+            ')'
+        )
+        conn.commit()
+        conn.close()
     except Exception:
+        # Ignore any error during creation to avoid breaking the request
         pass
 
 # Resume editing a saved draft.  Loads the draft data from the database
