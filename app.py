@@ -32,6 +32,7 @@ except Exception:
     psycopg2_extra = None  # type: ignore
 import random
 import smtplib
+from typing import Any
 from email.mime.text import MIMEText
 from flask import Flask, render_template, request, redirect, url_for, flash, session, abort, jsonify, send_from_directory
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -3166,13 +3167,17 @@ def list_rooms():
     # avoids race conditions across different connections where a newly
     # created table may not yet be visible.
     try:
+        # Ensure the drafts table exists.  Use SERIAL for the primary key
+        # rather than AUTOINCREMENT, which is not valid on PostgreSQL.  The
+        # ``?`` parameter markers are not used here since this is a DDL
+        # statement.
         conn.execute(
             'CREATE TABLE IF NOT EXISTS draft_listings ('
-            'id INTEGER PRIMARY KEY AUTOINCREMENT, '
+            'id SERIAL PRIMARY KEY, '
             'user_id INTEGER NOT NULL, '
             'data TEXT, '
             'created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
-            ')'  
+            ')'
         )
         conn.commit()
     except Exception:
@@ -7814,10 +7819,19 @@ def cancel_new_room():
 @roles_required('owner')
 def save_new_room_draft():
     import json
+    """
+    Persist the current listing draft in the ``draft_listings`` table.  Any
+    information collected thus far (currently only the property type) is
+    serialized to JSON.  The draft is associated with the logged-in user so
+    that it can be resumed later.  If saving fails for any reason, a
+    flash message is shown.  On success the user is redirected back to
+    the list of rooms where the draft will appear at the top of the list.
+    """
+    # Ensure the drafts table exists before inserting
     ensure_draft_table()
-    # Gather data from session to store in the draft record. This can be
-    # extended to include more fields as subsequent steps are implemented.
-    data = {}
+    # Collect data from session. Additional fields can be appended as
+    # subsequent steps of the wizard are implemented.
+    data: dict[str, Any] = {}
     property_type = session.get('new_listing_property_type')
     if property_type:
         data['property_type'] = property_type
@@ -7826,16 +7840,23 @@ def save_new_room_draft():
     except Exception:
         serialized = '{}'
     user_id = session.get('user_id')
+    # Use a single DB connection for insertion
+    conn = None
     try:
-        with get_db() as conn:
-            conn.execute(
-                'INSERT INTO draft_listings (user_id, data) VALUES (?, ?)',
-                (user_id, serialized),
-            )
-            conn.commit()
+        conn = get_db_connection()
+        # Insert the draft into the table.  ``?`` placeholders will be
+        # translated to ``%s`` when using PostgreSQL.
+        conn.execute(
+            'INSERT INTO draft_listings (user_id, data) VALUES (?, ?)',
+            (user_id, serialized),
+        )
+        conn.commit()
         flash('Черновик объявления сохранён.', 'success')
     except Exception:
         flash('Не удалось сохранить черновик.', 'danger')
+    finally:
+        if conn is not None:
+            conn.close()
     return redirect(url_for('list_rooms'))
 
 
@@ -7847,7 +7868,7 @@ def ensure_draft_table():
         conn = get_db_connection()
         conn.execute(
             'CREATE TABLE IF NOT EXISTS draft_listings ('
-            'id INTEGER PRIMARY KEY AUTOINCREMENT, '
+            'id SERIAL PRIMARY KEY, '
             'user_id INTEGER NOT NULL, '
             'data TEXT, '
             'created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
