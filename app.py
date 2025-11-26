@@ -3160,15 +3160,38 @@ def add_guest():
 @login_required
 @roles_required('owner')
 def list_rooms():
+    # Ensure the draft table exists before querying it
+    ensure_draft_table()
+    user_id = session.get('user_id')
     conn = get_db_connection()
-    # Show only rooms that belong to the current owner.  Each room is
-    # associated with the owner who created it via the owner_id column.
+    # Fetch published rooms owned by the current user
     rooms = conn.execute(
         "SELECT * FROM rooms WHERE owner_id = ? ORDER BY id",
-        (session.get('user_id'),)
+        (user_id,)
+    ).fetchall()
+    # Fetch draft listings for the current user
+    drafts_raw = conn.execute(
+        "SELECT id, data FROM draft_listings WHERE user_id = ? ORDER BY created_at DESC",
+        (user_id,)
     ).fetchall()
     conn.close()
-    return render_template("rooms.html", rooms=rooms)
+    # Parse draft data into a list of dicts with a human‑friendly title
+    drafts: list[dict] = []
+    import json
+    for dr in drafts_raw:
+        try:
+            payload = json.loads(dr[1]) if dr[1] else {}
+        except Exception:
+            payload = {}
+        prop_type = payload.get('property_type')
+        if prop_type == 'flat':
+            title = 'Квартира'
+        elif prop_type == 'house':
+            title = 'Дом'
+        else:
+            title = 'Объявление'
+        drafts.append({'id': dr[0], 'property_type': prop_type, 'title': title})
+    return render_template("rooms.html", rooms=rooms, drafts=drafts)
 
 
 @app.route("/rooms/<int:room_id>/delete", methods=["POST"])
@@ -7812,6 +7835,39 @@ def ensure_draft_table():
             )
     except Exception:
         pass
+
+# Resume editing a saved draft.  Loads the draft data from the database
+# into the session and redirects the owner to the appropriate step in the
+# listing wizard.  If the draft cannot be found or belongs to another
+# user, the owner is redirected back to the rooms list with an error.
+@app.route('/rooms/new/draft/<int:draft_id>')
+@login_required
+@roles_required('owner')
+def resume_draft(draft_id: int):
+    import json
+    user_id = session.get('user_id')
+    ensure_draft_table()
+    conn = get_db_connection()
+    row = conn.execute(
+        'SELECT data FROM draft_listings WHERE id = ? AND user_id = ?',
+        (draft_id, user_id),
+    ).fetchone()
+    conn.close()
+    if not row:
+        flash('Черновик не найден.', 'danger')
+        return redirect(url_for('list_rooms'))
+    try:
+        data = json.loads(row[0]) if row[0] else {}
+    except Exception:
+        data = {}
+    # Load data into session.  Future fields can be added here.
+    if 'property_type' in data:
+        session['new_listing_property_type'] = data['property_type']
+    # Redirect to the step appropriate for the stored data.  Since only
+    # property_type is saved, redirect to step 2; if missing, go to step 1.
+    if session.get('new_listing_property_type'):
+        return redirect(url_for('new_room_step2'))
+    return redirect(url_for('new_room_step1'))
 
 
 
