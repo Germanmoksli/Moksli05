@@ -584,7 +584,14 @@
 
     </style>
   </head>
-  <body class="bg-light">
+  {#
+    Используем flex-контейнер на уровне body, чтобы растягивать
+    основное содержимое на всю высоту экрана и фиксировать футер
+    внизу, не используя position: fixed. Класс `min-vh-100` задаёт
+    минимальную высоту в 100% высоты окна, а `d-flex flex-column`
+    делает тело вертикальным flex-контейнером. Футер с классом
+    `mt-auto` будет прижиматься к низу страницы.  #}
+  <body class="bg-light d-flex flex-column min-vh-100">
     <!-- Верхняя навигационная панель. Можно скрыть её, установив hide_nav=True в шаблоне. -->
     {% if not hide_nav %}
     <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom mb-3">
@@ -1083,7 +1090,12 @@
     <!-- Футер приложения. Закреплён внизу всех страниц. Используем серый фон,
          как в верхней навигации, и основной синий цвет для текста. Слева
          отображаем копирайт и ссылки, справа — логотипы платёжных систем. -->
-    <footer class="footer fixed-bottom py-2">
+    {#
+      Убираем класс fixed-bottom, поскольку теперь футер
+      будет автоматически располагаться снизу благодаря
+      flex-контейнеру body. Добавляем mt-auto, чтобы
+      футер прижимался к низу страницы.  #}
+    <footer class="footer mt-auto py-2">
       <div class="container d-flex justify-content-between align-items-center small">
         <span>© 2025 · Moksli · Все права защищены · <a href="#" class="text-primary">Условия использования</a> · <a href="#" class="text-primary">Конфиденциальность</a> · <a href="#" class="text-primary">Описание процедуры оплаты</a></span>
         <span>
