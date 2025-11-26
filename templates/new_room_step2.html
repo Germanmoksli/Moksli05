@@ -3,6 +3,18 @@
 {% block title %}Новое объявление – Шаг 2{% endblock %}
 
 {% block content %}
+{% if hide_nav %}
+  <div class="container-fluid bg-light py-2 mb-3">
+    <div class="d-flex align-items-center gap-3">
+      <a href="{{ url_for('cancel_new_room') }}" class="d-flex align-items-center justify-content-center rounded-circle" style="width: 40px; height: 40px; background-color: #f1f3f5;">
+        <i class="bi bi-x-lg text-primary"></i>
+      </a>
+      <form action="{{ url_for('save_new_room_draft') }}" method="post" class="m-0">
+        <button type="submit" class="btn btn-link" style="background-color: #f1f3f5; color: #119ffe; border-radius: .375rem; padding: 0.375rem 0.75rem;">В черновик</button>
+      </form>
+    </div>
+  </div>
+{% endif %}
 <div class="container py-4">
   <h2 class="mb-4 text-primary fw-bold fs-4">Шаг 2: Детали объявления</h2>
   {% if property_type %}

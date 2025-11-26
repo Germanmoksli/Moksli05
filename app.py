@@ -7728,7 +7728,7 @@ def new_room_step1():
     back_url: typing.Optional[str] = None
     # Next step goes to step 2
     next_url = url_for('new_room_step2')
-    return render_template('new_room_step1.html', selected_type=selected_type, progress=progress, back_url=back_url, next_url=next_url)
+    return render_template('new_room_step1.html', selected_type=selected_type, progress=progress, back_url=back_url, next_url=next_url, hide_nav=True)
 
 @app.route("/rooms/new/step2", methods=["GET", "POST"])
 @login_required
@@ -7748,7 +7748,70 @@ def new_room_step2():
     # As step 2 is currently the final step, we send the user back to
     # the rooms list upon completion. This can be updated when new steps are added.
     next_url: typing.Optional[str] = url_for('rooms')
-    return render_template('new_room_step2.html', property_type=property_type, progress=progress, back_url=back_url, next_url=next_url)
+    return render_template('new_room_step2.html', property_type=property_type, progress=progress, back_url=back_url, next_url=next_url, hide_nav=True)
+
+# Endpoint to cancel the current listing creation wizard. Clears any stored
+# values in the session and redirects back to the rooms list.
+@app.route('/rooms/new/cancel')
+@login_required
+@roles_required('owner')
+def cancel_new_room():
+    # Remove any wizard-related session variables
+    session.pop('new_listing_property_type', None)
+    flash('Создание объявления отменено.', 'info')
+    return redirect(url_for('rooms'))
+
+
+# Endpoint to save the current state of the new listing as a draft. Only
+# minimal information (currently just the property type) is stored. Drafts
+# are stored in a separate table and can be resumed later (functionality
+# can be extended in the future). After saving, the user is redirected
+# back to the list of rooms.
+@app.route('/rooms/new/draft', methods=['POST'])
+@login_required
+@roles_required('owner')
+def save_new_room_draft():
+    import json
+    ensure_draft_table()
+    # Gather data from session to store in the draft record. This can be
+    # extended to include more fields as subsequent steps are implemented.
+    data = {}
+    property_type = session.get('new_listing_property_type')
+    if property_type:
+        data['property_type'] = property_type
+    try:
+        serialized = json.dumps(data, ensure_ascii=False)
+    except Exception:
+        serialized = '{}'
+    user_id = session.get('user_id')
+    try:
+        with get_db() as conn:
+            conn.execute(
+                'INSERT INTO draft_listings (user_id, data) VALUES (?, ?)',
+                (user_id, serialized),
+            )
+            conn.commit()
+        flash('Черновик объявления сохранён.', 'success')
+    except Exception:
+        flash('Не удалось сохранить черновик.', 'danger')
+    return redirect(url_for('rooms'))
+
+
+# Create the draft_listings table if it does not exist. This function is
+# idempotent and safe to call multiple times.
+def ensure_draft_table():
+    try:
+        with get_db() as conn:
+            conn.execute(
+                'CREATE TABLE IF NOT EXISTS draft_listings ('
+                'id INTEGER PRIMARY KEY AUTOINCREMENT, '
+                'user_id INTEGER NOT NULL, '
+                'data TEXT, '
+                'created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
+                ')'
+            )
+    except Exception:
+        pass
 
 
 

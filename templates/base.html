@@ -552,7 +552,8 @@
     </style>
   </head>
   <body class="bg-light">
-    <!-- Верхняя навигационная панель -->
+    <!-- Верхняя навигационная панель. Можно скрыть её, установив hide_nav=True в шаблоне. -->
+    {% if not hide_nav %}
     <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom mb-3">
       <!-- Используем flex‑контейнер, чтобы логотип и гамбургер распределялись по краям.  
            Без d-flex элемент .navbar-toggler с ms-auto оставался рядом с логотипом, 
@@ -800,6 +801,7 @@
         </div>
       </div>
     </nav>
+    {% endif %}
     <!-- Область всплывающих уведомлений -->
     <div class="flash-container container-fluid">
       {% with messages = get_flashed_messages() %}
