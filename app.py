@@ -1731,8 +1731,14 @@ def login():
             else:
                 flash('Неверные e‑mail или пароль.')
             return redirect(url_for('login'))
-    # GET: render login form
-    return render_template('login.html')
+    # GET: render login form. Pass hide_nav=True so that the top navigation bar
+    # defined in base.html is suppressed on the login page. Without this flag,
+    # the navbar would occupy space at the top and push the login form down,
+    # making it appear off-centre. The hide_nav variable is checked in
+    # base.html to conditionally render the nav bar. When set to True, the
+    # navbar is omitted and the login form will be vertically centred via
+    # the flexbox classes in the template.
+    return render_template('login.html', hide_nav=True)
 
 # -----------------------------------------------------------------------------
 # Address suggestions endpoint
