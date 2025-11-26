@@ -372,6 +372,186 @@ def send_verification_email(to_email: str, code: str) -> bool:
     # If all attempts failed, return False
     return False
 
+#
+# Password reset email sending
+#
+def send_password_reset_email(to_email: str, code: str) -> bool:
+    """
+    Send a password reset code to the specified email address.
+
+    This function mirrors ``send_verification_email`` but uses a different
+    subject and message body suitable for password resets. The SMTP
+    configuration and fallback behaviour are identical: it reads the
+    settings from environment variables and attempts SSL, then TLS, then
+    plain connections if necessary. Returns ``True`` once the email has
+    been sent or ``False`` if all attempts fail or the configuration
+    is incomplete.
+    """
+    server = os.environ.get('MAIL_SERVER')
+    port = int(os.environ.get('MAIL_PORT', '465'))
+    username = os.environ.get('MAIL_USERNAME')
+    password = os.environ.get('MAIL_PASSWORD')
+    use_tls = os.environ.get('MAIL_USE_TLS', 'false').lower() == 'true'
+    use_ssl = os.environ.get('MAIL_USE_SSL', 'true').lower() == 'true'
+    if not server or not username or not password:
+        print("Email configuration is incomplete. Set MAIL_SERVER, MAIL_USERNAME, and MAIL_PASSWORD.")
+        return False
+    subject = "Код для восстановления пароля"
+    body = f"Ваш код для восстановления пароля: {code}"
+    msg = MIMEText(body, _charset='utf-8')
+    msg['Subject'] = subject
+    mail_from = os.environ.get('MAIL_FROM', username)
+    msg['From'] = mail_from
+    msg['To'] = to_email
+
+    def _attempt_send(use_ssl_flag: bool, use_tls_flag: bool) -> bool:
+        try:
+            if use_ssl_flag:
+                smtp = smtplib.SMTP_SSL(server, port)
+            else:
+                smtp = smtplib.SMTP(server, port)
+                if use_tls_flag:
+                    smtp.starttls()
+            smtp.login(username, password)
+            smtp.send_message(msg)
+            smtp.quit()
+            return True
+        except Exception as exc:
+            print(f"Failed to send password reset email (ssl={use_ssl_flag}, tls={use_tls_flag}): {exc}")
+            return False
+
+    # Try configured mode
+    if _attempt_send(use_ssl, use_tls):
+        return True
+    # Fallback attempts
+    if use_ssl:
+        if _attempt_send(False, True):
+            return True
+        if _attempt_send(False, False):
+            return True
+    elif use_tls:
+        if _attempt_send(True, False):
+            return True
+        if _attempt_send(False, False):
+            return True
+    else:
+        if _attempt_send(False, True):
+            return True
+        if _attempt_send(True, False):
+            return True
+    return False
+
+
+@app.route('/forgot_password')
+def forgot_password():
+    """Render the password reset request page. The navigation bar is hidden on this page."""
+    return render_template('forgot_password.html', hide_nav=True)
+
+
+@app.route('/send_reset_password_code', methods=['POST'])
+def send_reset_password_code():
+    """
+    Handle requests to send a password reset code to the provided email.
+
+    Parses the email from JSON or form data, generates a six‑digit code,
+    stores it in the session under ``password_reset_code`` and
+    ``password_reset_email``, and sends the code via email. Returns a
+    JSON response indicating success or failure.
+    """
+    try:
+        email = None
+        if request.is_json:
+            try:
+                email = request.get_json().get('email')
+            except Exception:
+                email = None
+        if not email:
+            email = (request.form.get('email') or '').strip()
+        if not email:
+            return jsonify({'success': False, 'message': 'E‑mail обязателен'}), 400
+        code = f"{random.randint(0, 999999):06d}"
+        session['password_reset_code'] = code
+        session['password_reset_email'] = email
+        if send_password_reset_email(email, code):
+            return jsonify({'success': True})
+        else:
+            return jsonify({'success': False, 'message': 'Не удалось отправить код. Проверьте конфигурацию почты.'}), 500
+    except Exception as e:
+        print(f"Error in send_reset_password_code: {e}")
+        return jsonify({'success': False, 'message': 'Ошибка сервера при отправке кода.'}), 500
+
+
+@app.route('/verify_reset_password_code', methods=['POST'])
+def verify_reset_password_code():
+    """
+    Verify the password reset code sent to the user's email.
+
+    Expects a JSON body or form data with a ``code`` field. Compares the
+    provided code with ``password_reset_code`` stored in the session. If
+    the codes match, returns ``{'success': True}``. Otherwise returns an
+    error message. Always returns a JSON response.
+    """
+    try:
+        code = None
+        if request.is_json:
+            try:
+                code = request.get_json().get('code')
+            except Exception:
+                code = None
+        if not code:
+            code = (request.form.get('code') or '').strip()
+        if not code:
+            return jsonify({'success': False, 'message': 'Код обязателен'}), 400
+        if session.get('password_reset_code') == code:
+            return jsonify({'success': True})
+        else:
+            return jsonify({'success': False, 'message': 'Неверный код'}), 400
+    except Exception as e:
+        print(f"Error verifying reset password code: {e}")
+        return jsonify({'success': False, 'message': 'Ошибка сервера при проверке кода.'}), 500
+
+
+@app.route('/reset_password', methods=['POST'])
+def reset_password():
+    """
+    Process the final password reset form submission.
+
+    The form must include ``email``, ``verification_code`` and ``new_password``.
+    The provided code and email are validated against the session values
+    stored during the send code step. If valid, the user's password is
+    updated in the database using a secure hash. On success, the user is
+    redirected to the login page with a flash message. On failure, the
+    user is redirected back to the password reset page with an error
+    message.
+    """
+    email = (request.form.get('email') or '').strip()
+    code = (request.form.get('verification_code') or '').strip()
+    new_password = (request.form.get('new_password') or '').strip()
+    if not email or not code or not new_password:
+        flash('Заполните все поля.')
+        return redirect(url_for('forgot_password'))
+    # Validate code and email against session
+    if session.get('password_reset_code') != code or session.get('password_reset_email') != email:
+        flash('Неверный код подтверждения.')
+        return redirect(url_for('forgot_password'))
+    # Update password in database
+    conn = get_db_connection()
+    hashed_pw = generate_password_hash(new_password)
+    cur = conn.execute('SELECT id FROM users WHERE username = ?', (email,))
+    user = cur.fetchone()
+    if not user:
+        conn.close()
+        flash('Пользователь не найден.')
+        return redirect(url_for('forgot_password'))
+    conn.execute('UPDATE users SET password_hash = ? WHERE username = ?', (hashed_pw, email))
+    conn.commit()
+    conn.close()
+    # Clear session values
+    session.pop('password_reset_code', None)
+    session.pop('password_reset_email', None)
+    flash('Пароль обновлён. Теперь вы можете войти.')
+    return redirect(url_for('login'))
+
 # Jinja filter for formatting currency with thousands separator and two decimals
 @app.template_filter('currency')
 def format_currency(value):

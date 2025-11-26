@@ -47,7 +47,9 @@
         </div>
         <div class="d-grid gap-2">
           <button type="submit" class="btn btn-primary">Войти</button>
-          <a href="#" class="btn btn-link p-0 text-decoration-none">Забыли пароль?</a>
+          <!-- Ссылка на страницу восстановления пароля. Используем url_for, чтобы
+               переходить на новый маршрут forgot_password. -->
+          <a href="{{ url_for('forgot_password') }}" class="btn btn-link p-0 text-decoration-none">Забыли пароль?</a>
         </div>
       </form>
     </div>
