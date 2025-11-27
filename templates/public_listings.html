@@ -21,10 +21,13 @@
       .image-container {
         position: relative;
         overflow: hidden;
-        /* Скругляем только верхние углы, нижние остаются прямыми,
-           чтобы границы карточки выглядели аккуратно */
+        /* Скругляем углы контейнера изображения. Радиус совпадает с
+           радиусом самой карточки (20px), чтобы картинка выглядела
+           встроенной и в верхних, и в нижних углах. */
         border-top-left-radius: 20px !important;
         border-top-right-radius: 20px !important;
+        border-bottom-left-radius: 20px !important;
+        border-bottom-right-radius: 20px !important;
       }
       /* Фирменный цвет приложения и глобальные радиусы. Эти переопределения
          повторяют настройки из шаблона base.html, чтобы каталог для гостей
