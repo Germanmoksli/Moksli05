@@ -7934,9 +7934,11 @@ def favorites():
     # явные имена таблиц вместо псевдонимов, чтобы избежать возможных
     # синтаксических ошибок в SQL (см. журналы сервера). Join связывает
     # таблицу favorites и rooms по room_id, а фильтрация идёт по user_id.
+    # Используем именованный параметр :user_id. Совместимый с SQLite и PostgreSQL
+    # адаптер выполнит подстановку и корректно обработает placeholder.
     rows = conn.execute(
-        'SELECT rooms.* FROM favorites INNER JOIN rooms ON favorites.room_id = rooms.id WHERE favorites.user_id = ?',
-        (user_id,)
+        'SELECT rooms.* FROM favorites INNER JOIN rooms ON favorites.room_id = rooms.id WHERE favorites.user_id = :user_id',
+        {"user_id": user_id}
     ).fetchall()
     conn.close()
     return render_template('favorites.html', rooms=rows)
