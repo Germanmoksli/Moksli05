@@ -470,7 +470,9 @@
         при разных ширинах экрана. На больших экранах (≥992px) теперь выводится
         по пять карточек в ряд (row-cols-lg-5).
       #}
-      <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-5 g-4">
+      <!-- На мобильных устройствах выводим квартиры в два столбика (row-cols-2).
+           На небольших экранах (sm) сохраняем два столбика, на средних — три, на больших — пять. -->
+      <div class="row row-cols-2 row-cols-sm-2 row-cols-md-3 row-cols-lg-5 g-4">
         {% set condition_map = {'fresh': 'Свежий ремонт, новая мебель', 'good': 'Не свежий, но аккуратный ремонт', 'none': 'Без ремонта'} %}
         {% for room in rooms %}
         <div class="col">
