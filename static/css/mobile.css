@@ -1,0 +1,88 @@
+/* Mobile responsive overrides for the Moksli web application.
+ *
+ * This stylesheet contains rules that only apply on small screens.
+ * It fine‑tunes the layout of the navigation bar, search form,
+ * chat interface and footer so that they remain usable on phones
+ * and tablets.  You can adjust the breakpoints or add your own
+ * rules here to further optimise the mobile experience.
+ */
+
+/* Apply rules on screens up to and including the tablet portrait width */
+@media (max-width: 767.98px) {
+  /* Reduce the height of the logo in the navigation bar to free up space */
+  nav.navbar .navbar-brand img {
+    height: 48px !important;
+  }
+
+  /* Make the search/filter form in the navigation bar stack vertically.
+     On desktop the form sits on one row; on mobile we want each
+     control on its own line for better readability. */
+  #nav_filter_form {
+    max-width: 100% !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  /* Ensure all direct child elements of the search form span the full width */
+  #nav_filter_form > div {
+    width: 100% !important;
+    flex: 0 0 100% !important;
+  }
+
+  /* Stretch the search button on small screens so it doesn’t get squashed */
+  #nav_filter_form button.btn {
+    width: 100% !important;
+    height: 48px !important;
+  }
+
+  /* Override hard‑coded widths on inline styles in the search form (e.g. guest count field) */
+  #nav_filter_form div[style*="width: 110px"] {
+    width: 100% !important;
+  }
+
+  /* Chat layout: collapse the sidebar list into full width and place it above messages */
+  .chat-list {
+    width: 100% !important;
+    border-right: none !important;
+    border-bottom: 1px solid #dee2e6 !important;
+    height: auto !important;
+  }
+
+  /* When a chat list is present (chat page), stack the chat list and messages
+     vertically by targeting the immediate sibling of .chat-list.  We avoid
+     globally altering all .d-flex containers. */
+  .chat-list + .flex-grow-1 {
+    width: 100% !important;
+  }
+  /* Add spacing below the chat list so the messages are not flush with it */
+  .chat-list {
+    margin-bottom: 0.5rem !important;
+  }
+
+  /* Ensure the message container spans the full width on mobile */
+  #chat-container {
+    max-width: 100% !important;
+  }
+
+  /* Footer layout: display elements one under the other and centre them */
+  footer.footer .container {
+    flex-direction: column !important;
+    text-align: center !important;
+    gap: 0.5rem !important;
+  }
+}
+
+/* Apply more aggressive scaling on very small screens (e.g. phones) */
+@media (max-width: 575.98px) {
+  /* Further reduce the logo height */
+  nav.navbar .navbar-brand img {
+    height: 40px !important;
+  }
+
+  /* Scale down the large circular avatar on the profile page */
+  .avatar-circle {
+    width: 150px !important;
+    height: 150px !important;
+    font-size: 3.5rem !important;
+  }
+}
