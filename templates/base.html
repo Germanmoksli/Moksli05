@@ -617,7 +617,8 @@
           {# Удаляем текстовое название рядом с логотипом, оставляя только изображение #}
         </a>
         {% else %}
-        <a class="navbar-brand fw-bold d-flex align-items-center" href="{{ url_for('dashboard') if session.get('user_id') else url_for('public_listings') }}">
+        <!-- В упрощённой версии приложения логотип ведёт к календарю (для владельцев/менеджеров) либо к каталогу (для гостей). -->
+        <a class="navbar-brand fw-bold d-flex align-items-center" href="{{ url_for('calendar_view') if session.get('user_id') else url_for('public_listings') }}">
           <!-- Аналогично увеличиваем размер логотипа и отступ слева в режиме владельца/менеджера -->
           <img src="{{ url_for('static', filename='uploads/logo_moksli.png') }}" alt="Moksli logo" height="80" class="me-2">
           {# Удаляем текстовое название рядом с логотипом, оставляя только изображение #}
@@ -639,39 +640,16 @@
               <li class="nav-item">
                 <a href="{{ url_for('calendar_view') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('calendar') %}active{% endif %}">Календарь</a>
               </li>
-              <li class="nav-item">
-                <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">Дашборд</a>
-              </li>
-              <li class="nav-item">
-                <a href="{{ url_for('list_guests') }}" class="nav-link {% if request.endpoint == 'list_guests' %}active{% endif %}">Гости</a>
-              </li>
+              {# Дашборд и список гостей скрыты в упрощённой версии #}
               <li class="nav-item">
                 <a href="{{ url_for('list_rooms') }}" class="nav-link {% if request.endpoint == 'list_rooms' %}active{% endif %}">Квартиры</a>
               </li>
-              <li class="nav-item">
-                <a href="{{ url_for('list_employees') }}" class="nav-link {% if request.endpoint == 'list_employees' %}active{% endif %}">
-                  Сотрудники
-                  {% if session.get('user_role') == 'owner' and pending_request_count %}
-                    <span class="badge bg-primary ms-1">{{ pending_request_count }}</span>
-                  {% endif %}
-                </a>
-              </li>
-              <li class="nav-item">
-                <a href="{{ url_for('subscribe') }}" class="nav-link {% if request.endpoint == 'subscribe' %}active{% endif %}">Подписка</a>
-              </li>
+              {# Сотрудники и подписка скрыты в упрощённой версии #}
             {% elif session.get('user_role') == 'manager' %}
               <li class="nav-item">
                 <a href="{{ url_for('calendar_view') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('calendar') %}active{% endif %}">Календарь</a>
               </li>
-              <li class="nav-item">
-                <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">Дашборд</a>
-              </li>
-              <li class="nav-item">
-                <a href="{{ url_for('list_guests') }}" class="nav-link {% if request.endpoint == 'list_guests' %}active{% endif %}">Гости</a>
-              </li>
-              <li class="nav-item">
-                <a href="{{ url_for('list_employees') }}" class="nav-link {% if request.endpoint == 'list_employees' %}active{% endif %}">Сотрудники</a>
-              </li>
+              {# Дашборд, гости и сотрудники скрыты для менеджеров в упрощённой версии #}
             {% else %}
               {# Для гостей навигационные элементы скрыты. Но мы оставляем
                  пустой ul без класса me-auto, чтобы следующие элементы не

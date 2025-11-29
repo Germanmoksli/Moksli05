@@ -1328,6 +1328,43 @@ def get_db_connection():
         "DATABASE_URL is not configured or the PostgreSQL driver is unavailable; unable to establish a database connection."
     )
 
+# ----------------------------------------------------------------------------
+# Schema helpers
+
+def ensure_favorites_table(conn) -> None:
+    """
+    Ensure that the favorites table exists in the connected database.  This
+    helper attempts to create the table using a simple CREATE TABLE IF NOT
+    EXISTS statement.  If the table already exists or if the statement fails
+    for some other reason, the exception is caught and ignored.  This helper
+    is safe to call on every request and ensures that the favorites
+    functionality works even on deployments where the table was not created
+    during initial schema setup.
+
+    Parameters
+    ----------
+    conn:
+        A database connection object returned from ``get_db_connection()``.
+        It must support the ``execute`` method.
+    """
+    try:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS favorites (
+                user_id INTEGER NOT NULL,
+                room_id INTEGER NOT NULL,
+                PRIMARY KEY (user_id, room_id),
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
+            );
+            """
+        )
+    except Exception:
+        # If creation fails (e.g., due to lack of privileges or the table
+        # already existing), silently ignore the error.  This helper is
+        # idempotent and safe to call multiple times.
+        pass
+
 
 # Simple login_required decorator. If a route requires the user to be
 # authenticated, decorate the view function with @login_required.  It
@@ -2897,6 +2934,9 @@ def index():
 @login_required
 @roles_required('owner', 'manager')
 def list_guests():
+    # Guests list has been removed in this simplified version.
+    # Immediately return a 404 page when this route is accessed.
+    return abort(404)
     conn = get_db_connection()
     # Ensure blacklist table exists and fetch blacklisted phone digits
     ensure_blacklist_table(conn)
@@ -4752,25 +4792,13 @@ def update_deposit_status(booking_id: int):
 @roles_required('owner', 'manager')
 def dashboard():
     """
-    Display a high‑level dashboard summarizing key performance metrics for the
-    selected date range.  Owners and managers can use this view to quickly
-    assess occupancy, revenue and other indicators, and drill down into
-    underlying bookings.  The dashboard supports a simple date range filter
-    (start and end dates) via query parameters; if omitted, it defaults to
-    today.
+    Disabled dashboard view.
 
-    Metrics shown:
-      * Occupancy: percentage of sold nights over available nights.
-      * ADR (Average Daily Rate): total revenue divided by sold nights.
-      * RevPAR (Revenue per Available Room): total revenue divided by
-        available nights.
-      * Total revenue: sum of booking total_amounts in period.
-      * Check‑ins and check‑outs counts.
-      * Deposit statuses (counts by status).
-
-    The view also renders a 14‑day pick‑up chart showing daily occupancy
-    and revenue for the next two weeks starting from the selected start date.
+    The original dashboard has been removed in this simplified version of
+    the application.  Any attempt to access this route will return a
+    404 Not Found response.
     """
+    return abort(404)
     from datetime import datetime, timedelta, date
     # Parse date range from query parameters; default to today
     # Read optional quick‑select period (1d, week, month, year) from query
@@ -6050,6 +6078,9 @@ def list_employees():
     Registration request actions are handled via POST submissions to this
     endpoint. After processing, the page is reloaded to reflect the updated
     lists. """
+    # Employee management has been removed in this simplified version.
+    # Immediately return a 404 page when this route is accessed.
+    return abort(404)
     conn = get_db_connection()
     # Ensure registration requests table exists so queries won't fail
     ensure_registration_requests_table(conn)
@@ -6199,6 +6230,9 @@ def update_employee_role(user_id: int):
 @login_required
 def subscribe():
     """Allow the owner to create a subscription for the service."""
+    # Subscription functionality has been removed in this simplified version.
+    # Immediately return a 404 page when this route is accessed.
+    return abort(404)
     # Only owners can manage subscriptions
     if session.get('user_role') != 'owner':
         return abort(403)
@@ -7907,6 +7941,8 @@ def toggle_favorite(room_id: int):
     user_id = session.get('user_id')
     conn = get_db_connection()
     try:
+        # Ensure the favorites table exists before performing any operations on it.
+        ensure_favorites_table(conn)
         row = conn.execute('SELECT 1 FROM favorites WHERE user_id = ? AND room_id = ?', (user_id, room_id)).fetchone()
         if row:
             conn.execute('DELETE FROM favorites WHERE user_id = ? AND room_id = ?', (user_id, room_id))
@@ -7929,18 +7965,21 @@ def favorites():
     """
     user_id = session.get('user_id')
     conn = get_db_connection()
-    #
-    # Выполняем выборку избранных комнат текущего пользователя. Используем
-    # явные имена таблиц вместо псевдонимов, чтобы избежать возможных
-    # синтаксических ошибок в SQL (см. журналы сервера). Join связывает
-    # таблицу favorites и rooms по room_id, а фильтрация идёт по user_id.
-    # Используем именованный параметр :user_id. Совместимый с SQLite и PostgreSQL
-    # адаптер выполнит подстановку и корректно обработает placeholder.
-    rows = conn.execute(
-        'SELECT rooms.* FROM favorites INNER JOIN rooms ON favorites.room_id = rooms.id WHERE favorites.user_id = :user_id',
-        {"user_id": user_id}
-    ).fetchall()
-    conn.close()
+    try:
+        # Ensure the favorites table exists before reading from it.
+        ensure_favorites_table(conn)
+        # Выполняем выборку избранных комнат текущего пользователя. Используем
+        # явные имена таблиц вместо псевдонимов, чтобы избежать возможных
+        # синтаксических ошибок в SQL (см. журналы сервера). Join связывает
+        # таблицу favorites и rooms по room_id, а фильтрация идёт по user_id.
+        # Используем именованный параметр :user_id. Совместимый с SQLite и PostgreSQL
+        # адаптер выполнит подстановку и корректно обработает placeholder.
+        rows = conn.execute(
+            'SELECT rooms.* FROM favorites INNER JOIN rooms ON favorites.room_id = rooms.id WHERE favorites.user_id = :user_id',
+            {"user_id": user_id}
+        ).fetchall()
+    finally:
+        conn.close()
     return render_template('favorites.html', rooms=rows)
 
 
