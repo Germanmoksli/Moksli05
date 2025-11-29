@@ -61,6 +61,19 @@ DB_DEFAULT_FILE = "aparthotel.db"
 
 app = Flask(__name__)
 
+# -----------------------------------------------------------------------------
+# Suppress pop‑up notifications
+#
+# The application previously used Flask's ``flash`` function to show
+# various success and error messages via pop‑up notifications.  In this
+# simplified version we disable all flash messages by overriding the
+# imported ``flash`` with a no‑op implementation.  Any calls to
+# ``flash(...)`` will now do nothing, effectively removing all internal
+# notifications.
+def flash(message: str, category: str = 'message') -> None:  # type: ignore[override]
+    """Ignore all flash messages.  This override suppresses pop‑ups."""
+    return None
+
 # Define a dedicated upload folder for apartment photos outside of the static
 # directory.  The static folder packaged with the application is read‑only on
 # many deployment platforms (e.g. Render), so user‑uploaded files cannot be
