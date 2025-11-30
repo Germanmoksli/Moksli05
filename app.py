@@ -8043,7 +8043,7 @@ def new_room_step1():
     selected_type = session.get('new_listing_property_type')
     # Set progress (out of 100) for step 1. With three steps the first
     # represents roughly one third of the process.
-    progress = 33
+    progress = 25
     # In the first step there is no previous page in the wizard, but we use
     # None to indicate the back button should be hidden.
     back_url: typing.Optional[str] = None
@@ -8096,7 +8096,7 @@ def new_room_step2():
     # On GET we determine the progress and navigation values for the
     # template.  With three steps in the wizard this represents the
     # second step, so progress is approximately two thirds of the way.
-    progress = 66
+    progress = 50
     back_url = url_for('new_room_step1')
     # ``next_url`` is not used when the form is posted.  It can remain
     # present in the template for consistency with step 1 but will be
@@ -8203,11 +8203,11 @@ def new_room_step3():
                 continue
         # Persist the list of saved photos in the session for later use
         session['new_listing_photos'] = saved_filenames
-        # End of wizard: redirect to rooms list
-        return redirect(url_for('list_rooms'))
+        # Proceed to step 4 after uploading photos
+        return redirect(url_for('new_room_step4'))
     # On GET display the upload interface.  Progress is 100% as this is
     # currently the final step.  Back button returns to step 2.
-    progress = 100
+    progress = 75
     back_url = url_for('new_room_step2')
     next_url: typing.Optional[str] = None
     # Pass any previously uploaded photos to the template to allow the user
@@ -8221,6 +8221,127 @@ def new_room_step3():
         next_url=next_url,
         hide_nav=True,
         existing_photos=existing_photos,
+    )
+
+
+# -----------------------------------------------------------------------------
+# Step 4 of the new listing wizard: select amenities
+#
+# In this step the owner chooses the amenities available in their property
+# and in the residential complex.  Amenities are grouped into categories and
+# displayed as selectable tiles with icons.  Selected items are highlighted
+# and submitted as a list of values in the form.  After saving the
+# selection the wizard ends and redirects to the rooms list.
+@app.route("/rooms/new/step4", methods=["GET", "POST"])
+@login_required
+@roles_required('owner')
+def new_room_step4():
+    # Ensure prior steps have been completed
+    if session.get('new_listing_property_type') is None:
+        return redirect(url_for('new_room_step1'))
+    if 'new_listing_address' not in session:
+        return redirect(url_for('new_room_step2'))
+    if 'new_listing_photos' not in session:
+        return redirect(url_for('new_room_step3'))
+    # Define the amenity categories and items.  Each item has a value used
+    # internally, a human‑readable label and a Bootstrap icon class.
+    amenities_categories = [
+        {
+            'category': 'Спальня',
+            'items': [
+                {'value': 'bedding', 'label': 'Постельное бельё', 'icon': 'bi-bed'},
+                {'value': 'pillows', 'label': 'Подушки', 'icon': 'bi-hypnotize'},
+                {'value': 'hangers', 'label': 'Вешалки', 'icon': 'bi-hanger'},
+                {'value': 'wardrobe', 'label': 'Шкаф', 'icon': 'bi-door-closed'},
+                {'value': 'desk', 'label': 'Рабочий стол', 'icon': 'bi-journal'},
+            ],
+        },
+        {
+            'category': 'Кухня',
+            'items': [
+                {'value': 'fridge', 'label': 'Холодильник', 'icon': 'bi-snow'},
+                {'value': 'stove', 'label': 'Плита', 'icon': 'bi-egg-fried'},
+                {'value': 'microwave', 'label': 'Микроволновка', 'icon': 'bi-microwave'},
+                {'value': 'kettle', 'label': 'Чайник', 'icon': 'bi-cup-hot'},
+                {'value': 'dishes', 'label': 'Посуда и приборы', 'icon': 'bi-cup-straw'},
+                {'value': 'coffee_machine', 'label': 'Кофеварка', 'icon': 'bi-cup-straw'},
+                {'value': 'dishwasher', 'label': 'Посудомоечная машина', 'icon': 'bi-droplet-half'},
+            ],
+        },
+        {
+            'category': 'Ванная комната',
+            'items': [
+                {'value': 'shower', 'label': 'Душ', 'icon': 'bi-droplet'},
+                {'value': 'bath', 'label': 'Ванна', 'icon': 'bi-bathtub'},
+                {'value': 'toilet', 'label': 'Туалет', 'icon': 'bi-toilet'},
+                {'value': 'hairdryer', 'label': 'Фен', 'icon': 'bi-wind'},
+                {'value': 'hot_water', 'label': 'Горячая вода', 'icon': 'bi-droplet-half'},
+                {'value': 'towels', 'label': 'Полотенца', 'icon': 'bi-emoji-smile'},
+            ],
+        },
+        {
+            'category': 'Средства личной гигиены',
+            'items': [
+                {'value': 'shampoo', 'label': 'Шампунь', 'icon': 'bi-droplet-fill'},
+                {'value': 'soap', 'label': 'Мыло', 'icon': 'bi-droplet-fill'},
+                {'value': 'toilet_paper', 'label': 'Туалетная бумага', 'icon': 'bi-journal'},
+                {'value': 'toothpaste', 'label': 'Зубная паста', 'icon': 'bi-brush'},
+            ],
+        },
+        {
+            'category': 'Дополнительные удобства',
+            'items': [
+                {'value': 'wifi', 'label': 'Wi‑Fi', 'icon': 'bi-wifi'},
+                {'value': 'tv', 'label': 'Телевизор', 'icon': 'bi-tv'},
+                {'value': 'heating', 'label': 'Отопление', 'icon': 'bi-thermometer-half'},
+                {'value': 'air_conditioning', 'label': 'Кондиционер', 'icon': 'bi-snow'},
+                {'value': 'balcony', 'label': 'Балкон', 'icon': 'bi-house-door'},
+                {'value': 'pets_allowed', 'label': 'Можно с животными', 'icon': 'bi-heart'},
+                {'value': 'workspace', 'label': 'Рабочее место', 'icon': 'bi-laptop'},
+                {'value': 'parking', 'label': 'Парковка', 'icon': 'bi-parking'},
+            ],
+        },
+        {
+            'category': 'Удобства в ЖК',
+            'items': [
+                {'value': 'elevator', 'label': 'Лифт', 'icon': 'bi-arrow-up-square'},
+                {'value': 'gym', 'label': 'Фитнес‑центр', 'icon': 'bi-bicycle'},
+                {'value': 'pool', 'label': 'Бассейн', 'icon': 'bi-droplet-fill'},
+                {'value': 'playground', 'label': 'Детская площадка', 'icon': 'bi-emoji-laughing'},
+                {'value': 'security_guard', 'label': 'Охрана', 'icon': 'bi-shield-lock'},
+                {'value': 'rooftop', 'label': 'Доступ на крышу', 'icon': 'bi-house'},
+            ],
+        },
+        {
+            'category': 'Безопасность',
+            'items': [
+                {'value': 'smoke_detector', 'label': 'Дымовой датчик', 'icon': 'bi-bell'},
+                {'value': 'fire_extinguisher', 'label': 'Огнетушитель', 'icon': 'bi-fire'},
+                {'value': 'security_cameras', 'label': 'Камеры видеонаблюдения', 'icon': 'bi-camera-video'},
+                {'value': 'safe', 'label': 'Сейф', 'icon': 'bi-safe'},
+                {'value': 'gated_security', 'label': 'Закрытая территория', 'icon': 'bi-unlock'},
+            ],
+        },
+    ]
+    # On POST record the selected amenities and finish the wizard
+    if request.method == 'POST':
+        selected = request.form.getlist('amenities')
+        session['new_listing_amenities'] = selected
+        return redirect(url_for('list_rooms'))
+    # On GET display the amenity selection form
+    progress = 100
+    back_url = url_for('new_room_step3')
+    next_url: typing.Optional[str] = None
+    # Preselect amenities from session if editing a draft
+    selected = session.get('new_listing_amenities', [])
+    return render_template(
+        'new_room_step4.html',
+        progress=progress,
+        back_url=back_url,
+        next_url=next_url,
+        hide_nav=True,
+        categories=amenities_categories,
+        selected=selected,
     )
 
 # Endpoint to cancel the current listing creation wizard. Clears any stored
