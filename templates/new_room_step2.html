@@ -21,9 +21,9 @@
   </div>
 {% endif %}
 <div class="container py-4">
-  <h2 class="mb-4 text-primary fw-bold fs-4">Шаг 2: Детали объявления</h2>
+  <h2 class="mb-4 text-primary fw-bold fs-4">Шаг 2: Укажите адрес</h2>
   {% if property_type %}
-    <p>Вы выбрали:
+    <p class="mb-4">Вы выбрали:
       {% if property_type == 'flat' %}
         квартиру.
       {% elif property_type == 'house' %}
@@ -31,28 +31,25 @@
       {% else %}
         {{ property_type }}.
       {% endif %}
-      На следующем шаге будет возможность добавить подробную информацию о вашем жилье.
     </p>
-    <p class="mt-4">Этот шаг ещё не реализован. Здесь появится форма для заполнения характеристик объекта.</p>
+    <form method="post">
+      <div class="mb-3">
+        <label for="address" class="form-label">Адрес</label>
+        <input type="text" class="form-control" id="address" name="address" placeholder="Страна, город, улица, дом" value="{{ address }}" required>
+        <div class="form-text">Введите полный адрес: сначала страну, затем город, улицу и номер дома.</div>
+      </div>
+      <!-- Progress and navigation bar inside the form for proper submission -->
+      <div class="d-flex align-items-center justify-content-between mt-4">
+        <a href="{{ back_url }}" class="btn btn-link">Назад</a>
+        <div class="progress flex-grow-1 mx-3" style="height: 6px;">
+          <div class="progress-bar bg-primary" role="progressbar" style="width: {{ progress }}%;" aria-valuenow="{{ progress }}" aria-valuemin="0" aria-valuemax="100"></div>
+        </div>
+        <button type="submit" class="btn btn-primary">Далее</button>
+      </div>
+    </form>
   {% else %}
     <p>Тип жилья не выбран. Пожалуйста, начните процесс создания объявления заново.</p>
     <a href="{{ url_for('new_room_step1') }}" class="btn btn-primary mt-3">Вернуться к выбору</a>
   {% endif %}
-  <!-- Progress and navigation bar -->
-  <div class="d-flex align-items-center justify-content-between mt-4">
-    {% if back_url %}
-      <a href="{{ back_url }}" class="btn btn-link">Назад</a>
-    {% else %}
-      <span class="btn btn-link invisible">Назад</span>
-    {% endif %}
-    <div class="progress flex-grow-1 mx-3" style="height: 6px;">
-      <div class="progress-bar bg-primary" role="progressbar" style="width: {{ progress }}%;" aria-valuenow="{{ progress }}" aria-valuemin="0" aria-valuemax="100"></div>
-    </div>
-    {% if next_url %}
-      <a href="{{ next_url }}" class="btn btn-primary">Далее</a>
-    {% else %}
-      <span class="btn btn-primary disabled">Далее</span>
-    {% endif %}
-  </div>
 </div>
 {% endblock %}

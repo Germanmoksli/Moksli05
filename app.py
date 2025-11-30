@@ -8054,21 +8054,56 @@ def new_room_step1():
 @login_required
 @roles_required('owner')
 def new_room_step2():
-    """Step 2 of the new listing wizard (placeholder).
+    """Step 2 of the new listing wizard: collect the address.
 
-    Displays the selected property type from step 1. This template will
-    eventually contain additional fields to collect detailed information
-    about the listing.
+    During this step the owner is asked to specify the address of the
+    apartment or house being listed.  The address is entered in a single
+    search field in the format "Country, City, Street, House number".  If
+    the form is submitted (POST), the address is stored in the session and
+    the wizard redirects to the rooms list (this can later be extended
+    to additional steps).  On GET the form is rendered.
     """
+    # Retrieve the property type selected in step 1 so that we can remind
+    # the owner of their choice in the template.  If this value is missing
+    # the user is redirected back to step 1.
     property_type = session.get('new_listing_property_type')
-    # Progress for step 2 of 2: 100%
+    if property_type is None:
+        # No property type means the wizard was not started correctly
+        return redirect(url_for('new_room_step1'))
+
+    if request.method == 'POST':
+        # Read the address string from the form.  Use ``strip`` to
+        # normalise any leading/trailing whitespace.
+        address = request.form.get('address', '').strip()
+        # Store the full address in the session so that it can be used in
+        # subsequent steps or when saving the draft.  Additional parsing
+        # (e.g. splitting into country/city) can be implemented later.
+        session['new_listing_address'] = address
+        # For now the wizard ends here.  In the future we may redirect
+        # to another step (e.g. uploading photos).  Redirect back to the
+        # list of rooms after saving the address.
+        return redirect(url_for('list_rooms'))
+
+    # On GET we determine the progress and navigation values for the
+    # template.  Since this is currently the final step of a two‑step
+    # wizard, progress is 100%.  The back button returns to step 1.
     progress = 100
-    # Back goes to step 1 to review selection
     back_url = url_for('new_room_step1')
-    # As step 2 is currently the final step, we send the user back to
-    # the rooms list upon completion. This can be updated when new steps are added.
-    next_url: typing.Optional[str] = url_for('list_rooms')
-    return render_template('new_room_step2.html', property_type=property_type, progress=progress, back_url=back_url, next_url=next_url, hide_nav=True)
+    # ``next_url`` is not used when the form is posted.  It can remain
+    # present in the template for consistency with step 1 but will be
+    # ignored because the form contains its own submit button.
+    next_url: typing.Optional[str] = None
+    # Pre‑populate the address field with any existing value from the session.
+    address = session.get('new_listing_address', '')
+    return render_template(
+        'new_room_step2.html',
+        property_type=property_type,
+        progress=progress,
+        back_url=back_url,
+        next_url=next_url,
+        hide_nav=True,
+        address=address,
+    )
 
 # Endpoint to cancel the current listing creation wizard. Clears any stored
 # values in the session and redirects back to the rooms list.
@@ -8108,6 +8143,10 @@ def save_new_room_draft():
     property_type = session.get('new_listing_property_type')
     if property_type:
         data['property_type'] = property_type
+    # Include the address in the draft if it has been captured in the wizard.
+    address = session.get('new_listing_address')
+    if address:
+        data['address'] = address
     try:
         serialized = json.dumps(data, ensure_ascii=False)
     except Exception:
@@ -8180,8 +8219,14 @@ def resume_draft(draft_id: int):
     # Load data into session.  Future fields can be added here.
     if 'property_type' in data:
         session['new_listing_property_type'] = data['property_type']
-    # Redirect to the step appropriate for the stored data.  Since only
-    # property_type is saved, redirect to step 2; if missing, go to step 1.
+    # If the draft contains an address, populate it into the session.  This
+    # allows the address field to be pre-filled when the user resumes the
+    # wizard.
+    if 'address' in data:
+        session['new_listing_address'] = data['address']
+    # Redirect to the step appropriate for the stored data.  If a
+    # property_type is present, send the owner to step 2; otherwise
+    # restart the wizard at step 1.
     if session.get('new_listing_property_type'):
         return redirect(url_for('new_room_step2'))
     return redirect(url_for('new_room_step1'))
