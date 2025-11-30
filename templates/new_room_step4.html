@@ -12,29 +12,39 @@
 
 {% block content %}
 {% if hide_nav %}
-  <!-- Панель управления: кнопки расположены слева, с серым фоном как у меню навигации. -->
+  <!-- Унифицированная верхняя панель: закрыть/черновик, прогресс, навигация -->
   <div class="container-fluid bg-light py-2 mb-3">
-    <div class="d-flex align-items-center gap-2">
-      <!-- Кнопка закрытия: жирный крестик на сером круглом фоне -->
-      <a href="{{ url_for('cancel_new_room') }}" class="d-flex align-items-center justify-content-center rounded-circle" style="width: 40px; height: 40px; background-color: #f1f3f5; text-decoration: none;">
-        <i class="bi bi-x-lg fs-4 fw-bold text-primary"></i>
-      </a>
-      <!-- Кнопка сохранения в черновик -->
-      <form action="{{ url_for('save_new_room_draft') }}" method="post" class="m-0">
-        <button type="submit" class="btn fw-bold text-primary" style="background-color: #f1f3f5; border: none; border-radius: 0.375rem; padding: 0.375rem 0.75rem;">
-          В черновик
-        </button>
-      </form>
+    <div class="d-flex align-items-center justify-content-between">
+      <!-- Левая группа: закрыть и черновик -->
+      <div class="d-flex align-items-center gap-2 me-3">
+        <a href="{{ url_for('cancel_new_room') }}" class="d-flex align-items-center justify-content-center rounded-circle"
+           style="width: 40px; height: 40px; background-color: #f1f3f5; text-decoration: none;">
+          <i class="bi bi-x-lg fs-4 fw-bold text-primary"></i>
+        </a>
+        <form action="{{ url_for('save_new_room_draft') }}" method="post" class="m-0">
+          <button type="submit" class="btn fw-bold text-primary"
+                  style="background-color: #f1f3f5; border: none; border-radius: 0.375rem; padding: 0.375rem 0.75rem;">
+            В черновик
+          </button>
+        </form>
+      </div>
+      <!-- Индикатор прогресса -->
+      <div class="progress flex-grow-1 mx-3" style="height: 6px;">
+        <div class="progress-bar bg-primary" role="progressbar" style="width: {{ progress }}%;"
+             aria-valuenow="{{ progress }}" aria-valuemin="0" aria-valuemax="100"></div>
+      </div>
+      <!-- Правая группа: навигация. Кнопка "Завершить" отправляет форму -->
+      <div class="d-flex align-items-center gap-2 ms-3">
+        <a href="{{ back_url }}" class="btn btn-link">Назад</a>
+        <button type="submit" form="amenitiesForm" class="btn btn-primary">Завершить</button>
+      </div>
     </div>
   </div>
 {% endif %}
 <div class="container py-4">
-  <!-- Progress bar positioned at the top of the page -->
-  <div class="progress mb-4" style="height: 6px;">
-    <div class="progress-bar bg-primary" role="progressbar" style="width: {{ progress }}%;" aria-valuenow="{{ progress }}" aria-valuemin="0" aria-valuemax="100"></div>
-  </div>
+  {# Прогресс бар перенесён в верхнюю панель #}
   <h2 class="mb-4 text-primary fw-bold fs-4">Шаг 4: Удобства</h2>
-  <form method="post">
+  <form method="post" id="amenitiesForm">
     <!-- Styles for amenity cards -->
     <style>
       .amenity-card {
@@ -75,11 +85,7 @@
         </div>
       </div>
     {% endfor %}
-    <!-- Navigation bar (without progress bar) -->
-    <div class="d-flex align-items-center justify-content-between mt-4">
-      <a href="{{ back_url }}" class="btn btn-link">Назад</a>
-      <button type="submit" class="btn btn-primary">Завершить</button>
-    </div>
+    {# Нижняя навигация удалена – все кнопки перенесены в верхнюю панель #}
   </form>
 </div>
 {% endblock %}
