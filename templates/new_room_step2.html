@@ -5,7 +5,7 @@
 {% block content %}
 {% if hide_nav %}
   <!-- Унифицированная верхняя панель: закрыть/черновик, индикатор прогресса, назад/далее -->
-  <div class="container-fluid bg-light py-2 mb-3">
+  <div class="container-fluid bg-light py-2 mb-3" style="border: none;">
     <div class="d-flex align-items-center justify-content-between">
       <!-- Левая группа: закрыть и сохранить в черновик -->
       <div class="d-flex align-items-center gap-2 me-3">
@@ -21,7 +21,7 @@
         </form>
       </div>
       <!-- Индикатор прогресса -->
-      <div class="progress flex-grow-1 mx-3" style="height: 6px;">
+      <div class="progress flex-grow-1 mx-3 border-0" style="height: 6px; border: none;">
         <div class="progress-bar bg-primary" role="progressbar" style="width: {{ progress }}%;"
              aria-valuenow="{{ progress }}" aria-valuemin="0" aria-valuemax="100"></div>
       </div>
