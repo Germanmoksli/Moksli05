@@ -8247,8 +8247,8 @@ def new_room_step4():
     # internally, a human‑readable label and a Bootstrap icon class.
     amenities_categories = [
         {
-            'category': 'Спальня',
-            'items': [
+            'name': 'Спальня',
+            'options': [
                 {'value': 'bedding', 'label': 'Постельное бельё', 'icon': 'bi-bed'},
                 {'value': 'pillows', 'label': 'Подушки', 'icon': 'bi-hypnotize'},
                 {'value': 'hangers', 'label': 'Вешалки', 'icon': 'bi-hanger'},
@@ -8257,8 +8257,8 @@ def new_room_step4():
             ],
         },
         {
-            'category': 'Кухня',
-            'items': [
+            'name': 'Кухня',
+            'options': [
                 {'value': 'fridge', 'label': 'Холодильник', 'icon': 'bi-snow'},
                 {'value': 'stove', 'label': 'Плита', 'icon': 'bi-egg-fried'},
                 {'value': 'microwave', 'label': 'Микроволновка', 'icon': 'bi-microwave'},
@@ -8269,8 +8269,8 @@ def new_room_step4():
             ],
         },
         {
-            'category': 'Ванная комната',
-            'items': [
+            'name': 'Ванная комната',
+            'options': [
                 {'value': 'shower', 'label': 'Душ', 'icon': 'bi-droplet'},
                 {'value': 'bath', 'label': 'Ванна', 'icon': 'bi-bathtub'},
                 {'value': 'toilet', 'label': 'Туалет', 'icon': 'bi-toilet'},
@@ -8280,8 +8280,8 @@ def new_room_step4():
             ],
         },
         {
-            'category': 'Средства личной гигиены',
-            'items': [
+            'name': 'Средства личной гигиены',
+            'options': [
                 {'value': 'shampoo', 'label': 'Шампунь', 'icon': 'bi-droplet-fill'},
                 {'value': 'soap', 'label': 'Мыло', 'icon': 'bi-droplet-fill'},
                 {'value': 'toilet_paper', 'label': 'Туалетная бумага', 'icon': 'bi-journal'},
@@ -8289,8 +8289,8 @@ def new_room_step4():
             ],
         },
         {
-            'category': 'Дополнительные удобства',
-            'items': [
+            'name': 'Дополнительные удобства',
+            'options': [
                 {'value': 'wifi', 'label': 'Wi‑Fi', 'icon': 'bi-wifi'},
                 {'value': 'tv', 'label': 'Телевизор', 'icon': 'bi-tv'},
                 {'value': 'heating', 'label': 'Отопление', 'icon': 'bi-thermometer-half'},
@@ -8302,8 +8302,8 @@ def new_room_step4():
             ],
         },
         {
-            'category': 'Удобства в ЖК',
-            'items': [
+            'name': 'Удобства в ЖК',
+            'options': [
                 {'value': 'elevator', 'label': 'Лифт', 'icon': 'bi-arrow-up-square'},
                 {'value': 'gym', 'label': 'Фитнес‑центр', 'icon': 'bi-bicycle'},
                 {'value': 'pool', 'label': 'Бассейн', 'icon': 'bi-droplet-fill'},
@@ -8313,8 +8313,8 @@ def new_room_step4():
             ],
         },
         {
-            'category': 'Безопасность',
-            'items': [
+            'name': 'Безопасность',
+            'options': [
                 {'value': 'smoke_detector', 'label': 'Дымовой датчик', 'icon': 'bi-bell'},
                 {'value': 'fire_extinguisher', 'label': 'Огнетушитель', 'icon': 'bi-fire'},
                 {'value': 'security_cameras', 'label': 'Камеры видеонаблюдения', 'icon': 'bi-camera-video'},
