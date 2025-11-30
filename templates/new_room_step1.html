@@ -21,6 +21,10 @@
   </div>
 {% endif %}
 <div class="container py-4">
+  <!-- Progress bar positioned at the top of the page -->
+  <div class="progress mb-4" style="height: 6px;">
+    <div class="progress-bar bg-primary" role="progressbar" style="width: {{ progress }}%;" aria-valuenow="{{ progress }}" aria-valuemin="0" aria-valuemax="100"></div>
+  </div>
   <h2 class="mb-4 text-primary fw-bold fs-4">Шаг 1: Выберите тип жилья</h2>
   <div class="row g-4">
     <!-- Option for a flat/apartment (квартира) -->
@@ -86,16 +90,13 @@
       </form>
     </div>
   </div>
-  <!-- Progress and navigation -->
+  <!-- Navigation (without progress bar) -->
   <div class="d-flex align-items-center justify-content-between mt-4">
     {% if back_url %}
       <a href="{{ back_url }}" class="btn btn-link">Назад</a>
     {% else %}
       <span class="btn btn-link invisible">Назад</span>
     {% endif %}
-    <div class="progress flex-grow-1 mx-3" style="height: 6px;">
-      <div class="progress-bar bg-primary" role="progressbar" style="width: {{ progress }}%;" aria-valuenow="{{ progress }}" aria-valuemin="0" aria-valuemax="100"></div>
-    </div>
     {% if next_url %}
       <a href="{{ next_url }}" class="btn btn-primary">Далее</a>
     {% else %}

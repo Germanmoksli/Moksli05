@@ -21,6 +21,10 @@
   </div>
 {% endif %}
 <div class="container py-4">
+  <!-- Progress bar positioned at the top of the page -->
+  <div class="progress mb-4" style="height: 6px;">
+    <div class="progress-bar bg-primary" role="progressbar" style="width: {{ progress }}%;" aria-valuenow="{{ progress }}" aria-valuemin="0" aria-valuemax="100"></div>
+  </div>
   <h2 class="mb-4 text-primary fw-bold fs-4">Шаг 3: Добавьте фотографии</h2>
   <form method="post" enctype="multipart/form-data">
     <!-- Upload area -->
@@ -35,12 +39,9 @@
     <div id="photoGrid" class="row g-2"></div>
     <!-- Hidden field to store the order of photos (comma-separated indices) -->
     <input type="hidden" id="photoOrder" name="photo_order" value="">
-    <!-- Progress and navigation bar -->
+    <!-- Navigation bar (without progress bar) -->
     <div class="d-flex align-items-center justify-content-between mt-4">
       <a href="{{ back_url }}" class="btn btn-link">Назад</a>
-      <div class="progress flex-grow-1 mx-3" style="height: 6px;">
-        <div class="progress-bar bg-primary" role="progressbar" style="width: {{ progress }}%;" aria-valuenow="{{ progress }}" aria-valuemin="0" aria-valuemax="100"></div>
-      </div>
       <button type="submit" class="btn btn-primary">Далее</button>
     </div>
   </form>
