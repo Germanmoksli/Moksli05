@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "Base.html" %}
 
 {% block title %}Новое объявление – Шаг 4{% endblock %}
 
@@ -39,15 +39,15 @@
     </style>
     {% for category in categories %}
       <div class="mb-3">
-        <h5 class="fw-bold mb-2">{{ category.category }}</h5>
+        <h5 class="fw-bold mb-2">{{ category['category'] }}</h5>
         <div class="row g-2">
-          {% for item in category.items %}
+          {% for item in category['items'] %}
             <div class="col-6 col-md-4 col-lg-3">
               <label class="w-100">
-                <input type="checkbox" name="amenities" value="{{ item.value }}" class="d-none" {% if item.value in selected %}checked{% endif %}>
+                <input type="checkbox" name="amenities" value="{{ item['value'] }}" class="d-none" {% if item['value'] in selected %}checked{% endif %}>
                 <div class="amenity-card text-center">
-                  <i class="bi {{ item.icon }} fs-2 mb-2 text-primary"></i>
-                  <div class="small fw-semibold">{{ item.label }}</div>
+                  <i class="bi {{ item['icon'] }} fs-2 mb-2 text-primary"></i>
+                  <div class="small fw-semibold">{{ item['label'] }}</div>
                 </div>
               </label>
             </div>
