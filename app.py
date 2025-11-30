@@ -8034,7 +8034,10 @@ def new_room_step1():
     """
     if request.method == "POST":
         property_type = request.form.get("property_type")
-        if property_type not in {"flat", "house"}:
+        # Accept four types of accommodation: flat (квартира), studio (студия),
+        # room (комната) and house (дом).  If the submitted value is not
+        # among these options the page reloads with a warning.
+        if property_type not in {"flat", "studio", "room", "house"}:
             flash("Пожалуйста, выберите тип жилья из предложенных вариантов.", "warning")
             return redirect(url_for('new_room_step1'))
         session['new_listing_property_type'] = property_type

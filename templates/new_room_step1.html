@@ -23,8 +23,8 @@
 <div class="container py-4">
   <h2 class="mb-4 text-primary fw-bold fs-4">Шаг 1: Выберите тип жилья</h2>
   <div class="row g-4">
-    <!-- Option for a flat/apartment -->
-    <div class="col-12 col-md-6">
+    <!-- Option for a flat/apartment (квартира) -->
+    <div class="col-12 col-md-6 col-lg-3">
       <form method="post">
         <input type="hidden" name="property_type" value="flat">
         <button type="submit" class="w-100 border-0 bg-transparent p-0">
@@ -38,8 +38,40 @@
         </button>
       </form>
     </div>
-    <!-- Option for a house -->
-    <div class="col-12 col-md-6">
+    <!-- Option for a studio (студия) -->
+    <div class="col-12 col-md-6 col-lg-3">
+      <form method="post">
+        <input type="hidden" name="property_type" value="studio">
+        <button type="submit" class="w-100 border-0 bg-transparent p-0">
+          <div class="card text-center h-100 shadow-sm selectable-card {% if selected_type == 'studio' %}border-primary border-2{% endif %}">
+            <div class="card-body py-4">
+              <!-- Use an icon representing a small space or studio -->
+              <i class="bi bi-door-open fs-1 text-primary"></i>
+              <h5 class="card-title mt-3 fw-bold">Студия</h5>
+              <p class="card-text">Однокомнатная студия</p>
+            </div>
+          </div>
+        </button>
+      </form>
+    </div>
+    <!-- Option for a room (комната) -->
+    <div class="col-12 col-md-6 col-lg-3">
+      <form method="post">
+        <input type="hidden" name="property_type" value="room">
+        <button type="submit" class="w-100 border-0 bg-transparent p-0">
+          <div class="card text-center h-100 shadow-sm selectable-card {% if selected_type == 'room' %}border-primary border-2{% endif %}">
+            <div class="card-body py-4">
+              <!-- Icon for a single room -->
+              <i class="bi bi-door-closed fs-1 text-primary"></i>
+              <h5 class="card-title mt-3 fw-bold">Комната</h5>
+              <p class="card-text">Комната в квартире</p>
+            </div>
+          </div>
+        </button>
+      </form>
+    </div>
+    <!-- Option for a house (дом) -->
+    <div class="col-12 col-md-6 col-lg-3">
       <form method="post">
         <input type="hidden" name="property_type" value="house">
         <button type="submit" class="w-100 border-0 bg-transparent p-0">
