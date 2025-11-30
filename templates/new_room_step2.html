@@ -54,7 +54,8 @@
       <!-- Embedded Google Map that updates when address fields change -->
       <div class="mb-4">
         <label class="form-label">Карта</label>
-        <div class="ratio ratio-16x9">
+        <!-- Use a 4:3 ratio instead of 16:9 to make the map panel shorter on mobile -->
+        <div class="ratio ratio-4x3">
           <iframe id="addressMap" src="https://maps.google.com/maps?q={{ encoded_address }}&output=embed" width="100%" height="100%" style="border:0;" allowfullscreen loading="lazy"></iframe>
         </div>
       </div>
