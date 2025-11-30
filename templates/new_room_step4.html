@@ -1,4 +1,12 @@
-{% extends "Base.html" %}
+{#
+  Use the lower‑case base template.  On some deployments (e.g. Linux),
+  template lookup is case‑sensitive.  Other templates such as
+  ``new_room_step3.html`` extend ``base.html`` (lower‑case), and the
+  corresponding file is named ``base.html`` on the production server.
+  Switching to the same casing here avoids a ``TemplateNotFound: Base.html``
+  error when rendering this page.
+#}
+{% extends "base.html" %}
 
 {% block title %}Новое объявление – Шаг 4{% endblock %}
 
