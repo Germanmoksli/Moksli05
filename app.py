@@ -8041,12 +8041,13 @@ def new_room_step1():
         return redirect(url_for('new_room_step2'))
     # Determine selected property type from session for highlighting cards
     selected_type = session.get('new_listing_property_type')
-    # Set progress (out of 100) for step 1. Assume 2 steps for now.
-    progress = 50
+    # Set progress (out of 100) for step 1. With three steps the first
+    # represents roughly one third of the process.
+    progress = 33
     # In the first step there is no previous page in the wizard, but we use
     # None to indicate the back button should be hidden.
     back_url: typing.Optional[str] = None
-    # Next step goes to step 2
+    # Next step goes to step 2
     next_url = url_for('new_room_step2')
     return render_template('new_room_step1.html', selected_type=selected_type, progress=progress, back_url=back_url, next_url=next_url, hide_nav=True)
 
@@ -8089,18 +8090,18 @@ def new_room_step2():
         session['new_listing_street'] = street
         session['new_listing_house_number'] = house_number
         session['new_listing_address'] = address
-        # At the moment the wizard ends after collecting the address.
-        return redirect(url_for('list_rooms'))
+        # After collecting the address proceed to step 3 of the wizard.
+        return redirect(url_for('new_room_step3'))
 
     # On GET we determine the progress and navigation values for the
-    # template.  Since this is currently the final step of a two‑step
-    # wizard, progress is 100%.  The back button returns to step 1.
-    progress = 100
+    # template.  With three steps in the wizard this represents the
+    # second step, so progress is approximately two thirds of the way.
+    progress = 66
     back_url = url_for('new_room_step1')
     # ``next_url`` is not used when the form is posted.  It can remain
     # present in the template for consistency with step 1 but will be
     # ignored because the form contains its own submit button.
-    next_url: typing.Optional[str] = None
+    next_url: typing.Optional[str] = url_for('new_room_step3')
     # Pre‑populate the address fields with any existing values from the session.
     country = session.get('new_listing_country', '')
     city = session.get('new_listing_city', '')
@@ -8130,6 +8131,96 @@ def new_room_step2():
         house_number=house_number,
         address=address,
         encoded_address=encoded_address,
+    )
+
+
+# -----------------------------------------------------------------------------
+# Step 3 of the new listing wizard: upload photos
+#
+# This step allows an owner to upload up to 100 photographs for their new
+# listing.  Photos are presented in a grid where the first photo becomes
+# the cover image (labelled "Обложка").  Owners can reorder the photos via
+# drag‑and‑drop on the client side before submitting.  Uploaded photos are
+# saved to the ``UPLOAD_ROOMS_FOLDER`` and their filenames are stored in
+# ``session['new_listing_photos']``.  After uploading, the wizard ends and
+# the owner is redirected to the rooms list.  Future versions could
+# proceed to additional steps such as setting prices or availability.
+@app.route("/rooms/new/step3", methods=["GET", "POST"])
+@login_required
+@roles_required('owner')
+def new_room_step3():
+    # Ensure step 1 and step 2 data are present.  Without a property type
+    # or address the wizard is not properly initialised.
+    property_type = session.get('new_listing_property_type')
+    if property_type is None:
+        return redirect(url_for('new_room_step1'))
+    # We don't strictly require an address here but it should have been
+    # collected in step 2.  If missing, redirect back.
+    if 'new_listing_address' not in session:
+        return redirect(url_for('new_room_step2'))
+    # Handle file uploads
+    if request.method == 'POST':
+        # Get the uploaded files in the order provided by the browser
+        files = request.files.getlist('photos')
+        # Limit to the first 100 files
+        if len(files) > 100:
+            files = files[:100]
+        # If a custom order is provided via photo_order, reorder the files
+        order_str = request.form.get('photo_order', '')
+        order_indices: list[int] = []
+        if order_str:
+            for part in order_str.split(','):
+                part = part.strip()
+                if part.isdigit():
+                    order_indices.append(int(part))
+        if order_indices:
+            ordered_files: list = []
+            for idx in order_indices:
+                if 0 <= idx < len(files):
+                    ordered_files.append(files[idx])
+            # Append any files that were not referenced in the order
+            for i, f in enumerate(files):
+                if i not in order_indices:
+                    ordered_files.append(f)
+            files = ordered_files
+        saved_filenames: list[str] = []
+        # Save each file to the uploads folder
+        for file in files:
+            if not file or file.filename == '':
+                continue
+            filename = secure_filename(file.filename)
+            # Only allow image files by basic extension check
+            ext = os.path.splitext(filename)[1].lower()
+            if ext not in {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'}:
+                continue
+            # Generate a unique filename to avoid collisions
+            unique_name = f"{uuid.uuid4().hex}{ext}"
+            try:
+                file.save(os.path.join(UPLOAD_ROOMS_FOLDER, unique_name))
+                saved_filenames.append(unique_name)
+            except Exception:
+                # Skip files that cannot be saved
+                continue
+        # Persist the list of saved photos in the session for later use
+        session['new_listing_photos'] = saved_filenames
+        # End of wizard: redirect to rooms list
+        return redirect(url_for('list_rooms'))
+    # On GET display the upload interface.  Progress is 100% as this is
+    # currently the final step.  Back button returns to step 2.
+    progress = 100
+    back_url = url_for('new_room_step2')
+    next_url: typing.Optional[str] = None
+    # Pass any previously uploaded photos to the template to allow the user
+    # to resume editing.  Each entry is a filename within UPLOAD_ROOMS_FOLDER.
+    existing_photos = session.get('new_listing_photos', [])
+    return render_template(
+        'new_room_step3.html',
+        property_type=property_type,
+        progress=progress,
+        back_url=back_url,
+        next_url=next_url,
+        hide_nav=True,
+        existing_photos=existing_photos,
     )
 
 # Endpoint to cancel the current listing creation wizard. Clears any stored
@@ -8187,6 +8278,10 @@ def save_new_room_draft():
         data['street'] = street
     if house_number:
         data['house_number'] = house_number
+    # Save list of uploaded photos if present
+    photos = session.get('new_listing_photos')
+    if photos:
+        data['photos'] = photos
     try:
         serialized = json.dumps(data, ensure_ascii=False)
     except Exception:
@@ -8273,6 +8368,8 @@ def resume_draft(draft_id: int):
         session['new_listing_street'] = data['street']
     if 'house_number' in data:
         session['new_listing_house_number'] = data['house_number']
+    if 'photos' in data:
+        session['new_listing_photos'] = data['photos']
     # Redirect to the step appropriate for the stored data.  If a
     # property_type is present, send the owner to step 2; otherwise
     # restart the wizard at step 1.
