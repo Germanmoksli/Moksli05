@@ -8072,16 +8072,24 @@ def new_room_step2():
         return redirect(url_for('new_room_step1'))
 
     if request.method == 'POST':
-        # Read the address string from the form.  Use ``strip`` to
-        # normalise any leading/trailing whitespace.
-        address = request.form.get('address', '').strip()
-        # Store the full address in the session so that it can be used in
-        # subsequent steps or when saving the draft.  Additional parsing
-        # (e.g. splitting into country/city) can be implemented later.
+        # Retrieve individual address components from the form.  Each field
+        # is optional, but the country and city fields should normally be
+        # provided.  Trim whitespace to normalise user input.
+        country = request.form.get('country', '').strip()
+        city = request.form.get('city', '').strip()
+        street = request.form.get('street', '').strip()
+        house_number = request.form.get('house_number', '').strip()
+        # Combine the components into a single address string.  Empty
+        # components are omitted to avoid extraneous commas.
+        address_parts = [country, city, street, house_number]
+        address = ', '.join([part for part in address_parts if part])
+        # Persist each component and the combined address in the session.
+        session['new_listing_country'] = country
+        session['new_listing_city'] = city
+        session['new_listing_street'] = street
+        session['new_listing_house_number'] = house_number
         session['new_listing_address'] = address
-        # For now the wizard ends here.  In the future we may redirect
-        # to another step (e.g. uploading photos).  Redirect back to the
-        # list of rooms after saving the address.
+        # At the moment the wizard ends after collecting the address.
         return redirect(url_for('list_rooms'))
 
     # On GET we determine the progress and navigation values for the
@@ -8093,8 +8101,22 @@ def new_room_step2():
     # present in the template for consistency with step 1 but will be
     # ignored because the form contains its own submit button.
     next_url: typing.Optional[str] = None
-    # Pre‑populate the address field with any existing value from the session.
-    address = session.get('new_listing_address', '')
+    # Pre‑populate the address fields with any existing values from the session.
+    country = session.get('new_listing_country', '')
+    city = session.get('new_listing_city', '')
+    street = session.get('new_listing_street', '')
+    house_number = session.get('new_listing_house_number', '')
+    # Construct a query string for the map embed.  The combined address
+    # string may be empty if no components have been provided.
+    address_parts = [country, city, street, house_number]
+    address = ', '.join([part for part in address_parts if part])
+    # Pre-encode the address for embedding in the Google map iframe.  Use
+    # quote_plus so that spaces become "+" rather than "%20".  This
+    # encoded value will be used directly in the iframe src attribute.
+    try:
+        encoded_address = urllib.parse.quote_plus(address) if address else ''
+    except Exception:
+        encoded_address = ''
     return render_template(
         'new_room_step2.html',
         property_type=property_type,
@@ -8102,7 +8124,12 @@ def new_room_step2():
         back_url=back_url,
         next_url=next_url,
         hide_nav=True,
+        country=country,
+        city=city,
+        street=street,
+        house_number=house_number,
         address=address,
+        encoded_address=encoded_address,
     )
 
 # Endpoint to cancel the current listing creation wizard. Clears any stored
@@ -8143,10 +8170,23 @@ def save_new_room_draft():
     property_type = session.get('new_listing_property_type')
     if property_type:
         data['property_type'] = property_type
-    # Include the address in the draft if it has been captured in the wizard.
+    # Include the address and individual components in the draft if they
+    # have been captured in the wizard.
     address = session.get('new_listing_address')
     if address:
         data['address'] = address
+    country = session.get('new_listing_country')
+    city = session.get('new_listing_city')
+    street = session.get('new_listing_street')
+    house_number = session.get('new_listing_house_number')
+    if country:
+        data['country'] = country
+    if city:
+        data['city'] = city
+    if street:
+        data['street'] = street
+    if house_number:
+        data['house_number'] = house_number
     try:
         serialized = json.dumps(data, ensure_ascii=False)
     except Exception:
@@ -8224,6 +8264,15 @@ def resume_draft(draft_id: int):
     # wizard.
     if 'address' in data:
         session['new_listing_address'] = data['address']
+    # Restore individual address components if present in the draft.
+    if 'country' in data:
+        session['new_listing_country'] = data['country']
+    if 'city' in data:
+        session['new_listing_city'] = data['city']
+    if 'street' in data:
+        session['new_listing_street'] = data['street']
+    if 'house_number' in data:
+        session['new_listing_house_number'] = data['house_number']
     # Redirect to the step appropriate for the stored data.  If a
     # property_type is present, send the owner to step 2; otherwise
     # restart the wizard at step 1.

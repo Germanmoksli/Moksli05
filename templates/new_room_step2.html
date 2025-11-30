@@ -33,10 +33,30 @@
       {% endif %}
     </p>
     <form method="post">
-      <div class="mb-3">
-        <label for="address" class="form-label">Адрес</label>
-        <input type="text" class="form-control" id="address" name="address" placeholder="Страна, город, улица, дом" value="{{ address }}" required>
-        <div class="form-text">Введите полный адрес: сначала страну, затем город, улицу и номер дома.</div>
+      <div class="row">
+        <div class="mb-3 col-12 col-md-6">
+          <label for="country" class="form-label">Страна</label>
+          <input type="text" class="form-control" id="country" name="country" value="{{ country }}" required>
+        </div>
+        <div class="mb-3 col-12 col-md-6">
+          <label for="city" class="form-label">Город</label>
+          <input type="text" class="form-control" id="city" name="city" value="{{ city }}" required>
+        </div>
+        <div class="mb-3 col-12 col-md-6">
+          <label for="street" class="form-label">Улица</label>
+          <input type="text" class="form-control" id="street" name="street" value="{{ street }}" required>
+        </div>
+        <div class="mb-3 col-12 col-md-6">
+          <label for="house_number" class="form-label">Номер дома</label>
+          <input type="text" class="form-control" id="house_number" name="house_number" value="{{ house_number }}" required>
+        </div>
+      </div>
+      <!-- Embedded Google Map that updates when address fields change -->
+      <div class="mb-4">
+        <label class="form-label">Карта</label>
+        <div class="ratio ratio-16x9">
+          <iframe id="addressMap" src="https://maps.google.com/maps?q={{ encoded_address }}&output=embed" width="100%" height="100%" style="border:0;" allowfullscreen loading="lazy"></iframe>
+        </div>
       </div>
       <!-- Progress and navigation bar inside the form for proper submission -->
       <div class="d-flex align-items-center justify-content-between mt-4">
@@ -47,6 +67,32 @@
         <button type="submit" class="btn btn-primary">Далее</button>
       </div>
     </form>
+    <!-- JavaScript to update the map when the user changes any address field -->
+    <script>
+      function updateMap() {
+        const country = document.getElementById('country').value.trim();
+        const city = document.getElementById('city').value.trim();
+        const street = document.getElementById('street').value.trim();
+        const house = document.getElementById('house_number').value.trim();
+        const parts = [];
+        if (country) parts.push(country);
+        if (city) parts.push(city);
+        if (street) parts.push(street);
+        if (house) parts.push(house);
+        const query = encodeURIComponent(parts.join(', '));
+        const iframe = document.getElementById('addressMap');
+        iframe.src = 'https://maps.google.com/maps?q=' + query + '&output=embed';
+      }
+      document.addEventListener('DOMContentLoaded', function() {
+        ['country','city','street','house_number'].forEach(function(id) {
+          const el = document.getElementById(id);
+          if (el) {
+            el.addEventListener('change', updateMap);
+            el.addEventListener('input', updateMap);
+          }
+        });
+      });
+    </script>
   {% else %}
     <p>Тип жилья не выбран. Пожалуйста, начните процесс создания объявления заново.</p>
     <a href="{{ url_for('new_room_step1') }}" class="btn btn-primary mt-3">Вернуться к выбору</a>
