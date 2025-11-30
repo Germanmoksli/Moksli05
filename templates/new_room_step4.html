@@ -44,7 +44,15 @@
           {% for item in category.options %}
             <div class="col-6 col-md-4 col-lg-3">
               <label class="w-100">
-                <input type="checkbox" name="amenities" value="{{ item.value }}" class="d-none" {% if item.value in selected %}checked{% endif %}>
+                {#
+                  The Jinja ``in`` operator will raise a TypeError if the
+                  right‑hand operand is ``None``.  Use the ``default`` filter
+                  to ensure that ``selected`` is an iterable (empty list) when
+                  no amenities have been chosen yet.  Without this guard
+                  selecting amenities in a new listing caused a 500 error when
+                  ``session['new_listing_amenities']`` was not set.
+                #}
+                <input type="checkbox" name="amenities" value="{{ item.value }}" class="d-none" {% if item.value in (selected|default([])) %}checked{% endif %}>
                 <div class="amenity-card text-center">
                   <i class="bi {{ item.icon }} fs-2 mb-2 text-primary"></i>
                   <div class="small fw-semibold">{{ item.label }}</div>

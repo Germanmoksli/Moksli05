@@ -8333,7 +8333,22 @@ def new_room_step4():
     back_url = url_for('new_room_step3')
     next_url: typing.Optional[str] = None
     # Preselect amenities from session if editing a draft
-    selected = session.get('new_listing_amenities', [])
+    # Pull any previously chosen amenities from the session.  When editing a
+    # draft listing the value stored in ``new_listing_amenities`` may be
+    # missing or ``None``.  Ensure that ``selected`` is always a list so that
+    # membership checks in the Jinja template succeed (``value in selected``)
+    # without raising a ``TypeError``.  If the session key is absent
+    # ``session.get`` returns the provided default (empty list).  If the
+    # stored value is ``None`` we coerce it to an empty list as well.
+    raw_selected = session.get('new_listing_amenities', [])
+    if raw_selected is None:
+        selected: list[str] = []
+    else:
+        # ``raw_selected`` is typically already a list returned from
+        # ``request.form.getlist`` when saving the previous step.  If the
+        # stored value is not a list (e.g. a comma‑separated string), wrap
+        # it in a list so the template can iterate over it safely.
+        selected = raw_selected if isinstance(raw_selected, list) else [raw_selected]
     return render_template(
         'new_room_step4.html',
         progress=progress,
