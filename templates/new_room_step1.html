@@ -34,82 +34,73 @@
         {% else %}
           <span class="btn btn-link invisible" style="height: 40px; display: inline-flex; align-items: center; justify-content: center;">Назад</span>
         {% endif %}
-        {% if next_url %}
-          <a href="{{ next_url }}" class="btn btn-primary d-flex align-items-center justify-content-center"
-             style="height: 40px;">Далее</a>
-        {% else %}
-          <span class="btn btn-primary disabled" style="height: 40px; display: inline-flex; align-items: center; justify-content: center;">Далее</span>
-        {% endif %}
+        {# Кнопка "Далее" отправляет форму выбора типа жилья. Используем атрибут form. #}
+        <button type="submit" form="typeForm" class="btn btn-primary d-flex align-items-center justify-content-center"
+                style="height: 40px;">Далее</button>
       </div>
     </div>
   </div>
 {% endif %}
 <div class="container py-4">
   {# Progress bar is now included in the unified top bar; remove duplicate here #}
-  <h2 class="mb-4 text-primary fw-bold fs-4 text-center">Что вы хотите сдать?</h2>
-  <div class="row g-4">
-    <!-- Option for a flat/apartment (квартира) -->
-    <div class="col-12 col-md-6 col-lg-6">
-      <form method="post">
-        <input type="hidden" name="property_type" value="flat">
-        <button type="submit" class="w-100 border-0 bg-transparent p-0">
-          <div class="card text-center h-100 shadow-sm selectable-card {% if selected_type == 'flat' %}border-primary border-2{% endif %}">
+  <h2 class="mb-4 text-primary fw-bold fs-2 text-center">Что вы хотите сдать?</h2>
+  <style>
+    /* Highlight the selected property card when its radio button is checked */
+    input[type=radio]:checked + .card {
+      border: 2px solid var(--bs-primary) !important;
+    }
+  </style>
+  <form method="post" id="typeForm">
+    <div class="row g-4">
+      <div class="col-12 col-md-6 col-lg-6">
+        <label class="w-100">
+          <input type="radio" name="property_type" value="flat" class="d-none" {% if selected_type == 'flat' %}checked{% endif %}>
+          <div class="card text-center shadow-sm selectable-card {% if selected_type == 'flat' %}border-primary border-2{% endif %}" style="aspect-ratio: 1 / 1;">
             <div class="card-body py-4">
               <i class="bi bi-building fs-1 text-primary"></i>
               <h5 class="card-title mt-3 fw-bold">Квартира</h5>
               <p class="card-text">Жильё в многоквартирном доме</p>
             </div>
           </div>
-        </button>
-      </form>
-    </div>
-    <!-- Option for a studio (студия) -->
-    <div class="col-12 col-md-6 col-lg-6">
-      <form method="post">
-        <input type="hidden" name="property_type" value="studio">
-        <button type="submit" class="w-100 border-0 bg-transparent p-0">
-          <div class="card text-center h-100 shadow-sm selectable-card {% if selected_type == 'studio' %}border-primary border-2{% endif %}">
+        </label>
+      </div>
+      <div class="col-12 col-md-6 col-lg-6">
+        <label class="w-100">
+          <input type="radio" name="property_type" value="studio" class="d-none" {% if selected_type == 'studio' %}checked{% endif %}>
+          <div class="card text-center shadow-sm selectable-card {% if selected_type == 'studio' %}border-primary border-2{% endif %}" style="aspect-ratio: 1 / 1;">
             <div class="card-body py-4">
-              <!-- Use an icon representing a small space or studio -->
               <i class="bi bi-door-open fs-1 text-primary"></i>
               <h5 class="card-title mt-3 fw-bold">Студия</h5>
               <p class="card-text">Однокомнатная студия</p>
             </div>
           </div>
-        </button>
-      </form>
-    </div>
-    <!-- Option for a room (комната) -->
-    <div class="col-12 col-md-6 col-lg-6">
-      <form method="post">
-        <input type="hidden" name="property_type" value="room">
-        <button type="submit" class="w-100 border-0 bg-transparent p-0">
-          <div class="card text-center h-100 shadow-sm selectable-card {% if selected_type == 'room' %}border-primary border-2{% endif %}">
+        </label>
+      </div>
+      <div class="col-12 col-md-6 col-lg-6">
+        <label class="w-100">
+          <input type="radio" name="property_type" value="room" class="d-none" {% if selected_type == 'room' %}checked{% endif %}>
+          <div class="card text-center shadow-sm selectable-card {% if selected_type == 'room' %}border-primary border-2{% endif %}" style="aspect-ratio: 1 / 1;">
             <div class="card-body py-4">
-              <!-- Icon for a single room -->
               <i class="bi bi-door-closed fs-1 text-primary"></i>
               <h5 class="card-title mt-3 fw-bold">Комната</h5>
               <p class="card-text">Комната в квартире</p>
             </div>
           </div>
-        </button>
-      </form>
-    </div>
-    <!-- Option for a house (дом) -->
-    <div class="col-12 col-md-6 col-lg-6">
-      <form method="post">
-        <input type="hidden" name="property_type" value="house">
-        <button type="submit" class="w-100 border-0 bg-transparent p-0">
-          <div class="card text-center h-100 shadow-sm selectable-card {% if selected_type == 'house' %}border-primary border-2{% endif %}">
+        </label>
+      </div>
+      <div class="col-12 col-md-6 col-lg-6">
+        <label class="w-100">
+          <input type="radio" name="property_type" value="house" class="d-none" {% if selected_type == 'house' %}checked{% endif %}>
+          <div class="card text-center shadow-sm selectable-card {% if selected_type == 'house' %}border-primary border-2{% endif %}" style="aspect-ratio: 1 / 1;">
             <div class="card-body py-4">
               <i class="bi bi-house fs-1 text-primary"></i>
               <h5 class="card-title mt-3 fw-bold">Дом</h5>
               <p class="card-text">Отдельно стоящий жилой дом</p>
             </div>
           </div>
-        </button>
-      </form>
+        </label>
+      </div>
     </div>
-  </div>
+  </form>
 </div>
 {% endblock %}
