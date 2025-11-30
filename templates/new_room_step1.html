@@ -52,10 +52,11 @@
   </style>
   <form method="post" id="typeForm">
     <div class="row g-4">
-      <div class="col-12 col-md-6 col-lg-6">
-        <label class="w-100">
+      <div class="col-12 col-md-6 col-lg-6 d-flex justify-content-center">
+        <label class="d-block">
           <input type="radio" name="property_type" value="flat" class="d-none" {% if selected_type == 'flat' %}checked{% endif %}>
-          <div class="card text-center shadow-sm selectable-card {% if selected_type == 'flat' %}border-primary border-2{% endif %}" style="aspect-ratio: 1 / 1;">
+          <div class="card text-center shadow-sm selectable-card {% if selected_type == 'flat' %}border-primary border-2{% endif %}"
+               style="width: 192px; height: 192px;">
             <div class="card-body py-4">
               <i class="bi bi-building fs-1 text-primary"></i>
               <h5 class="card-title mt-3 fw-bold">Квартира</h5>
@@ -64,10 +65,11 @@
           </div>
         </label>
       </div>
-      <div class="col-12 col-md-6 col-lg-6">
-        <label class="w-100">
+      <div class="col-12 col-md-6 col-lg-6 d-flex justify-content-center">
+        <label class="d-block">
           <input type="radio" name="property_type" value="studio" class="d-none" {% if selected_type == 'studio' %}checked{% endif %}>
-          <div class="card text-center shadow-sm selectable-card {% if selected_type == 'studio' %}border-primary border-2{% endif %}" style="aspect-ratio: 1 / 1;">
+          <div class="card text-center shadow-sm selectable-card {% if selected_type == 'studio' %}border-primary border-2{% endif %}"
+               style="width: 192px; height: 192px;">
             <div class="card-body py-4">
               <i class="bi bi-door-open fs-1 text-primary"></i>
               <h5 class="card-title mt-3 fw-bold">Студия</h5>
@@ -76,10 +78,11 @@
           </div>
         </label>
       </div>
-      <div class="col-12 col-md-6 col-lg-6">
-        <label class="w-100">
+      <div class="col-12 col-md-6 col-lg-6 d-flex justify-content-center">
+        <label class="d-block">
           <input type="radio" name="property_type" value="room" class="d-none" {% if selected_type == 'room' %}checked{% endif %}>
-          <div class="card text-center shadow-sm selectable-card {% if selected_type == 'room' %}border-primary border-2{% endif %}" style="aspect-ratio: 1 / 1;">
+          <div class="card text-center shadow-sm selectable-card {% if selected_type == 'room' %}border-primary border-2{% endif %}"
+               style="width: 192px; height: 192px;">
             <div class="card-body py-4">
               <i class="bi bi-door-closed fs-1 text-primary"></i>
               <h5 class="card-title mt-3 fw-bold">Комната</h5>
@@ -88,10 +91,11 @@
           </div>
         </label>
       </div>
-      <div class="col-12 col-md-6 col-lg-6">
-        <label class="w-100">
+      <div class="col-12 col-md-6 col-lg-6 d-flex justify-content-center">
+        <label class="d-block">
           <input type="radio" name="property_type" value="house" class="d-none" {% if selected_type == 'house' %}checked{% endif %}>
-          <div class="card text-center shadow-sm selectable-card {% if selected_type == 'house' %}border-primary border-2{% endif %}" style="aspect-ratio: 1 / 1;">
+          <div class="card text-center shadow-sm selectable-card {% if selected_type == 'house' %}border-primary border-2{% endif %}"
+               style="width: 192px; height: 192px;">
             <div class="card-body py-4">
               <i class="bi bi-house fs-1 text-primary"></i>
               <h5 class="card-title mt-3 fw-bold">Дом</h5>
