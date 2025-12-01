@@ -73,8 +73,17 @@
     </style>
     {% for category in categories %}
       <div class="mb-3">
-        <h5 class="fw-bold mb-2">{{ category.name }}</h5>
-        <div class="row row-cols-3 g-2 justify-content-center" style="max-width: 900px; margin: 0 auto;">
+        {#
+  Center and enlarge the category heading (e.g. «Спальня», «Кухня»).
+  Use fs-3 for a larger font and fw-bold for extra weight.  The
+  surrounding container limits the width of the amenity grid so that
+  each tile stays compact.  Reducing the max‑width from 720px to
+  600px results in smaller tiles while still leaving room for the
+  icon and label.  The justify-content-center class centres the
+  grid within the available width.
+#}
+<h5 class="fw-bold fs-3 text-center mb-3">{{ category.name }}</h5>
+        <div class="row row-cols-3 g-2 justify-content-center" style="max-width: 600px; margin: 0 auto;">
           {% for item in category.options %}
             <div class="col">
               <label class="w-100">
@@ -88,7 +97,22 @@
                 #}
                 <input type="checkbox" name="amenities" value="{{ item.value }}" class="d-none">
                 <div class="amenity-card text-center">
-                  <i class="bi {{ item.icon }} fs-2 mb-2 text-primary"></i>
+                  {#
+      Override icons for specific amenities where the default
+      Bootstrap icon does not convey the intended meaning or
+      where Bootstrap Icons does not provide an obvious glyph.
+      For example, replace 'parking' with a car icon,
+      'bedding' with a bed, and 'microwave' with a microwave.
+    #}
+    {% set icon_class = item.icon %}
+    {% if item.value == 'parking' %}
+      {% set icon_class = 'bi-car-front' %}
+    {% elif item.value == 'bedding' %}
+      {% set icon_class = 'bi-bed' %}
+    {% elif item.value == 'microwave' %}
+      {% set icon_class = 'bi-microwave' %}
+    {% endif %}
+    <i class="bi {{ icon_class }} fs-2 mb-2 text-primary"></i>
                   <div class="small fw-semibold">{{ item.label }}</div>
                 </div>
               </label>
