@@ -56,11 +56,28 @@
       <input type="file" id="photoInput" name="photos" accept="image/*" multiple class="d-none">
     </div>
     <!-- Grid for photo previews -->
+    <!-- Grid for photo previews.  The CSS below ensures each preview tile is square -->
     <div id="photoGrid" class="row g-2"></div>
     <!-- Hidden field to store the order of photos (comma-separated indices) -->
     <input type="hidden" id="photoOrder" name="photo_order" value="">
     {# Навигационная панель перенесена вверх, поэтому нижняя полоса удалена #}
   </form>
+
+  <!-- Styles to display uploaded photos as square tiles -->
+  <style>
+    #photoGrid .photo-item {
+      position: relative;
+      padding-top: 100%; /* make the tile a square based on its width */
+    }
+    #photoGrid .photo-item img {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+  </style>
 </div>
 
 <!-- JavaScript logic for photo upload, preview, ordering and deletion -->
