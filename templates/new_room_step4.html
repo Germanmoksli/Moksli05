@@ -50,7 +50,7 @@
   <h2 class="mb-4 text-primary fw-bold fs-2 text-center">Какие имеются удобства?</h2>
   <form method="post" id="amenitiesForm">
 
-    <!-- Styles for amenity cards and category menu -->
+    <!-- Styles for amenity cards -->
     <style>
       .amenity-card {
         border: 1px solid #dee2e6;
@@ -70,62 +70,35 @@
         box-shadow: 0 0 0 2px rgba(var(--bs-primary-rgb), 0.25);
         background-color: #f1f3f5;
       }
-      /* Category navigation styles */
-      .nav-tabs .nav-link {
-        border: none;
-        border-bottom: 2px solid transparent;
-        margin: 0 0.5rem;
-        font-weight: 600;
-      }
-      .nav-tabs .nav-link.active {
-        border-bottom-color: var(--bs-primary);
-        font-size: 1.1rem;
-      }
     </style>
 
-    <!-- Category navigation menu -->
-    <ul class="nav nav-tabs justify-content-center mb-4" id="amenitiesTab" role="tablist">
-      {% for category in categories %}
-        {% set cid = 'cat' ~ loop.index %}
-        <li class="nav-item" role="presentation">
-          <button class="nav-link {% if loop.first %}active{% endif %}" id="{{ cid }}-tab"
-            data-bs-toggle="tab" data-bs-target="#{{ cid }}" type="button" role="tab"
-            aria-controls="{{ cid }}" aria-selected="{% if loop.first %}true{% else %}false{% endif %}">
-            {{ category.name }}
-          </button>
-        </li>
-      {% endfor %}
-    </ul>
-
-    <div class="tab-content">
-      {% for category in categories %}
-        {% set cid = 'cat' ~ loop.index %}
-        <div class="tab-pane fade {% if loop.first %}show active{% endif %}" id="{{ cid }}" role="tabpanel" aria-labelledby="{{ cid }}-tab">
-          <div class="row row-cols-3 g-2 justify-content-center" style="max-width: 600px; margin: 0 auto;">
-            {% for item in category.options %}
-              <div class="col">
-                <label class="w-100">
-                  <input type="checkbox" name="amenities" value="{{ item.value }}" class="d-none">
-                  <div class="amenity-card text-center">
-                    {# Override icons for specific amenities #}
-                    {% set icon_class = item.icon %}
-                    {% if item.value == 'parking' %}
-                      {% set icon_class = 'bi-car-front' %}
-                    {% elif item.value == 'bedding' %}
-                      {% set icon_class = 'bi-bed' %}
-                    {% elif item.value == 'microwave' %}
-                      {% set icon_class = 'bi-microwave' %}
-                    {% endif %}
-                    <i class="bi {{ icon_class }} fs-2 mb-2 text-primary"></i>
-                    <div class="small fw-semibold">{{ item.label }}</div>
-                  </div>
-                </label>
-              </div>
-            {% endfor %}
-          </div>
+    {% for category in categories %}
+      <div class="mb-3">
+        <h5 class="fw-bold fs-3 text-center mb-3">{{ category.name }}</h5>
+        <div class="row row-cols-3 g-2 justify-content-center" style="max-width: 600px; margin: 0 auto;">
+          {% for item in category.options %}
+            <div class="col">
+              <label class="w-100">
+                <input type="checkbox" name="amenities" value="{{ item.value }}" class="d-none">
+                <div class="amenity-card text-center">
+                  {# Override icons for specific amenities if needed #}
+                  {% set icon_class = item.icon %}
+                  {% if item.value == 'parking' %}
+                    {% set icon_class = 'bi-car-front' %}
+                  {% elif item.value == 'bedding' %}
+                    {% set icon_class = 'bi-bed' %}
+                  {% elif item.value == 'microwave' %}
+                    {% set icon_class = 'bi-microwave' %}
+                  {% endif %}
+                  <i class="bi {{ icon_class }} fs-2 mb-2 text-primary"></i>
+                  <div class="small fw-semibold">{{ item.label }}</div>
+                </div>
+              </label>
+            </div>
+          {% endfor %}
         </div>
-      {% endfor %}
-    </div>
+      </div>
+    {% endfor %}
 
   </form>
 </div>
