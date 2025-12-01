@@ -8248,83 +8248,127 @@ def new_room_step4():
         return redirect(url_for('new_room_step3'))
     # Define the amenity categories and items.  Each item has a value used
     # internally, a human‑readable label and a Bootstrap icon class.
-    amenities_categories = [
+    amenities_categories = [[
         {
-            'name': 'Спальня',
+            'name': 'Базовые удобства',
             'options': [
-                {'value': 'bedding', 'label': 'Постельное бельё', 'icon': 'bi-bed'},
-                {'value': 'pillows', 'label': 'Подушки', 'icon': 'bi-hypnotize'},
-                {'value': 'hangers', 'label': 'Вешалки', 'icon': 'bi-hanger'},
-                {'value': 'wardrobe', 'label': 'Шкаф', 'icon': 'bi-door-closed'},
-                {'value': 'desk', 'label': 'Рабочий стол', 'icon': 'bi-journal'},
+                {'value': 'wifi_fast', 'label': 'Wi‑Fi (быстрый, стабильный)', 'icon': 'bi-wifi'}
+                {'value': 'smart_tv', 'label': 'Телевизор / Smart TV', 'icon': 'bi-tv'}
+                {'value': 'climate_control', 'label': 'Кондиционер или отопление', 'icon': 'bi-thermometer-half'}
+                {'value': 'hot_water_247', 'label': 'Горячая вода 24/7', 'icon': 'bi-droplet-half'}
+                {'value': 'kitchen_area', 'label': 'Кухня или кухонная зона', 'icon': 'bi-egg-fried'}
+                {'value': 'fridge', 'label': 'Холодильник', 'icon': 'bi-snow'}
+                {'value': 'stove', 'label': 'Плита (газ/электро)', 'icon': 'bi-egg-fried'}
+                {'value': 'microwave', 'label': 'Микроволновка', 'icon': 'bi-microwave'}
+                {'value': 'washing_machine', 'label': 'Стиральная машина', 'icon': 'bi-washer'}
+                {'value': 'iron_board', 'label': 'Утюг + гладильная доска', 'icon': 'bi-iron'}
+                {'value': 'hairdryer', 'label': 'Фен', 'icon': 'bi-wind'}
+                {'value': 'clean_bedding', 'label': 'Чистое постельное бельё', 'icon': 'bi-bed'}
+                {'value': 'towel_set', 'label': 'Набор полотенец', 'icon': 'bi-emoji-smile'}
+                {'value': 'dishes_cutlery', 'label': 'Посуда и столовые приборы', 'icon': 'bi-cup-straw'}
+                {'value': 'hygiene_essentials', 'label': 'Гигиенические принадлежности (мыло, туалетная бумага)', 'icon': 'bi-droplet-fill'}
             ],
         },
         {
-            'name': 'Кухня',
+            'name': 'Домашняя техника',
             'options': [
-                {'value': 'fridge', 'label': 'Холодильник', 'icon': 'bi-snow'},
-                {'value': 'stove', 'label': 'Плита', 'icon': 'bi-egg-fried'},
-                {'value': 'microwave', 'label': 'Микроволновка', 'icon': 'bi-microwave'},
-                {'value': 'kettle', 'label': 'Чайник', 'icon': 'bi-cup-hot'},
-                {'value': 'dishes', 'label': 'Посуда и приборы', 'icon': 'bi-cup-straw'},
-                {'value': 'coffee_machine', 'label': 'Кофеварка', 'icon': 'bi-cup-straw'},
-                {'value': 'dishwasher', 'label': 'Посудомоечная машина', 'icon': 'bi-droplet-half'},
+                {'value': 'oven', 'label': 'Духовой шкаф', 'icon': 'bi-fire'}
+                {'value': 'dishwasher', 'label': 'Посудомоечная машина', 'icon': 'bi-droplet-half'}
+                {'value': 'coffee_machine', 'label': 'Кофемашина / турка / чайник', 'icon': 'bi-cup-hot'}
+                {'value': 'big_wardrobe', 'label': 'Большой шкаф или гардероб', 'icon': 'bi-door-closed'}
+                {'value': 'balcony', 'label': 'Балкон', 'icon': 'bi-house-door'}
+                {'value': 'workspace', 'label': 'Рабочее место / письменный стол', 'icon': 'bi-laptop'}
+                {'value': 'soundproof_windows', 'label': 'Шумозащитные окна', 'icon': 'bi-window'}
+                {'value': 'blackout_curtains', 'label': 'Блэкаут-шторы', 'icon': 'bi-moon'}
+                {'value': 'extra_pillows_blankets', 'label': 'Дополнительные подушки и одеяла', 'icon': 'bi-cloud-plus'}
+                {'value': 'free_parking', 'label': 'Бесплатная парковка', 'icon': 'bi-car-front'}
+                {'value': 'elevator', 'label': 'Лифт', 'icon': 'bi-arrow-up-square'}
+                {'value': 'luggage_storage', 'label': 'Хранение багажа (если есть такая возможность)', 'icon': 'bi-suitcase'}
             ],
         },
         {
-            'name': 'Ванная комната',
+            'name': 'Стильный интерьер',
             'options': [
-                {'value': 'shower', 'label': 'Душ', 'icon': 'bi-droplet'},
-                {'value': 'bath', 'label': 'Ванна', 'icon': 'bi-bathtub'},
-                {'value': 'toilet', 'label': 'Туалет', 'icon': 'bi-toilet'},
-                {'value': 'hairdryer', 'label': 'Фен', 'icon': 'bi-wind'},
-                {'value': 'hot_water', 'label': 'Горячая вода', 'icon': 'bi-droplet-half'},
-                {'value': 'towels', 'label': 'Полотенца', 'icon': 'bi-emoji-smile'},
+                {'value': 'decor', 'label': 'Картины, декор, растения', 'icon': 'bi-flower1'}
+                {'value': 'sofa_chairs', 'label': 'Диван/кресла', 'icon': 'bi-sofa'}
+                {'value': 'plaids', 'label': 'Пледы', 'icon': 'bi-star'}
+                {'value': 'warm_light', 'label': 'Тёплый свет', 'icon': 'bi-lightbulb'}
+                {'value': 'carpet', 'label': 'Ковёр', 'icon': 'bi-square'}
+                {'value': 'aroma_diffuser', 'label': 'Аромадиффузор (безопасный)', 'icon': 'bi-wind'}
+                {'value': 'large_mirror', 'label': 'Большое зеркало', 'icon': 'bi-arrows-fullscreen'}
+                {'value': 'intercom', 'label': 'Домофон', 'icon': 'bi-telephone'}
+                {'value': 'lockable_door', 'label': 'Закрывающаяся дверь (надёжный замок)', 'icon': 'bi-lock'}
+                {'value': 'security_cameras_outdoor', 'label': 'Видеонаблюдение снаружи (не внутри!)', 'icon': 'bi-camera-video'}
+                {'value': 'fire_detector', 'label': 'Пожарный датчик', 'icon': 'bi-bell'}
+                {'value': 'carbon_monoxide_detector', 'label': 'Датчик угарного газа', 'icon': 'bi-speedometer'}
+                {'value': 'fire_extinguisher', 'label': 'Огнетушитель', 'icon': 'bi-fire'}
+                {'value': 'first_aid_kit', 'label': 'Аптечка', 'icon': 'bi-heart-pulse'}
             ],
         },
         {
-            'name': 'Средства личной гигиены',
+            'name': 'Электроника и климат',
             'options': [
-                {'value': 'shampoo', 'label': 'Шампунь', 'icon': 'bi-droplet-fill'},
-                {'value': 'soap', 'label': 'Мыло', 'icon': 'bi-droplet-fill'},
-                {'value': 'toilet_paper', 'label': 'Туалетная бумага', 'icon': 'bi-journal'},
-                {'value': 'toothpaste', 'label': 'Зубная паста', 'icon': 'bi-brush'},
+                {'value': 'bedside_outlets', 'label': 'Зарядки: USB, USB-C, розетки около кровати', 'icon': 'bi-usb'}
+                {'value': 'wireless_charging', 'label': 'Беспроводная зарядка', 'icon': 'bi-broadcast-pin'}
+                {'value': 'smart_speaker', 'label': 'Умная колонка (опционально)', 'icon': 'bi-speaker'}
+                {'value': 'heater', 'label': 'Обогреватель', 'icon': 'bi-fire'}
+                {'value': 'humidifier', 'label': 'Увлажнитель воздуха', 'icon': 'bi-droplet'}
+                {'value': 'fan', 'label': 'Вентилятор', 'icon': 'bi-fan'}
             ],
         },
         {
-            'name': 'Дополнительные удобства',
+            'name': 'Кухонные принадлежности',
             'options': [
-                {'value': 'wifi', 'label': 'Wi‑Fi', 'icon': 'bi-wifi'},
-                {'value': 'tv', 'label': 'Телевизор', 'icon': 'bi-tv'},
-                {'value': 'heating', 'label': 'Отопление', 'icon': 'bi-thermometer-half'},
-                {'value': 'air_conditioning', 'label': 'Кондиционер', 'icon': 'bi-snow'},
-                {'value': 'balcony', 'label': 'Балкон', 'icon': 'bi-house-door'},
-                {'value': 'pets_allowed', 'label': 'Можно с животными', 'icon': 'bi-heart'},
-                {'value': 'workspace', 'label': 'Рабочее место', 'icon': 'bi-laptop'},
-                {'value': 'parking', 'label': 'Парковка', 'icon': 'bi-parking'},
+                {'value': 'full_dish_set', 'label': 'Полный набор посуды (тарелки, чашки, ножи, бокалы)', 'icon': 'bi-cup-straw'}
+                {'value': 'pans_pots', 'label': 'Сковородки / кастрюли', 'icon': 'bi-egg-fried'}
+                {'value': 'multicooker', 'label': 'Мультиварка / аэрогриль', 'icon': 'bi-lightning-charge'}
+                {'value': 'toaster', 'label': 'Тостер', 'icon': 'bi-grid'}
+                {'value': 'cutting_boards', 'label': 'Разделочные доски', 'icon': 'bi-layout-text-sidebar'}
+                {'value': 'spices', 'label': 'Приправы: соль, перец, масло', 'icon': 'bi-basket'}
+                {'value': 'sponges_detergent', 'label': 'Губки, моющее средство', 'icon': 'bi-droplet-fill'}
             ],
         },
         {
-            'name': 'Удобства в ЖК',
+            'name': 'Средства для душа и хранения',
             'options': [
-                {'value': 'elevator', 'label': 'Лифт', 'icon': 'bi-arrow-up-square'},
-                {'value': 'gym', 'label': 'Фитнес‑центр', 'icon': 'bi-bicycle'},
-                {'value': 'pool', 'label': 'Бассейн', 'icon': 'bi-droplet-fill'},
-                {'value': 'playground', 'label': 'Детская площадка', 'icon': 'bi-emoji-laughing'},
-                {'value': 'security_guard', 'label': 'Охрана', 'icon': 'bi-shield-lock'},
-                {'value': 'rooftop', 'label': 'Доступ на крышу', 'icon': 'bi-house'},
+                {'value': 'shower_essentials', 'label': 'Средства для душа (шампунь, гель)', 'icon': 'bi-droplet-fill'}
+                {'value': 'hairdryer2', 'label': 'Фен', 'icon': 'bi-wind'}
+                {'value': 'storage_space', 'label': 'Место для хранения вещей', 'icon': 'bi-box'}
+                {'value': 'washer_dryer', 'label': 'Стиралка/сушилка', 'icon': 'bi-washer'}
+                {'value': 'water_heater', 'label': 'Нагреватель воды (если нужно)', 'icon': 'bi-droplet-half'}
             ],
         },
         {
-            'name': 'Безопасность',
+            'name': 'Чистота и уборка',
             'options': [
-                {'value': 'smoke_detector', 'label': 'Дымовой датчик', 'icon': 'bi-bell'},
-                {'value': 'fire_extinguisher', 'label': 'Огнетушитель', 'icon': 'bi-fire'},
-                {'value': 'security_cameras', 'label': 'Камеры видеонаблюдения', 'icon': 'bi-camera-video'},
-                {'value': 'safe', 'label': 'Сейф', 'icon': 'bi-safe'},
-                {'value': 'gated_security', 'label': 'Закрытая территория', 'icon': 'bi-unlock'},
+                {'value': 'vacuum_cleaner', 'label': 'Пылесос', 'icon': 'bi-robot'}
+                {'value': 'mop_bucket', 'label': 'Швабра и ведро', 'icon': 'bi-bucket'}
+                {'value': 'clothes_dryer', 'label': 'Сушилка для белья', 'icon': 'bi-wind'}
+                {'value': 'cleaning_supplies', 'label': 'Средства для уборки', 'icon': 'bi-broom'}
+                {'value': 'extra_supplies', 'label': 'Запас: мусорные пакеты, туалетная бумага', 'icon': 'bi-trash'}
             ],
         },
+        {
+            'name': 'Детские удобства',
+            'options': [
+                {'value': 'baby_bed', 'label': 'Детская кроватка', 'icon': 'bi-buggy'}
+                {'value': 'high_chair', 'label': 'Детский стул', 'icon': 'bi-chair'}
+                {'value': 'corner_protectors', 'label': 'Защита на углы', 'icon': 'bi-shield-check'}
+                {'value': 'toys', 'label': 'Игрушки', 'icon': 'bi-emoji-smile'}
+            ],
+        },
+        {
+            'name': 'Отдых на свежем воздухе',
+            'options': [
+                {'value': 'bbq_area', 'label': 'Барбекю зона', 'icon': 'bi-fire'}
+                {'value': 'garden_furniture', 'label': 'Садовая мебель', 'icon': 'bi-tree'}
+                {'value': 'terrace', 'label': 'Терраса', 'icon': 'bi-house-door'}
+                {'value': 'outdoor_shower', 'label': 'Душ на улице', 'icon': 'bi-droplet'}
+                {'value': 'pool', 'label': 'Бассейн', 'icon': 'bi-droplet-fill'}
+                {'value': 'sunbeds', 'label': 'Шезлонги', 'icon': 'bi-sun'}
+                {'value': 'fire_pit', 'label': 'Костровая яма', 'icon': 'bi-fire'}
+            ],
+        }
     ]
     # On POST record the selected amenities and finish the wizard
     if request.method == 'POST':
