@@ -42,7 +42,7 @@
   <h2 class="mb-4 text-primary fw-bold fs-2 text-center">Добавьте фото</h2>
   <form method="post" enctype="multipart/form-data" id="photoForm">
     <!-- Upload area -->
-    <div class="mb-3 d-flex justify-content-center">
+    <div id="uploadContainer" class="mb-3 d-flex justify-content-center">
       <div id="uploadArea"
            class="d-flex flex-column align-items-center justify-content-center text-center"
            style="cursor: pointer; margin-bottom: 1rem; max-width: 500px; width: 100%; height: 260px; border: 3px dashed var(--bs-primary); border-radius: 20px;">
@@ -97,6 +97,7 @@
 <script>
   document.addEventListener('DOMContentLoaded', function() {
     const uploadArea = document.getElementById('uploadArea');
+    const uploadContainer = document.getElementById('uploadContainer');
     const photoInput = document.getElementById('photoInput');
     const photoGrid = document.getElementById('photoGrid');
     const photoOrderInput = document.getElementById('photoOrder');
@@ -133,9 +134,10 @@
     function renderGrid() {
       // Toggle visibility of the large upload area based on whether photos exist
       if (photos.length > 0) {
-        uploadArea.style.display = 'none';
+        // Hide entire upload container (including margin)
+        uploadContainer.style.display = 'none';
       } else {
-        uploadArea.style.display = 'flex';
+        uploadContainer.style.display = 'flex';
       }
 
       // Clear existing content
