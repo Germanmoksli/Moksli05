@@ -42,10 +42,16 @@
   <h2 class="mb-4 text-primary fw-bold fs-2 text-center">Добавьте фото</h2>
   <form method="post" enctype="multipart/form-data" id="photoForm">
     <!-- Upload area -->
-    <div class="mb-3">
-      <div id="uploadArea" class="border border-secondary rounded d-flex flex-column align-items-center justify-content-center text-center" style="border-style: dashed; width: 100%; max-width: 320px; height: 200px; cursor: pointer; margin-bottom: 1rem;">
-        <i class="bi bi-image fs-1 text-secondary"></i>
-        <span class="text-secondary mt-2">Добавить фотографии</span>
+    <div class="mb-3 d-flex justify-content-center">
+      <div id="uploadArea"
+           class="d-flex flex-column align-items-center justify-content-center text-center"
+           style="cursor: pointer; margin-bottom: 1rem; max-width: 500px; width: 100%; height: 260px; border: 3px dashed var(--bs-primary); border-radius: 20px;">
+        <!-- Иконка: фото плюс плюсик -->
+        <div class="d-flex align-items-center justify-content-center mb-2" style="font-size: 2.5rem;">
+          <i class="bi bi-image text-primary"></i>
+          <i class="bi bi-plus-lg text-primary ms-2"></i>
+        </div>
+        <span class="text-primary fw-semibold">Выберите фотографии с компьютера или перетащите сюда</span>
       </div>
       <input type="file" id="photoInput" name="photos" accept="image/*" multiple class="d-none">
     </div>
