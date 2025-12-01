@@ -150,14 +150,6 @@
         const img = document.createElement('img');
         img.src = item.url;
         img.className = 'img-fluid rounded';
-        // Label for cover photo
-        if (index === 0) {
-          const badge = document.createElement('span');
-          // Белый фон и чёрный текст для метки "Обложка"
-          badge.className = 'badge bg-white text-dark position-absolute top-0 start-0 m-1';
-          badge.textContent = 'Обложка';
-          col.appendChild(badge);
-        }
         // Delete button
         const btnDel = document.createElement('button');
         btnDel.type = 'button';
@@ -171,8 +163,16 @@
             renderGrid();
           }
         });
-        // Append elements
+        // Append elements. First image, then optional cover label, then delete button
         col.appendChild(img);
+        // Label for cover photo (added after image so it stays on top)
+        if (index === 0) {
+          const badge = document.createElement('span');
+          // Белый фон и чёрный текст для метки "Обложка"
+          badge.className = 'badge bg-white text-dark position-absolute top-0 start-0 m-1';
+          badge.textContent = 'Обложка';
+          col.appendChild(badge);
+        }
         col.appendChild(btnDel);
         // Drag events
         col.addEventListener('dragstart', function(ev) {
