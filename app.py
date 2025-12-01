@@ -8248,320 +8248,125 @@ def new_room_step4():
         return redirect(url_for('new_room_step3'))
     # Define the amenity categories and items.  Each item has a value used
     # internally, a human‑readable label and a Bootstrap icon class.
-    amenities_categories = [[
-        {
-            'name': 'Базовые удобства',
-            'options': [
-                {'value': 'wifi_fast', 'label': 'Wi‑Fi (быстрый, стабильный)', 'icon': 'bi-wifi'}
-                {'value': 'smart_tv', 'label': 'Телевизор / Smart TV', 'icon': 'bi-tv'}
-                {'value': 'climate_control', 'label': 'Кондиционер или отопление', 'icon': 'bi-thermometer-half'}
-                {'value': 'hot_water_247', 'label': 'Горячая вода 24/7', 'icon': 'bi-droplet-half'}
-                {'value': 'kitchen_area', 'label': 'Кухня или кухонная зона', 'icon': 'bi-egg-fried'}
-                {'value': 'fridge', 'label': 'Холодильник', 'icon': 'bi-snow'}
-                {'value': 'stove', 'label': 'Плита (газ/электро)', 'icon': 'bi-egg-fried'}
-                {'value': 'microwave', 'label': 'Микроволновка', 'icon': 'bi-microwave'}
-                {'value': 'washing_machine', 'label': 'Стиральная машина', 'icon': 'bi-washer'}
-                {'value': 'iron_board', 'label': 'Утюг + гладильная доска', 'icon': 'bi-iron'}
-                {'value': 'hairdryer', 'label': 'Фен', 'icon': 'bi-wind'}
-                {'value': 'clean_bedding', 'label': 'Чистое постельное бельё', 'icon': 'bi-bed'}
-                {'value': 'towel_set', 'label': 'Набор полотенец', 'icon': 'bi-emoji-smile'}
-                {'value': 'dishes_cutlery', 'label': 'Посуда и столовые приборы', 'icon': 'bi-cup-straw'}
-                {'value': 'hygiene_essentials', 'label': 'Гигиенические принадлежности (мыло, туалетная бумага)', 'icon': 'bi-droplet-fill'}
-            ],
-        },
-        {
-            'name': 'Домашняя техника',
-            'options': [
-                {'value': 'oven', 'label': 'Духовой шкаф', 'icon': 'bi-fire'}
-                {'value': 'dishwasher', 'label': 'Посудомоечная машина', 'icon': 'bi-droplet-half'}
-                {'value': 'coffee_machine', 'label': 'Кофемашина / турка / чайник', 'icon': 'bi-cup-hot'}
-                {'value': 'big_wardrobe', 'label': 'Большой шкаф или гардероб', 'icon': 'bi-door-closed'}
-                {'value': 'balcony', 'label': 'Балкон', 'icon': 'bi-house-door'}
-                {'value': 'workspace', 'label': 'Рабочее место / письменный стол', 'icon': 'bi-laptop'}
-                {'value': 'soundproof_windows', 'label': 'Шумозащитные окна', 'icon': 'bi-window'}
-                {'value': 'blackout_curtains', 'label': 'Блэкаут-шторы', 'icon': 'bi-moon'}
-                {'value': 'extra_pillows_blankets', 'label': 'Дополнительные подушки и одеяла', 'icon': 'bi-cloud-plus'}
-                {'value': 'free_parking', 'label': 'Бесплатная парковка', 'icon': 'bi-car-front'}
-                {'value': 'elevator', 'label': 'Лифт', 'icon': 'bi-arrow-up-square'}
-                {'value': 'luggage_storage', 'label': 'Хранение багажа (если есть такая возможность)', 'icon': 'bi-suitcase'}
-            ],
-        },
-        {
-            'name': 'Стильный интерьер',
-            'options': [
-                {'value': 'decor', 'label': 'Картины, декор, растения', 'icon': 'bi-flower1'}
-                {'value': 'sofa_chairs', 'label': 'Диван/кресла', 'icon': 'bi-sofa'}
-                {'value': 'plaids', 'label': 'Пледы', 'icon': 'bi-star'}
-                {'value': 'warm_light', 'label': 'Тёплый свет', 'icon': 'bi-lightbulb'}
-                {'value': 'carpet', 'label': 'Ковёр', 'icon': 'bi-square'}
-                {'value': 'aroma_diffuser', 'label': 'Аромадиффузор (безопасный)', 'icon': 'bi-wind'}
-                {'value': 'large_mirror', 'label': 'Большое зеркало', 'icon': 'bi-arrows-fullscreen'}
-                {'value': 'intercom', 'label': 'Домофон', 'icon': 'bi-telephone'}
-                {'value': 'lockable_door', 'label': 'Закрывающаяся дверь (надёжный замок)', 'icon': 'bi-lock'}
-                {'value': 'security_cameras_outdoor', 'label': 'Видеонаблюдение снаружи (не внутри!)', 'icon': 'bi-camera-video'}
-                {'value': 'fire_detector', 'label': 'Пожарный датчик', 'icon': 'bi-bell'}
-                {'value': 'carbon_monoxide_detector', 'label': 'Датчик угарного газа', 'icon': 'bi-speedometer'}
-                {'value': 'fire_extinguisher', 'label': 'Огнетушитель', 'icon': 'bi-fire'}
-                {'value': 'first_aid_kit', 'label': 'Аптечка', 'icon': 'bi-heart-pulse'}
-            ],
-        },
-        {
-            'name': 'Электроника и климат',
-            'options': [
-                {'value': 'bedside_outlets', 'label': 'Зарядки: USB, USB-C, розетки около кровати', 'icon': 'bi-usb'}
-                {'value': 'wireless_charging', 'label': 'Беспроводная зарядка', 'icon': 'bi-broadcast-pin'}
-                {'value': 'smart_speaker', 'label': 'Умная колонка (опционально)', 'icon': 'bi-speaker'}
-                {'value': 'heater', 'label': 'Обогреватель', 'icon': 'bi-fire'}
-                {'value': 'humidifier', 'label': 'Увлажнитель воздуха', 'icon': 'bi-droplet'}
-                {'value': 'fan', 'label': 'Вентилятор', 'icon': 'bi-fan'}
-            ],
-        },
-        {
-            'name': 'Кухонные принадлежности',
-            'options': [
-                {'value': 'full_dish_set', 'label': 'Полный набор посуды (тарелки, чашки, ножи, бокалы)', 'icon': 'bi-cup-straw'}
-                {'value': 'pans_pots', 'label': 'Сковородки / кастрюли', 'icon': 'bi-egg-fried'}
-                {'value': 'multicooker', 'label': 'Мультиварка / аэрогриль', 'icon': 'bi-lightning-charge'}
-                {'value': 'toaster', 'label': 'Тостер', 'icon': 'bi-grid'}
-                {'value': 'cutting_boards', 'label': 'Разделочные доски', 'icon': 'bi-layout-text-sidebar'}
-                {'value': 'spices', 'label': 'Приправы: соль, перец, масло', 'icon': 'bi-basket'}
-                {'value': 'sponges_detergent', 'label': 'Губки, моющее средство', 'icon': 'bi-droplet-fill'}
-            ],
-        },
-        {
-            'name': 'Средства для душа и хранения',
-            'options': [
-                {'value': 'shower_essentials', 'label': 'Средства для душа (шампунь, гель)', 'icon': 'bi-droplet-fill'}
-                {'value': 'hairdryer2', 'label': 'Фен', 'icon': 'bi-wind'}
-                {'value': 'storage_space', 'label': 'Место для хранения вещей', 'icon': 'bi-box'}
-                {'value': 'washer_dryer', 'label': 'Стиралка/сушилка', 'icon': 'bi-washer'}
-                {'value': 'water_heater', 'label': 'Нагреватель воды (если нужно)', 'icon': 'bi-droplet-half'}
-            ],
-        },
-        {
-            'name': 'Чистота и уборка',
-            'options': [
-                {'value': 'vacuum_cleaner', 'label': 'Пылесос', 'icon': 'bi-robot'}
-                {'value': 'mop_bucket', 'label': 'Швабра и ведро', 'icon': 'bi-bucket'}
-                {'value': 'clothes_dryer', 'label': 'Сушилка для белья', 'icon': 'bi-wind'}
-                {'value': 'cleaning_supplies', 'label': 'Средства для уборки', 'icon': 'bi-broom'}
-                {'value': 'extra_supplies', 'label': 'Запас: мусорные пакеты, туалетная бумага', 'icon': 'bi-trash'}
-            ],
-        },
-        {
-            'name': 'Детские удобства',
-            'options': [
-                {'value': 'baby_bed', 'label': 'Детская кроватка', 'icon': 'bi-buggy'}
-                {'value': 'high_chair', 'label': 'Детский стул', 'icon': 'bi-chair'}
-                {'value': 'corner_protectors', 'label': 'Защита на углы', 'icon': 'bi-shield-check'}
-                {'value': 'toys', 'label': 'Игрушки', 'icon': 'bi-emoji-smile'}
-            ],
-        },
-        {
-            'name': 'Отдых на свежем воздухе',
-            'options': [
-                {'value': 'bbq_area', 'label': 'Барбекю зона', 'icon': 'bi-fire'}
-                {'value': 'garden_furniture', 'label': 'Садовая мебель', 'icon': 'bi-tree'}
-                {'value': 'terrace', 'label': 'Терраса', 'icon': 'bi-house-door'}
-                {'value': 'outdoor_shower', 'label': 'Душ на улице', 'icon': 'bi-droplet'}
-                {'value': 'pool', 'label': 'Бассейн', 'icon': 'bi-droplet-fill'}
-                {'value': 'sunbeds', 'label': 'Шезлонги', 'icon': 'bi-sun'}
-                {'value': 'fire_pit', 'label': 'Костровая яма', 'icon': 'bi-fire'}
-            ],
-        }
-    ]
-    # On POST record the selected amenities and finish the wizard
-    if request.method == 'POST':
-        selected = request.form.getlist('amenities')
-        session['new_listing_amenities'] = selected
-        return redirect(url_for('list_rooms'))
-    # On GET display the amenity selection form
-    progress = 100
-    back_url = url_for('new_room_step3')
-    next_url: typing.Optional[str] = None
-    # Preselect amenities from session if editing a draft
-    # Pull any previously chosen amenities from the session.  When editing a
-    # draft listing the value stored in ``new_listing_amenities`` may be
-    # missing or ``None``.  Ensure that ``selected`` is always a list so that
-    # membership checks in the Jinja template succeed (``value in selected``)
-    # without raising a ``TypeError``.  If the session key is absent
-    # ``session.get`` returns the provided default (empty list).  If the
-    # stored value is ``None`` we coerce it to an empty list as well.
-    raw_selected = session.get('new_listing_amenities', [])
-    if raw_selected is None:
-        selected: list[str] = []
-    else:
-        # ``raw_selected`` is typically already a list returned from
-        # ``request.form.getlist`` when saving the previous step.  If the
-        # stored value is not a list (e.g. a comma‑separated string), wrap
-        # it in a list so the template can iterate over it safely.
-        selected = raw_selected if isinstance(raw_selected, list) else [raw_selected]
-    return render_template(
-        'new_room_step4.html',
-        progress=progress,
-        back_url=back_url,
-        next_url=next_url,
-        hide_nav=True,
-        categories=amenities_categories,
-        selected=selected,
-    )
-
-# Endpoint to cancel the current listing creation wizard. Clears any stored
-# values in the session and redirects back to the rooms list.
-@app.route('/rooms/new/cancel')
-@login_required
-@roles_required('owner')
-def cancel_new_room():
-    # Remove any wizard-related session variables
-    session.pop('new_listing_property_type', None)
-    flash('Создание объявления отменено.', 'info')
-    return redirect(url_for('list_rooms'))
-
-
-# Endpoint to save the current state of the new listing as a draft. Only
-# minimal information (currently just the property type) is stored. Drafts
-# are stored in a separate table and can be resumed later (functionality
-# can be extended in the future). After saving, the user is redirected
-# back to the list of rooms.
-@app.route('/rooms/new/draft', methods=['POST'])
-@login_required
-@roles_required('owner')
-def save_new_room_draft():
-    import json
-    """
-    Persist the current listing draft in the ``draft_listings`` table.  Any
-    information collected thus far (currently only the property type) is
-    serialized to JSON.  The draft is associated with the logged-in user so
-    that it can be resumed later.  If saving fails for any reason, a
-    flash message is shown.  On success the user is redirected back to
-    the list of rooms where the draft will appear at the top of the list.
-    """
-    # Ensure the drafts table exists before inserting
-    ensure_draft_table()
-    # Collect data from session. Additional fields can be appended as
-    # subsequent steps of the wizard are implemented.
-    data: dict[str, Any] = {}
-    property_type = session.get('new_listing_property_type')
-    if property_type:
-        data['property_type'] = property_type
-    # Include the address and individual components in the draft if they
-    # have been captured in the wizard.
-    address = session.get('new_listing_address')
-    if address:
-        data['address'] = address
-    country = session.get('new_listing_country')
-    city = session.get('new_listing_city')
-    street = session.get('new_listing_street')
-    house_number = session.get('new_listing_house_number')
-    if country:
-        data['country'] = country
-    if city:
-        data['city'] = city
-    if street:
-        data['street'] = street
-    if house_number:
-        data['house_number'] = house_number
-    # Save list of uploaded photos if present
-    photos = session.get('new_listing_photos')
-    if photos:
-        data['photos'] = photos
-    try:
-        serialized = json.dumps(data, ensure_ascii=False)
-    except Exception:
-        serialized = '{}'
-    user_id = session.get('user_id')
-    # Use a single DB connection for insertion
-    conn = None
-    try:
-        conn = get_db_connection()
-        # Insert the draft into the table.  ``?`` placeholders will be
-        # translated to ``%s`` when using PostgreSQL.
-        conn.execute(
-            'INSERT INTO draft_listings (user_id, data) VALUES (?, ?)',
-            (user_id, serialized),
-        )
-        conn.commit()
-        flash('Черновик объявления сохранён.', 'success')
-    except Exception:
-        flash('Не удалось сохранить черновик.', 'danger')
-    finally:
-        if conn is not None:
-            conn.close()
-    return redirect(url_for('list_rooms'))
-
-
-# Create the draft_listings table if it does not exist. This function is
-# idempotent and safe to call multiple times.
-def ensure_draft_table():
-    try:
-        # Use get_db_connection rather than get_db (not defined in this module)
-        conn = get_db_connection()
-        conn.execute(
-            'CREATE TABLE IF NOT EXISTS draft_listings ('
-            'id SERIAL PRIMARY KEY, '
-            'user_id INTEGER NOT NULL, '
-            'data TEXT, '
-            'created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
-            ')'
-        )
-        conn.commit()
-        conn.close()
-    except Exception:
-        # Ignore any error during creation to avoid breaking the request
-        pass
-
-# Resume editing a saved draft.  Loads the draft data from the database
-# into the session and redirects the owner to the appropriate step in the
-# listing wizard.  If the draft cannot be found or belongs to another
-# user, the owner is redirected back to the rooms list with an error.
-@app.route('/rooms/new/draft/<int:draft_id>')
-@login_required
-@roles_required('owner')
-def resume_draft(draft_id: int):
-    import json
-    user_id = session.get('user_id')
-    ensure_draft_table()
-    conn = get_db_connection()
-    row = conn.execute(
-        'SELECT data FROM draft_listings WHERE id = ? AND user_id = ?',
-        (draft_id, user_id),
-    ).fetchone()
-    conn.close()
-    if not row:
-        flash('Черновик не найден.', 'danger')
-        return redirect(url_for('list_rooms'))
-    try:
-        data = json.loads(row[0]) if row[0] else {}
-    except Exception:
-        data = {}
-    # Load data into session.  Future fields can be added here.
-    if 'property_type' in data:
-        session['new_listing_property_type'] = data['property_type']
-    # If the draft contains an address, populate it into the session.  This
-    # allows the address field to be pre-filled when the user resumes the
-    # wizard.
-    if 'address' in data:
-        session['new_listing_address'] = data['address']
-    # Restore individual address components if present in the draft.
-    if 'country' in data:
-        session['new_listing_country'] = data['country']
-    if 'city' in data:
-        session['new_listing_city'] = data['city']
-    if 'street' in data:
-        session['new_listing_street'] = data['street']
-    if 'house_number' in data:
-        session['new_listing_house_number'] = data['house_number']
-    if 'photos' in data:
-        session['new_listing_photos'] = data['photos']
-    # Redirect to the step appropriate for the stored data.  If a
-    # property_type is present, send the owner to step 2; otherwise
-    # restart the wizard at step 1.
-    if session.get('new_listing_property_type'):
-        return redirect(url_for('new_room_step2'))
-    return redirect(url_for('new_room_step1'))
-
-
-
-if __name__ == "__main__":
-    # Optionally specify database file through environment variable APARTHOTEL_DB_FILE
-    app.run(debug=True)
+    amenities_categories = [
+    {
+        'name': 'Базовые удобства',
+        'options': [
+            {'value': 'wifi_fast', 'label': 'Wi‑Fi (быстрый, стабильный)', 'icon': 'bi-wifi'},
+            {'value': 'smart_tv', 'label': 'Телевизор / Smart TV', 'icon': 'bi-tv'},
+            {'value': 'climate_control', 'label': 'Кондиционер или отопление', 'icon': 'bi-thermometer-half'},
+            {'value': 'hot_water_247', 'label': 'Горячая вода 24/7', 'icon': 'bi-droplet-half'},
+            {'value': 'kitchen_area', 'label': 'Кухня или кухонная зона', 'icon': 'bi-egg-fried'},
+            {'value': 'fridge', 'label': 'Холодильник', 'icon': 'bi-snow'},
+            {'value': 'stove', 'label': 'Плита (газ/электро)', 'icon': 'bi-egg-fried'},
+            {'value': 'microwave', 'label': 'Микроволновка', 'icon': 'bi-microwave'},
+            {'value': 'washing_machine', 'label': 'Стиральная машина', 'icon': 'bi-washer'},
+            {'value': 'iron_board', 'label': 'Утюг + гладильная доска', 'icon': 'bi-iron'},
+            {'value': 'hairdryer', 'label': 'Фен', 'icon': 'bi-wind'},
+            {'value': 'clean_bedding', 'label': 'Чистое постельное бельё', 'icon': 'bi-bed'},
+            {'value': 'towel_set', 'label': 'Набор полотенец', 'icon': 'bi-emoji-smile'},
+            {'value': 'dishes_cutlery', 'label': 'Посуда и столовые приборы', 'icon': 'bi-cup-straw'},
+            {'value': 'hygiene_essentials', 'label': 'Гигиенические принадлежности (мыло, туалетная бумага)', 'icon': 'bi-droplet-fill'},
+        ],
+    },
+    {
+        'name': 'Домашняя техника',
+        'options': [
+            {'value': 'oven', 'label': 'Духовой шкаф', 'icon': 'bi-fire'},
+            {'value': 'dishwasher', 'label': 'Посудомоечная машина', 'icon': 'bi-droplet-half'},
+            {'value': 'coffee_machine', 'label': 'Кофемашина / турка / чайник', 'icon': 'bi-cup-hot'},
+            {'value': 'big_wardrobe', 'label': 'Большой шкаф или гардероб', 'icon': 'bi-door-closed'},
+            {'value': 'balcony', 'label': 'Балкон', 'icon': 'bi-house-door'},
+            {'value': 'workspace', 'label': 'Рабочее место / письменный стол', 'icon': 'bi-laptop'},
+            {'value': 'soundproof_windows', 'label': 'Шумозащитные окна', 'icon': 'bi-window'},
+            {'value': 'blackout_curtains', 'label': 'Блэкаут-шторы', 'icon': 'bi-moon'},
+            {'value': 'extra_pillows_blankets', 'label': 'Дополнительные подушки и одеяла', 'icon': 'bi-cloud-plus'},
+            {'value': 'free_parking', 'label': 'Бесплатная парковка', 'icon': 'bi-car-front'},
+            {'value': 'elevator', 'label': 'Лифт', 'icon': 'bi-arrow-up-square'},
+            {'value': 'luggage_storage', 'label': 'Хранение багажа (если есть такая возможность)', 'icon': 'bi-suitcase'},
+        ],
+    },
+    {
+        'name': 'Стильный интерьер',
+        'options': [
+            {'value': 'decor', 'label': 'Картины, декор, растения', 'icon': 'bi-flower1'},
+            {'value': 'sofa_chairs', 'label': 'Диван/кресла', 'icon': 'bi-sofa'},
+            {'value': 'plaids', 'label': 'Пледы', 'icon': 'bi-star'},
+            {'value': 'warm_light', 'label': 'Тёплый свет', 'icon': 'bi-lightbulb'},
+            {'value': 'carpet', 'label': 'Ковёр', 'icon': 'bi-square'},
+            {'value': 'aroma_diffuser', 'label': 'Аромадиффузор (безопасный)', 'icon': 'bi-wind'},
+            {'value': 'large_mirror', 'label': 'Большое зеркало', 'icon': 'bi-arrows-fullscreen'},
+            {'value': 'intercom', 'label': 'Домофон', 'icon': 'bi-telephone'},
+            {'value': 'lockable_door', 'label': 'Закрывающаяся дверь (надёжный замок)', 'icon': 'bi-lock'},
+            {'value': 'security_cameras_outdoor', 'label': 'Видеонаблюдение снаружи (не внутри!)', 'icon': 'bi-camera-video'},
+            {'value': 'fire_detector', 'label': 'Пожарный датчик', 'icon': 'bi-bell'},
+            {'value': 'carbon_monoxide_detector', 'label': 'Датчик угарного газа', 'icon': 'bi-speedometer'},
+            {'value': 'fire_extinguisher', 'label': 'Огнетушитель', 'icon': 'bi-fire'},
+            {'value': 'first_aid_kit', 'label': 'Аптечка', 'icon': 'bi-heart-pulse'},
+        ],
+    },
+    {
+        'name': 'Электроника и климат',
+        'options': [
+            {'value': 'bedside_outlets', 'label': 'Зарядки: USB, USB-C, розетки около кровати', 'icon': 'bi-usb'},
+            {'value': 'wireless_charging', 'label': 'Беспроводная зарядка', 'icon': 'bi-broadcast-pin'},
+            {'value': 'smart_speaker', 'label': 'Умная колонка (опционально)', 'icon': 'bi-speaker'},
+            {'value': 'heater', 'label': 'Обогреватель', 'icon': 'bi-fire'},
+            {'value': 'humidifier', 'label': 'Увлажнитель воздуха', 'icon': 'bi-droplet'},
+            {'value': 'fan', 'label': 'Вентилятор', 'icon': 'bi-fan'},
+        ],
+    },
+    {
+        'name': 'Кухонные принадлежности',
+        'options': [
+            {'value': 'full_dish_set', 'label': 'Полный набор посуды (тарелки, чашки, ножи, бокалы)', 'icon': 'bi-cup-straw'},
+            {'value': 'pans_pots', 'label': 'Сковородки / кастрюли', 'icon': 'bi-egg-fried'},
+            {'value': 'multicooker', 'label': 'Мультиварка / аэрогриль', 'icon': 'bi-lightning-charge'},
+            {'value': 'toaster', 'label': 'Тостер', 'icon': 'bi-grid'},
+            {'value': 'cutting_boards', 'label': 'Разделочные доски', 'icon': 'bi-layout-text-sidebar'},
+            {'value': 'spices', 'label': 'Приправы: соль, перец, масло', 'icon': 'bi-basket'},
+            {'value': 'sponges_detergent', 'label': 'Губки, моющее средство', 'icon': 'bi-droplet-fill'},
+        ],
+    },
+    {
+        'name': 'Средства для душа и хранения',
+        'options': [
+            {'value': 'shower_essentials', 'label': 'Средства для душа (шампунь, гель)', 'icon': 'bi-droplet-fill'},
+            {'value': 'hairdryer2', 'label': 'Фен', 'icon': 'bi-wind'},
+            {'value': 'storage_space', 'label': 'Место для хранения вещей', 'icon': 'bi-box'},
+            {'value': 'washer_dryer', 'label': 'Стиралка/сушилка', 'icon': 'bi-washer'},
+            {'value': 'water_heater', 'label': 'Нагреватель воды (если нужно)', 'icon': 'bi-droplet-half'},
+        ],
+    },
+    {
+        'name': 'Чистота и уборка',
+        'options': [
+            {'value': 'vacuum_cleaner', 'label': 'Пылесос', 'icon': 'bi-robot'},
+            {'value': 'mop_bucket', 'label': 'Швабра и ведро', 'icon': 'bi-bucket'},
+            {'value': 'clothes_dryer', 'label': 'Сушилка для белья', 'icon': 'bi-wind'},
+            {'value': 'cleaning_supplies', 'label': 'Средства для уборки', 'icon': 'bi-broom'},
+            {'value': 'extra_supplies', 'label': 'Запас: мусорные пакеты, туалетная бумага', 'icon': 'bi-trash'},
+        ],
+    },
+    {
+        'name': 'Детские удобства',
+        'options': [
+            {'value': 'baby_bed', 'label': 'Детская кроватка', 'icon': 'bi-buggy'},
+            {'value': 'high_chair', 'label': 'Детский стул', 'icon': 'bi-chair'},
+            {'value': 'corner_protectors', 'label': 'Защита на углы', 'icon': 'bi-shield-check'},
+            {'value': 'toys', 'label': 'Игрушки', 'icon': 'bi-emoji-smile'},
+        ],
+    },
+    {
+        'name': 'Отдых на свежем воздухе',
+        'options': [
+            {'value': 'bbq_area', 'label': 'Барбекю зона', 'icon': 'bi-fire'},
+            {'value': 'garden_furniture', 'label': 'Садовая мебель', 'icon': 'bi-tree'},
+            {'value': 'terrace', 'label': 'Терраса', 'icon': 'bi-house-door'},
+            {'value': 'outdoor_shower', 'label': 'Душ на улице', 'icon': 'bi-droplet'},
+            {'value': 'pool', 'label': 'Бассейн', 'icon': 'bi-droplet-fill'},
+            {'value': 'sunbeds', 'label': 'Шезлонги', 'icon': 'bi-sun'},
+            {'value': 'fire_pit', 'label': 'Костровая яма', 'icon': 'bi-fire'},
+        ],
+    },
+]
