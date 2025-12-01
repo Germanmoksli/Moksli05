@@ -54,9 +54,12 @@
       .amenity-card {
         border: 1px solid #dee2e6;
         border-radius: 0.75rem;
-        padding: 1rem;
-        height: 100%;
-        min-height: 140px;
+        padding: 0.75rem;
+        aspect-ratio: 1 / 1; /* Make tiles square */
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
         cursor: pointer;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
         transition: border-color 0.2s ease, box-shadow 0.2s ease;
@@ -71,7 +74,7 @@
     {% for category in categories %}
       <div class="mb-3">
         <h5 class="fw-bold mb-2">{{ category.name }}</h5>
-        <div class="row row-cols-3 g-2">
+        <div class="row row-cols-3 g-2 justify-content-center" style="max-width: 900px; margin: 0 auto;">
           {% for item in category.options %}
             <div class="col">
               <label class="w-100">
@@ -83,7 +86,7 @@
                   selecting amenities in a new listing caused a 500 error when
                   ``session['new_listing_amenities']`` was not set.
                 #}
-                <input type="checkbox" name="amenities" value="{{ item.value }}" class="d-none" {% if item.value in (selected|default([])) %}checked{% endif %}>
+                <input type="checkbox" name="amenities" value="{{ item.value }}" class="d-none">
                 <div class="amenity-card text-center">
                   <i class="bi {{ item.icon }} fs-2 mb-2 text-primary"></i>
                   <div class="small fw-semibold">{{ item.label }}</div>
