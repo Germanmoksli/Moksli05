@@ -56,8 +56,8 @@
       <input type="file" id="photoInput" name="photos" accept="image/*" multiple class="d-none">
     </div>
     <!-- Grid for photo previews -->
-    <!-- Grid for photo previews.  The CSS below ensures each preview tile is square -->
-    <div id="photoGrid" class="row g-2"></div>
+    <!-- Grid for photo previews.  CSS grid (see styles below) controls layout -->
+    <div id="photoGrid" style="max-width: 900px; margin: 0 auto;"></div>
     <!-- Hidden field to store the order of photos (comma-separated indices) -->
     <input type="hidden" id="photoOrder" name="photo_order" value="">
     {# Навигационная панель перенесена вверх, поэтому нижняя полоса удалена #}
@@ -65,9 +65,22 @@
 
   <!-- Styles to display uploaded photos as square tiles -->
   <style>
+    /* Display the photo grid as a 3‑column CSS grid.  The first item spans 2 columns and 2 rows to act as a cover photo. */
+    #photoGrid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.5rem;
+    }
+    /* The first photo (cover) spans two columns and two rows */
+    #photoGrid .photo-item:first-child {
+      grid-column: span 2;
+      grid-row: span 2;
+    }
+    /* Ensure each tile maintains a square shape */
     #photoGrid .photo-item {
       position: relative;
-      padding-top: 100%; /* make the tile a square based on its width */
+      aspect-ratio: 1 / 1;
+      overflow: hidden;
     }
     #photoGrid .photo-item img {
       position: absolute;
@@ -122,7 +135,8 @@
       photoGrid.innerHTML = '';
       photos.forEach(function(item, index) {
         const col = document.createElement('div');
-        col.className = 'col-6 col-sm-4 col-md-3 col-lg-2 photo-item position-relative';
+        // Use a plain photo-item class; CSS grid in #photoGrid controls the layout
+        col.className = 'photo-item position-relative';
         col.setAttribute('draggable', 'true');
         col.dataset.index = index;
         // Image element
