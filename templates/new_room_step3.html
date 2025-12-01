@@ -132,12 +132,14 @@
 
     // Render the grid of photo previews
     function renderGrid() {
-      // Toggle visibility of the large upload area based on whether photos exist
+      // Toggle visibility of the large upload area based on whether photos exist.
+      // We cannot rely on inline display because Bootstrap's d-flex uses !important.
       if (photos.length > 0) {
-        // Hide entire upload container (including margin)
-        uploadContainer.style.display = 'none';
+        // Hide entire upload container by applying d-none (display:none !important)
+        uploadContainer.classList.add('d-none');
       } else {
-        uploadContainer.style.display = 'flex';
+        // Show the upload container again: remove d-none; ensure it has d-flex for layout
+        uploadContainer.classList.remove('d-none');
       }
 
       // Clear existing content
