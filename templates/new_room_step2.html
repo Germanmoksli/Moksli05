@@ -41,19 +41,7 @@
   <!-- Заголовок выравнен по центру, увеличен и выделен жирным -->
   <h2 class="mb-4 text-primary fw-bold fs-2 text-center">Где находится объект?</h2>
   {% if property_type %}
-    <p class="mb-4">Вы выбрали:
-      {% if property_type == 'flat' %}
-        квартиру.
-      {% elif property_type == 'studio' %}
-        студию.
-      {% elif property_type == 'room' %}
-        комнату.
-      {% elif property_type == 'house' %}
-        дом.
-      {% else %}
-        {{ property_type }}.
-      {% endif %}
-    </p>
+    {# Убрали подзаголовок "Вы выбрали: ..."; только форма адреса #}
     <form method="post" id="addressForm">
       {# Центрируем и ограничиваем ширину блока с адресными полями, чтобы поля были уже #}
       <div class="row g-2 justify-content-center" style="max-width: 700px; margin: 0 auto;">
