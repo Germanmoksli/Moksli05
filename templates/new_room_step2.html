@@ -64,9 +64,10 @@
       </div>
       <!-- Карта Google: ширина выравнена по краям блока с полями и уменьшена по высоте -->
       <div class="mb-4" style="max-width: 700px; margin: 0 auto;">
-        <label class="form-label">Карта</label>
-        <div class="ratio" style="width: 100%; padding-top: 56.25%; position: relative;">{# 16:9 ratio for a more compact map #}
-          <iframe id="addressMap" src="https://maps.google.com/maps?q={{ encoded_address }}&output=embed" 
+        {# Убрали заголовок "Карта". Скругленные углы и тень добавлены на контейнер ratio #}
+        <div class="ratio rounded shadow" style="width: 100%; padding-top: 56.25%; position: relative; overflow: hidden;">
+          <iframe id="addressMap"
+                  src="https://maps.google.com/maps?q={{ encoded_address }}&output=embed&markers=color:0x0d6efd"
                   style="border:0; position: absolute; top: 0; left: 0; width: 100%; height: 100%;" allowfullscreen loading="lazy"></iframe>
         </div>
       </div>
