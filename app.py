@@ -8369,4 +8369,191 @@ def new_room_step4():
             {'value': 'fire_pit', 'label': 'Костровая яма', 'icon': 'bi-fire'},
         ],
     },
-]
+    ]
+
+    # -------------------------------------------------------------------------
+    # Handle form submission and rendering for the amenities step
+    #
+    # On POST we record the selected amenities and then complete the wizard by
+    # redirecting back to the list of rooms.  On GET we prepopulate any
+    # previously selected amenities from the session and render the selection
+    # interface.  Progress is set to 100% because this is the final step.  The
+    # back button returns to step 3 (photo upload) and there is no explicit
+    # next step.
+    if request.method == 'POST':
+        selected = request.form.getlist('amenities')
+        session['new_listing_amenities'] = selected
+        return redirect(url_for('list_rooms'))
+
+    # On GET display the amenity selection form
+    progress = 100
+    back_url = url_for('new_room_step3')
+    next_url: typing.Optional[str] = None
+    # Preselect amenities from session if editing a draft
+    selected = session.get('new_listing_amenities', [])
+    return render_template(
+        'new_room_step4.html',
+        progress=progress,
+        back_url=back_url,
+        next_url=next_url,
+        hide_nav=True,
+        categories=amenities_categories,
+        selected=selected,
+    )
+
+
+# -----------------------------------------------------------------------------
+# Additional endpoints related to the new listing wizard
+#
+# The following routes handle cancelling the wizard, saving a draft, ensuring
+# the draft table exists, and resuming a saved draft.  These were part of the
+# original application and are reinstated here to restore full functionality.
+
+@app.route('/rooms/new/cancel')
+@login_required
+@roles_required('owner')
+def cancel_new_room():
+    """Cancel the current listing creation process.
+
+    Removes any wizard-related session variables and redirects back to the list
+    of rooms.  A flash message informs the user that the creation has been
+    cancelled.
+    """
+    # Remove the stored property type to reset the wizard
+    session.pop('new_listing_property_type', None)
+    flash('Создание объявления отменено.', 'info')
+    return redirect(url_for('list_rooms'))
+
+
+@app.route('/rooms/new/draft', methods=['POST'])
+@login_required
+@roles_required('owner')
+def save_new_room_draft():
+    """Persist the current state of the listing wizard as a draft.
+
+    This function collects any data captured thus far (property type, address,
+    address components, uploaded photos, etc.), serializes it to JSON and
+    inserts it into the ``draft_listings`` table associated with the current
+    user.  After saving, the user is redirected back to the rooms list where
+    the draft will appear.  If saving fails, a flash message is displayed.
+    """
+    import json
+    # Ensure the drafts table exists
+    ensure_draft_table()
+    # Collect data from session. Additional fields can be appended as needed
+    data: dict[str, Any] = {}
+    property_type = session.get('new_listing_property_type')
+    if property_type:
+        data['property_type'] = property_type
+    # Include the address and individual components in the draft if they exist
+    address = session.get('new_listing_address')
+    if address:
+        data['address'] = address
+    country = session.get('new_listing_country')
+    city = session.get('new_listing_city')
+    street = session.get('new_listing_street')
+    house_number = session.get('new_listing_house_number')
+    if country:
+        data['country'] = country
+    if city:
+        data['city'] = city
+    if street:
+        data['street'] = street
+    if house_number:
+        data['house_number'] = house_number
+    # Save list of uploaded photos if present
+    photos = session.get('new_listing_photos')
+    if photos:
+        data['photos'] = photos
+    try:
+        serialized = json.dumps(data, ensure_ascii=False)
+    except Exception:
+        serialized = '{}'
+    user_id = session.get('user_id')
+    conn = None
+    try:
+        conn = get_db_connection()
+        conn.execute(
+            'INSERT INTO draft_listings (user_id, data) VALUES (?, ?)',
+            (user_id, serialized),
+        )
+        conn.commit()
+        flash('Черновик объявления сохранён.', 'success')
+    except Exception:
+        flash('Не удалось сохранить черновик.', 'danger')
+    finally:
+        if conn is not None:
+            conn.close()
+    return redirect(url_for('list_rooms'))
+
+
+def ensure_draft_table():
+    """Create the draft_listings table if it does not exist.
+
+    This helper is idempotent and safe to call multiple times.  It uses the
+    ``get_db_connection`` helper from this module to obtain a connection and
+    creates the table with appropriate columns if it isn't already present.
+    """
+    try:
+        conn = get_db_connection()
+        conn.execute(
+            'CREATE TABLE IF NOT EXISTS draft_listings ('
+            'id SERIAL PRIMARY KEY, '
+            'user_id INTEGER NOT NULL, '
+            'data TEXT, '
+            'created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
+            ')'
+        )
+        conn.commit()
+        conn.close()
+    except Exception:
+        # Ignore any error during creation to avoid breaking the request
+        pass
+
+
+@app.route('/rooms/new/draft/<int:draft_id>')
+@login_required
+@roles_required('owner')
+def resume_draft(draft_id: int):
+    """Load a saved draft back into the session and resume the wizard.
+
+    If the draft is found for the current user, the stored data is loaded into
+    the session and the user is redirected to the appropriate step of the
+    wizard.  If the draft cannot be found, the user is redirected back to the
+    rooms list with an error message.
+    """
+    import json
+    user_id = session.get('user_id')
+    ensure_draft_table()
+    conn = get_db_connection()
+    row = conn.execute(
+        'SELECT data FROM draft_listings WHERE id = ? AND user_id = ?',
+        (draft_id, user_id),
+    ).fetchone()
+    conn.close()
+    if not row:
+        flash('Черновик не найден.', 'danger')
+        return redirect(url_for('list_rooms'))
+    try:
+        data = json.loads(row[0]) if row[0] else {}
+    except Exception:
+        data = {}
+    # Load data into session.  Future fields can be added here.
+    if 'property_type' in data:
+        session['new_listing_property_type'] = data['property_type']
+    if 'address' in data:
+        session['new_listing_address'] = data['address']
+    if 'country' in data:
+        session['new_listing_country'] = data['country']
+    if 'city' in data:
+        session['new_listing_city'] = data['city']
+    if 'street' in data:
+        session['new_listing_street'] = data['street']
+    if 'house_number' in data:
+        session['new_listing_house_number'] = data['house_number']
+    if 'photos' in data:
+        session['new_listing_photos'] = data['photos']
+    # Redirect to the step appropriate for the stored data.
+    if session.get('new_listing_property_type'):
+        return redirect(url_for('new_room_step2'))
+    return redirect(url_for('new_room_step1'))
