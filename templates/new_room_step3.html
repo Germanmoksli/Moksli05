@@ -57,10 +57,10 @@
         <!-- Rooms count -->
         <div class="col">
           <div class="d-flex justify-content-between align-items-center">
-            <label for="rooms_count" class="fw-bold fs-4 mb-0 me-2">Комнаты</label>
+            <label for="rooms_count" class="rooms-label mb-0 me-2">Комнаты</label>
             <div class="d-flex align-items-center">
               <button type="button" class="inc-dec-btn decrement" data-target="rooms_count">–</button>
-              <span class="mx-3 count-display fs-4 fw-bold" id="rooms_count_display">{{ rooms_count }}</span>
+              <span class="mx-3 count-display" id="rooms_count_display">{{ rooms_count }}</span>
               <input type="hidden" name="rooms_count" id="rooms_count" value="{{ rooms_count }}">
               <button type="button" class="inc-dec-btn increment" data-target="rooms_count">+</button>
             </div>
@@ -69,10 +69,10 @@
         <!-- Guests count -->
         <div class="col">
           <div class="d-flex justify-content-between align-items-center">
-            <label for="guests_count" class="fw-bold fs-4 mb-0 me-2">Гости</label>
+            <label for="guests_count" class="rooms-label mb-0 me-2">Гости</label>
             <div class="d-flex align-items-center">
               <button type="button" class="inc-dec-btn decrement" data-target="guests_count">–</button>
-              <span class="mx-3 count-display fs-4 fw-bold" id="guests_count_display">{{ guests_count }}</span>
+              <span class="mx-3 count-display" id="guests_count_display">{{ guests_count }}</span>
               <input type="hidden" name="guests_count" id="guests_count" value="{{ guests_count }}">
               <button type="button" class="inc-dec-btn increment" data-target="guests_count">+</button>
             </div>
@@ -81,10 +81,10 @@
         <!-- Beds count -->
         <div class="col">
           <div class="d-flex justify-content-between align-items-center">
-            <label for="beds_count" class="fw-bold fs-4 mb-0 me-2">Кровати</label>
+            <label for="beds_count" class="rooms-label mb-0 me-2">Кровати</label>
             <div class="d-flex align-items-center">
               <button type="button" class="inc-dec-btn decrement" data-target="beds_count">–</button>
-              <span class="mx-3 count-display fs-4 fw-bold" id="beds_count_display">{{ beds_count }}</span>
+              <span class="mx-3 count-display" id="beds_count_display">{{ beds_count }}</span>
               <input type="hidden" name="beds_count" id="beds_count" value="{{ beds_count }}">
               <button type="button" class="inc-dec-btn increment" data-target="beds_count">+</button>
             </div>
@@ -93,10 +93,10 @@
         <!-- Sofas count -->
         <div class="col">
           <div class="d-flex justify-content-between align-items-center">
-            <label for="sofas_count" class="fw-bold fs-4 mb-0 me-2">Диваны</label>
+            <label for="sofas_count" class="rooms-label mb-0 me-2">Диваны</label>
             <div class="d-flex align-items-center">
               <button type="button" class="inc-dec-btn decrement" data-target="sofas_count">–</button>
-              <span class="mx-3 count-display fs-4 fw-bold" id="sofas_count_display">{{ sofas_count }}</span>
+              <span class="mx-3 count-display" id="sofas_count_display">{{ sofas_count }}</span>
               <input type="hidden" name="sofas_count" id="sofas_count" value="{{ sofas_count }}">
               <button type="button" class="inc-dec-btn increment" data-target="sofas_count">+</button>
             </div>
@@ -107,24 +107,67 @@
 
     <!-- Amenity cards styling -->
     <style>
+      /* Card styling for amenity options to resemble AirBnB style cards:
+         rectangular with rounded corners, thin border and a small check box on the right.
+         On selection the border becomes the primary colour and the check box fills with the same colour. */
       .amenity-card {
         border: 1px solid #dee2e6;
         border-radius: 0.75rem;
-        padding: 0.75rem;
-        aspect-ratio: 1 / 1;
+        padding: 0.75rem 1rem;
         display: flex;
-        flex-direction: column;
         align-items: center;
-        justify-content: center;
+        justify-content: space-between;
+        min-height: 3.5rem;
+        background-color: #fff;
+        transition: border-color 0.2s ease, background-color 0.2s ease;
         cursor: pointer;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-        transition: border-color 0.2s ease, box-shadow 0.2s ease;
       }
+      /* Icon and label wrapper inside card */
+      .amenity-card .amenity-info {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      .amenity-card i {
+        font-size: 1.25rem;
+      }
+      /* Small square indicator at the right side of the card */
+      .amenity-card .amenity-check {
+        width: 1.25rem;
+        height: 1.25rem;
+        border: 1px solid #ced4da;
+        border-radius: 0.25rem;
+        display: inline-block;
+        background-color: #fff;
+        position: relative;
+      }
+      /* Show check mark using a pseudo element when the checkbox is selected */
+      .amenity-card .amenity-check::after {
+        content: '';
+        position: absolute;
+        top: 2px;
+        left: 3px;
+        width: 0.5rem;
+        height: 0.8rem;
+        border: solid transparent;
+        border-width: 0 0.15rem 0.15rem 0;
+        transform: rotate(45deg);
+        opacity: 0;
+      }
+      /* Checkbox control is hidden but triggers styling */
       input[type=checkbox]:checked + .amenity-card {
-        border: 2px solid var(--bs-primary);
-        box-shadow: 0 0 0 2px rgba(var(--bs-primary-rgb), 0.25);
-        background-color: #f1f3f5;
+        border-color: var(--bs-primary);
+        background-color: #eef5ff;
       }
+      input[type=checkbox]:checked + .amenity-card .amenity-check {
+        border-color: var(--bs-primary);
+        background-color: var(--bs-primary);
+      }
+      input[type=checkbox]:checked + .amenity-card .amenity-check::after {
+        border-color: #fff;
+        opacity: 1;
+      }
+
       /* Remove focus outlines from increment/decrement buttons */
       .increment:focus,
       .decrement:focus {
@@ -139,37 +182,44 @@
         width: 3rem;
         height: 3rem;
         font-weight: bold;
-        font-size: 1.5rem;
+        font-size: 2rem;
         line-height: 1;
-        border-radius: 0.375rem;
+        border-radius: 0.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
       }
       .inc-dec-btn:active {
         color: var(--bs-primary);
         border-color: var(--bs-primary);
         background-color: #e8efff;
       }
+      /* Larger font for the count display */
+      .count-display {
+        font-size: 2rem;
+      }
+      /* Larger and bold labels for room settings */
+      .rooms-label {
+        font-size: 1.25rem;
+        font-weight: 600;
+      }
     </style>
 
     {% for category in categories %}
-      <div class="mb-3">
-        <h5 class="fw-bold fs-3 text-center mb-3">{{ category.name }}</h5>
-        <div class="row row-cols-3 g-2 justify-content-center" style="max-width: 600px; margin: 0 auto;">
+      <div class="mb-4">
+        <h5 class="fw-bold fs-4 mb-1">{{ category.name }}</h5>
+        <p class="text-muted mb-2">Выберите подходящие варианты</p>
+        <div class="row row-cols-2 g-2">
           {% for item in category.options %}
             <div class="col">
               <label class="w-100">
                 <input type="checkbox" name="amenities" value="{{ item.value }}" class="d-none">
-                <div class="amenity-card text-center">
-                  {# Use specified icons or override for specific amenities #}
-                  {% set icon_class = item.icon %}
-                  {% if item.value == 'parking' %}
-                    {% set icon_class = 'bi-car-front' %}
-                  {% elif item.value == 'bedding' %}
-                    {% set icon_class = 'bi-bed' %}
-                  {% elif item.value == 'microwave' %}
-                    {% set icon_class = 'bi-microwave' %}
-                  {% endif %}
-                  <i class="bi {{ icon_class }} fs-2 mb-2 text-primary"></i>
-                  <div class="small fw-semibold">{{ item.label }}</div>
+                <div class="amenity-card">
+                  <div class="amenity-info">
+                    <i class="bi {{ item.icon }} text-primary"></i>
+                    <span class="fw-semibold">{{ item.label }}</span>
+                  </div>
+                  <span class="amenity-check"></span>
                 </div>
               </label>
             </div>
