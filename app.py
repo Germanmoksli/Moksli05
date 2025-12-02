@@ -8321,7 +8321,7 @@ def new_room_step3():
     beds_count = session.get('new_listing_beds_count', 0)
     sofas_count = session.get('new_listing_sofas_count', 0)
     return render_template(
-        'new_room_step4.html',
+        'new_room_step3.html',
         progress=progress,
         back_url=back_url,
         next_url=next_url,
@@ -8412,7 +8412,7 @@ def new_room_step4():
     next_url: typing.Optional[str] = None
     existing_photos = session.get('new_listing_photos', [])
     return render_template(
-        'new_room_step3.html',
+        'new_room_step4.html',
         property_type=property_type,
         progress=progress,
         back_url=back_url,
