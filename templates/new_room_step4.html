@@ -57,38 +57,46 @@
       <div class="row row-cols-1 g-3 justify-content-center" style="max-width: 500px; margin: 0 auto;">
         <!-- Количество комнат -->
         <div class="col">
-          <label for="rooms_count" class="form-label fw-semibold">Комнаты</label>
-          <div class="d-flex align-items-center">
-            <button type="button" class="btn btn-outline-secondary decrement" data-target="rooms_count"><i class="bi bi-dash"></i></button>
-            <input type="number" name="rooms_count" id="rooms_count" class="form-control mx-2 text-center" value="{{ rooms_count }}" min="0" readonly style="max-width: 70px;">
-            <button type="button" class="btn btn-outline-secondary increment" data-target="rooms_count"><i class="bi bi-plus"></i></button>
+          <div class="d-flex justify-content-between align-items-center">
+            <label for="rooms_count" class="fw-semibold mb-0 me-2">Комнаты</label>
+            <div class="d-flex align-items-center">
+              <button type="button" class="btn btn-outline-secondary decrement" data-target="rooms_count"><i class="bi bi-dash"></i></button>
+              <input type="number" name="rooms_count" id="rooms_count" class="form-control mx-2 text-center" value="{{ rooms_count }}" min="0" readonly style="max-width: 70px;">
+              <button type="button" class="btn btn-outline-secondary increment" data-target="rooms_count"><i class="bi bi-plus"></i></button>
+            </div>
           </div>
         </div>
         <!-- Максимальное число гостей -->
         <div class="col">
-          <label for="guests_count" class="form-label fw-semibold">Гости</label>
-          <div class="d-flex align-items-center">
-            <button type="button" class="btn btn-outline-secondary decrement" data-target="guests_count"><i class="bi bi-dash"></i></button>
-            <input type="number" name="guests_count" id="guests_count" class="form-control mx-2 text-center" value="{{ guests_count }}" min="1" readonly style="max-width: 70px;">
-            <button type="button" class="btn btn-outline-secondary increment" data-target="guests_count"><i class="bi bi-plus"></i></button>
+          <div class="d-flex justify-content-between align-items-center">
+            <label for="guests_count" class="fw-semibold mb-0 me-2">Гости</label>
+            <div class="d-flex align-items-center">
+              <button type="button" class="btn btn-outline-secondary decrement" data-target="guests_count"><i class="bi bi-dash"></i></button>
+              <input type="number" name="guests_count" id="guests_count" class="form-control mx-2 text-center" value="{{ guests_count }}" min="1" readonly style="max-width: 70px;">
+              <button type="button" class="btn btn-outline-secondary increment" data-target="guests_count"><i class="bi bi-plus"></i></button>
+            </div>
           </div>
         </div>
         <!-- Количество кроватей -->
         <div class="col">
-          <label for="beds_count" class="form-label fw-semibold">Кровати</label>
-          <div class="d-flex align-items-center">
-            <button type="button" class="btn btn-outline-secondary decrement" data-target="beds_count"><i class="bi bi-dash"></i></button>
-            <input type="number" name="beds_count" id="beds_count" class="form-control mx-2 text-center" value="{{ beds_count }}" min="0" readonly style="max-width: 70px;">
-            <button type="button" class="btn btn-outline-secondary increment" data-target="beds_count"><i class="bi bi-plus"></i></button>
+          <div class="d-flex justify-content-between align-items-center">
+            <label for="beds_count" class="fw-semibold mb-0 me-2">Кровати</label>
+            <div class="d-flex align-items-center">
+              <button type="button" class="btn btn-outline-secondary decrement" data-target="beds_count"><i class="bi bi-dash"></i></button>
+              <input type="number" name="beds_count" id="beds_count" class="form-control mx-2 text-center" value="{{ beds_count }}" min="0" readonly style="max-width: 70px;">
+              <button type="button" class="btn btn-outline-secondary increment" data-target="beds_count"><i class="bi bi-plus"></i></button>
+            </div>
           </div>
         </div>
         <!-- Количество диванов -->
         <div class="col">
-          <label for="sofas_count" class="form-label fw-semibold">Диваны</label>
-          <div class="d-flex align-items-center">
-            <button type="button" class="btn btn-outline-secondary decrement" data-target="sofas_count"><i class="bi bi-dash"></i></button>
-            <input type="number" name="sofas_count" id="sofas_count" class="form-control mx-2 text-center" value="{{ sofas_count }}" min="0" readonly style="max-width: 70px;">
-            <button type="button" class="btn btn-outline-secondary increment" data-target="sofas_count"><i class="bi bi-plus"></i></button>
+          <div class="d-flex justify-content-between align-items-center">
+            <label for="sofas_count" class="fw-semibold mb-0 me-2">Диваны</label>
+            <div class="d-flex align-items-center">
+              <button type="button" class="btn btn-outline-secondary decrement" data-target="sofas_count"><i class="bi bi-dash"></i></button>
+              <input type="number" name="sofas_count" id="sofas_count" class="form-control mx-2 text-center" value="{{ sofas_count }}" min="0" readonly style="max-width: 70px;">
+              <button type="button" class="btn btn-outline-secondary increment" data-target="sofas_count"><i class="bi bi-plus"></i></button>
+            </div>
           </div>
         </div>
       </div>
