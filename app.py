@@ -8161,69 +8161,151 @@ def new_room_step3():
     # collected in step 2.  If missing, redirect back.
     if 'new_listing_address' not in session:
         return redirect(url_for('new_room_step2'))
-    # Handle file uploads
+    # ---------------------------------------------------------------------
+    # Amenities selection for step 3
+    #
+    # Provide the list of amenity categories defined for the wizard.  Each item
+    # has a value used internally, a human‑readable label, and a Bootstrap icon.
+    amenities_categories = [
+        {
+            'name': 'Базовые удобства',
+            'options': [
+                {'value': 'wifi_fast', 'label': 'Wi‑Fi (быстрый, стабильный)', 'icon': 'bi-wifi'},
+                {'value': 'smart_tv', 'label': 'Телевизор / Smart TV', 'icon': 'bi-tv'},
+                {'value': 'climate_control', 'label': 'Кондиционер или отопление', 'icon': 'bi-thermometer-half'},
+                {'value': 'hot_water_247', 'label': 'Горячая вода 24/7', 'icon': 'bi-droplet-half'},
+                {'value': 'kitchen_area', 'label': 'Кухня или кухонная зона', 'icon': 'bi-egg-fried'},
+                {'value': 'fridge', 'label': 'Холодильник', 'icon': 'bi-snow'},
+                {'value': 'stove', 'label': 'Плита (газ/электро)', 'icon': 'bi-egg-fried'},
+                {'value': 'microwave', 'label': 'Микроволновка', 'icon': 'bi-microwave'},
+                {'value': 'washing_machine', 'label': 'Стиральная машина', 'icon': 'bi-washer'},
+                {'value': 'iron_board', 'label': 'Утюг + гладильная доска', 'icon': 'bi-iron'},
+                {'value': 'hairdryer', 'label': 'Фен', 'icon': 'bi-wind'},
+                {'value': 'clean_bedding', 'label': 'Чистое постельное бельё', 'icon': 'bi-bed'},
+                {'value': 'towel_set', 'label': 'Набор полотенец', 'icon': 'bi-emoji-smile'},
+                {'value': 'dishes_cutlery', 'label': 'Посуда и столовые приборы', 'icon': 'bi-cup-straw'},
+                {'value': 'hygiene_essentials', 'label': 'Гигиенические принадлежности (мыло, туалетная бумага)', 'icon': 'bi-droplet-fill'},
+            ],
+        },
+        {
+            'name': 'Домашняя техника',
+            'options': [
+                {'value': 'oven', 'label': 'Духовой шкаф', 'icon': 'bi-fire'},
+                {'value': 'dishwasher', 'label': 'Посудомоечная машина', 'icon': 'bi-droplet-half'},
+                {'value': 'coffee_machine', 'label': 'Кофемашина / турка / чайник', 'icon': 'bi-cup-hot'},
+                {'value': 'big_wardrobe', 'label': 'Большой шкаф или гардероб', 'icon': 'bi-door-closed'},
+                {'value': 'balcony', 'label': 'Балкон', 'icon': 'bi-house-door'},
+                {'value': 'workspace', 'label': 'Рабочее место / письменный стол', 'icon': 'bi-laptop'},
+                {'value': 'soundproof_windows', 'label': 'Шумозащитные окна', 'icon': 'bi-window'},
+                {'value': 'blackout_curtains', 'label': 'Блэкаут-шторы', 'icon': 'bi-moon'},
+                {'value': 'extra_pillows_blankets', 'label': 'Дополнительные подушки и одеяла', 'icon': 'bi-cloud-plus'},
+                {'value': 'free_parking', 'label': 'Бесплатная парковка', 'icon': 'bi-car-front'},
+                {'value': 'elevator', 'label': 'Лифт', 'icon': 'bi-arrow-up-square'},
+                {'value': 'luggage_storage', 'label': 'Хранение багажа (если есть такая возможность)', 'icon': 'bi-suitcase'},
+            ],
+        },
+        {
+            'name': 'Стильный интерьер',
+            'options': [
+                {'value': 'decor', 'label': 'Картины, декор, растения', 'icon': 'bi-flower1'},
+                {'value': 'sofa_chairs', 'label': 'Диван/кресла', 'icon': 'bi-sofa'},
+                {'value': 'plaids', 'label': 'Пледы', 'icon': 'bi-star'},
+                {'value': 'warm_light', 'label': 'Тёплый свет', 'icon': 'bi-lightbulb'},
+                {'value': 'carpet', 'label': 'Ковёр', 'icon': 'bi-square'},
+                {'value': 'aroma_diffuser', 'label': 'Аромадиффузор (безопасный)', 'icon': 'bi-wind'},
+                {'value': 'large_mirror', 'label': 'Большое зеркало', 'icon': 'bi-arrows-fullscreen'},
+                {'value': 'intercom', 'label': 'Домофон', 'icon': 'bi-telephone'},
+                {'value': 'lockable_door', 'label': 'Закрывающаяся дверь (надёжный замок)', 'icon': 'bi-lock'},
+                {'value': 'security_cameras_outdoor', 'label': 'Видеонаблюдение снаружи (не внутри!)', 'icon': 'bi-camera-video'},
+                {'value': 'fire_detector', 'label': 'Пожарный датчик', 'icon': 'bi-bell'},
+                {'value': 'carbon_monoxide_detector', 'label': 'Датчик угарного газа', 'icon': 'bi-speedometer'},
+                {'value': 'fire_extinguisher', 'label': 'Огнетушитель', 'icon': 'bi-fire'},
+                {'value': 'first_aid_kit', 'label': 'Аптечка', 'icon': 'bi-heart-pulse'},
+            ],
+        },
+        {
+            'name': 'Электроника и климат',
+            'options': [
+                {'value': 'bedside_outlets', 'label': 'Зарядки: USB, USB-C, розетки около кровати', 'icon': 'bi-usb'},
+                {'value': 'wireless_charging', 'label': 'Беспроводная зарядка', 'icon': 'bi-broadcast-pin'},
+                {'value': 'smart_speaker', 'label': 'Умная колонка (опционально)', 'icon': 'bi-speaker'},
+                {'value': 'heater', 'label': 'Обогреватель', 'icon': 'bi-fire'},
+                {'value': 'humidifier', 'label': 'Увлажнитель воздуха', 'icon': 'bi-droplet'},
+                {'value': 'fan', 'label': 'Вентилятор', 'icon': 'bi-fan'},
+            ],
+        },
+        {
+            'name': 'Кухонные принадлежности',
+            'options': [
+                {'value': 'full_dish_set', 'label': 'Полный набор посуды (тарелки, чашки, ножи, бокалы)', 'icon': 'bi-cup-straw'},
+                {'value': 'pans_pots', 'label': 'Сковородки / кастрюли', 'icon': 'bi-egg-fried'},
+                {'value': 'multicooker', 'label': 'Мультиварка / аэрогриль', 'icon': 'bi-lightning-charge'},
+                {'value': 'toaster', 'label': 'Тостер', 'icon': 'bi-grid'},
+                {'value': 'cutting_boards', 'label': 'Разделочные доски', 'icon': 'bi-layout-text-sidebar'},
+                {'value': 'spices', 'label': 'Приправы: соль, перец, масло', 'icon': 'bi-basket'},
+                {'value': 'sponges_detergent', 'label': 'Губки, моющее средство', 'icon': 'bi-droplet-fill'},
+            ],
+        },
+        {
+            'name': 'Средства для душа и хранения',
+            'options': [
+                {'value': 'shower_essentials', 'label': 'Средства для душа (шампунь, гель)', 'icon': 'bi-droplet-fill'},
+                {'value': 'hairdryer2', 'label': 'Фен', 'icon': 'bi-wind'},
+                {'value': 'storage_space', 'label': 'Место для хранения вещей', 'icon': 'bi-box'},
+                {'value': 'washer_dryer', 'label': 'Стиралка/сушилка', 'icon': 'bi-washer'},
+                {'value': 'water_heater', 'label': 'Нагреватель воды (если нужно)', 'icon': 'bi-droplet-half'},
+            ],
+        },
+        {
+            'name': 'Чистота и уборка',
+            'options': [
+                {'value': 'vacuum_cleaner', 'label': 'Пылесос', 'icon': 'bi-robot'},
+                {'value': 'mop_bucket', 'label': 'Швабра и ведро', 'icon': 'bi-bucket'},
+                {'value': 'clothes_dryer', 'label': 'Сушилка для белья', 'icon': 'bi-wind'},
+                {'value': 'cleaning_supplies', 'label': 'Средства для уборки', 'icon': 'bi-broom'},
+                {'value': 'extra_supplies', 'label': 'Запас: мусорные пакеты, туалетная бумага', 'icon': 'bi-trash'},
+            ],
+        },
+        {
+            'name': 'Детские удобства',
+            'options': [
+                {'value': 'baby_bed', 'label': 'Детская кроватка', 'icon': 'bi-buggy'},
+                {'value': 'high_chair', 'label': 'Детский стул', 'icon': 'bi-chair'},
+                {'value': 'corner_protectors', 'label': 'Защита на углы', 'icon': 'bi-shield-check'},
+                {'value': 'toys', 'label': 'Игрушки', 'icon': 'bi-emoji-smile'},
+            ],
+        },
+        {
+            'name': 'Отдых на свежем воздухе',
+            'options': [
+                {'value': 'bbq_area', 'label': 'Барбекю зона', 'icon': 'bi-fire'},
+                {'value': 'garden_furniture', 'label': 'Садовая мебель', 'icon': 'bi-tree'},
+                {'value': 'terrace', 'label': 'Терраса', 'icon': 'bi-house-door'},
+                {'value': 'outdoor_shower', 'label': 'Душ на улице', 'icon': 'bi-droplet'},
+                {'value': 'pool', 'label': 'Бассейн', 'icon': 'bi-droplet-fill'},
+                {'value': 'sunbeds', 'label': 'Шезлонги', 'icon': 'bi-sun'},
+                {'value': 'fire_pit', 'label': 'Костровая яма', 'icon': 'bi-fire'},
+            ],
+        },
+    ]
+    # Save selected amenities and go to the next step
     if request.method == 'POST':
-        # Get the uploaded files in the order provided by the browser
-        files = request.files.getlist('photos')
-        # Limit to the first 100 files
-        if len(files) > 100:
-            files = files[:100]
-        # If a custom order is provided via photo_order, reorder the files
-        order_str = request.form.get('photo_order', '')
-        order_indices: list[int] = []
-        if order_str:
-            for part in order_str.split(','):
-                part = part.strip()
-                if part.isdigit():
-                    order_indices.append(int(part))
-        if order_indices:
-            ordered_files: list = []
-            for idx in order_indices:
-                if 0 <= idx < len(files):
-                    ordered_files.append(files[idx])
-            # Append any files that were not referenced in the order
-            for i, f in enumerate(files):
-                if i not in order_indices:
-                    ordered_files.append(f)
-            files = ordered_files
-        saved_filenames: list[str] = []
-        # Save each file to the uploads folder
-        for file in files:
-            if not file or file.filename == '':
-                continue
-            filename = secure_filename(file.filename)
-            # Only allow image files by basic extension check
-            ext = os.path.splitext(filename)[1].lower()
-            if ext not in {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'}:
-                continue
-            # Generate a unique filename to avoid collisions
-            unique_name = f"{uuid.uuid4().hex}{ext}"
-            try:
-                file.save(os.path.join(UPLOAD_ROOMS_FOLDER, unique_name))
-                saved_filenames.append(unique_name)
-            except Exception:
-                # Skip files that cannot be saved
-                continue
-        # Persist the list of saved photos in the session for later use
-        session['new_listing_photos'] = saved_filenames
-        # Proceed to step 4 after uploading photos
+        selected = request.form.getlist('amenities')
+        session['new_listing_amenities'] = selected
         return redirect(url_for('new_room_step4'))
-    # On GET display the upload interface.  Progress is 100% as this is
-    # currently the final step.  Back button returns to step 2.
+    # Display the amenity selection interface
     progress = 75
     back_url = url_for('new_room_step2')
-    next_url: typing.Optional[str] = None
-    # Pass any previously uploaded photos to the template to allow the user
-    # to resume editing.  Each entry is a filename within UPLOAD_ROOMS_FOLDER.
-    existing_photos = session.get('new_listing_photos', [])
+    next_url = url_for('new_room_step4')
+    selected = session.get('new_listing_amenities', [])
     return render_template(
-        'new_room_step3.html',
-        property_type=property_type,
+        'new_room_step4.html',
         progress=progress,
         back_url=back_url,
         next_url=next_url,
         hide_nav=True,
-        existing_photos=existing_photos,
+        categories=amenities_categories,
+        selected=selected,
     )
 
 
@@ -8239,166 +8321,78 @@ def new_room_step3():
 @login_required
 @roles_required('owner')
 def new_room_step4():
+    """Step 4 of the new listing wizard: upload photos.
+
+    This step comes after selecting amenities.  The owner can upload up to
+    100 photos.  On POST the uploaded photos are saved to the ``uploads``
+    folder and their filenames stored in the session.  After uploading the
+    wizard finishes and redirects back to the list of rooms.  On GET the
+    previously saved photos (if any) are shown, progress is 100%% and the
+    back button returns to step 3 (amenities).
+    """
     # Ensure prior steps have been completed
-    if session.get('new_listing_property_type') is None:
+    property_type = session.get('new_listing_property_type')
+    if property_type is None:
         return redirect(url_for('new_room_step1'))
     if 'new_listing_address' not in session:
         return redirect(url_for('new_room_step2'))
-    if 'new_listing_photos' not in session:
+    # The amenities must be selected before uploading photos
+    if 'new_listing_amenities' not in session:
         return redirect(url_for('new_room_step3'))
-    # Define the amenity categories and items.  Each item has a value used
-    # internally, a human‑readable label and a Bootstrap icon class.
-    amenities_categories = [
-    {
-        'name': 'Базовые удобства',
-        'options': [
-            {'value': 'wifi_fast', 'label': 'Wi‑Fi (быстрый, стабильный)', 'icon': 'bi-wifi'},
-            {'value': 'smart_tv', 'label': 'Телевизор / Smart TV', 'icon': 'bi-tv'},
-            {'value': 'climate_control', 'label': 'Кондиционер или отопление', 'icon': 'bi-thermometer-half'},
-            {'value': 'hot_water_247', 'label': 'Горячая вода 24/7', 'icon': 'bi-droplet-half'},
-            {'value': 'kitchen_area', 'label': 'Кухня или кухонная зона', 'icon': 'bi-egg-fried'},
-            {'value': 'fridge', 'label': 'Холодильник', 'icon': 'bi-snow'},
-            {'value': 'stove', 'label': 'Плита (газ/электро)', 'icon': 'bi-egg-fried'},
-            {'value': 'microwave', 'label': 'Микроволновка', 'icon': 'bi-microwave'},
-            {'value': 'washing_machine', 'label': 'Стиральная машина', 'icon': 'bi-washer'},
-            {'value': 'iron_board', 'label': 'Утюг + гладильная доска', 'icon': 'bi-iron'},
-            {'value': 'hairdryer', 'label': 'Фен', 'icon': 'bi-wind'},
-            {'value': 'clean_bedding', 'label': 'Чистое постельное бельё', 'icon': 'bi-bed'},
-            {'value': 'towel_set', 'label': 'Набор полотенец', 'icon': 'bi-emoji-smile'},
-            {'value': 'dishes_cutlery', 'label': 'Посуда и столовые приборы', 'icon': 'bi-cup-straw'},
-            {'value': 'hygiene_essentials', 'label': 'Гигиенические принадлежности (мыло, туалетная бумага)', 'icon': 'bi-droplet-fill'},
-        ],
-    },
-    {
-        'name': 'Домашняя техника',
-        'options': [
-            {'value': 'oven', 'label': 'Духовой шкаф', 'icon': 'bi-fire'},
-            {'value': 'dishwasher', 'label': 'Посудомоечная машина', 'icon': 'bi-droplet-half'},
-            {'value': 'coffee_machine', 'label': 'Кофемашина / турка / чайник', 'icon': 'bi-cup-hot'},
-            {'value': 'big_wardrobe', 'label': 'Большой шкаф или гардероб', 'icon': 'bi-door-closed'},
-            {'value': 'balcony', 'label': 'Балкон', 'icon': 'bi-house-door'},
-            {'value': 'workspace', 'label': 'Рабочее место / письменный стол', 'icon': 'bi-laptop'},
-            {'value': 'soundproof_windows', 'label': 'Шумозащитные окна', 'icon': 'bi-window'},
-            {'value': 'blackout_curtains', 'label': 'Блэкаут-шторы', 'icon': 'bi-moon'},
-            {'value': 'extra_pillows_blankets', 'label': 'Дополнительные подушки и одеяла', 'icon': 'bi-cloud-plus'},
-            {'value': 'free_parking', 'label': 'Бесплатная парковка', 'icon': 'bi-car-front'},
-            {'value': 'elevator', 'label': 'Лифт', 'icon': 'bi-arrow-up-square'},
-            {'value': 'luggage_storage', 'label': 'Хранение багажа (если есть такая возможность)', 'icon': 'bi-suitcase'},
-        ],
-    },
-    {
-        'name': 'Стильный интерьер',
-        'options': [
-            {'value': 'decor', 'label': 'Картины, декор, растения', 'icon': 'bi-flower1'},
-            {'value': 'sofa_chairs', 'label': 'Диван/кресла', 'icon': 'bi-sofa'},
-            {'value': 'plaids', 'label': 'Пледы', 'icon': 'bi-star'},
-            {'value': 'warm_light', 'label': 'Тёплый свет', 'icon': 'bi-lightbulb'},
-            {'value': 'carpet', 'label': 'Ковёр', 'icon': 'bi-square'},
-            {'value': 'aroma_diffuser', 'label': 'Аромадиффузор (безопасный)', 'icon': 'bi-wind'},
-            {'value': 'large_mirror', 'label': 'Большое зеркало', 'icon': 'bi-arrows-fullscreen'},
-            {'value': 'intercom', 'label': 'Домофон', 'icon': 'bi-telephone'},
-            {'value': 'lockable_door', 'label': 'Закрывающаяся дверь (надёжный замок)', 'icon': 'bi-lock'},
-            {'value': 'security_cameras_outdoor', 'label': 'Видеонаблюдение снаружи (не внутри!)', 'icon': 'bi-camera-video'},
-            {'value': 'fire_detector', 'label': 'Пожарный датчик', 'icon': 'bi-bell'},
-            {'value': 'carbon_monoxide_detector', 'label': 'Датчик угарного газа', 'icon': 'bi-speedometer'},
-            {'value': 'fire_extinguisher', 'label': 'Огнетушитель', 'icon': 'bi-fire'},
-            {'value': 'first_aid_kit', 'label': 'Аптечка', 'icon': 'bi-heart-pulse'},
-        ],
-    },
-    {
-        'name': 'Электроника и климат',
-        'options': [
-            {'value': 'bedside_outlets', 'label': 'Зарядки: USB, USB-C, розетки около кровати', 'icon': 'bi-usb'},
-            {'value': 'wireless_charging', 'label': 'Беспроводная зарядка', 'icon': 'bi-broadcast-pin'},
-            {'value': 'smart_speaker', 'label': 'Умная колонка (опционально)', 'icon': 'bi-speaker'},
-            {'value': 'heater', 'label': 'Обогреватель', 'icon': 'bi-fire'},
-            {'value': 'humidifier', 'label': 'Увлажнитель воздуха', 'icon': 'bi-droplet'},
-            {'value': 'fan', 'label': 'Вентилятор', 'icon': 'bi-fan'},
-        ],
-    },
-    {
-        'name': 'Кухонные принадлежности',
-        'options': [
-            {'value': 'full_dish_set', 'label': 'Полный набор посуды (тарелки, чашки, ножи, бокалы)', 'icon': 'bi-cup-straw'},
-            {'value': 'pans_pots', 'label': 'Сковородки / кастрюли', 'icon': 'bi-egg-fried'},
-            {'value': 'multicooker', 'label': 'Мультиварка / аэрогриль', 'icon': 'bi-lightning-charge'},
-            {'value': 'toaster', 'label': 'Тостер', 'icon': 'bi-grid'},
-            {'value': 'cutting_boards', 'label': 'Разделочные доски', 'icon': 'bi-layout-text-sidebar'},
-            {'value': 'spices', 'label': 'Приправы: соль, перец, масло', 'icon': 'bi-basket'},
-            {'value': 'sponges_detergent', 'label': 'Губки, моющее средство', 'icon': 'bi-droplet-fill'},
-        ],
-    },
-    {
-        'name': 'Средства для душа и хранения',
-        'options': [
-            {'value': 'shower_essentials', 'label': 'Средства для душа (шампунь, гель)', 'icon': 'bi-droplet-fill'},
-            {'value': 'hairdryer2', 'label': 'Фен', 'icon': 'bi-wind'},
-            {'value': 'storage_space', 'label': 'Место для хранения вещей', 'icon': 'bi-box'},
-            {'value': 'washer_dryer', 'label': 'Стиралка/сушилка', 'icon': 'bi-washer'},
-            {'value': 'water_heater', 'label': 'Нагреватель воды (если нужно)', 'icon': 'bi-droplet-half'},
-        ],
-    },
-    {
-        'name': 'Чистота и уборка',
-        'options': [
-            {'value': 'vacuum_cleaner', 'label': 'Пылесос', 'icon': 'bi-robot'},
-            {'value': 'mop_bucket', 'label': 'Швабра и ведро', 'icon': 'bi-bucket'},
-            {'value': 'clothes_dryer', 'label': 'Сушилка для белья', 'icon': 'bi-wind'},
-            {'value': 'cleaning_supplies', 'label': 'Средства для уборки', 'icon': 'bi-broom'},
-            {'value': 'extra_supplies', 'label': 'Запас: мусорные пакеты, туалетная бумага', 'icon': 'bi-trash'},
-        ],
-    },
-    {
-        'name': 'Детские удобства',
-        'options': [
-            {'value': 'baby_bed', 'label': 'Детская кроватка', 'icon': 'bi-buggy'},
-            {'value': 'high_chair', 'label': 'Детский стул', 'icon': 'bi-chair'},
-            {'value': 'corner_protectors', 'label': 'Защита на углы', 'icon': 'bi-shield-check'},
-            {'value': 'toys', 'label': 'Игрушки', 'icon': 'bi-emoji-smile'},
-        ],
-    },
-    {
-        'name': 'Отдых на свежем воздухе',
-        'options': [
-            {'value': 'bbq_area', 'label': 'Барбекю зона', 'icon': 'bi-fire'},
-            {'value': 'garden_furniture', 'label': 'Садовая мебель', 'icon': 'bi-tree'},
-            {'value': 'terrace', 'label': 'Терраса', 'icon': 'bi-house-door'},
-            {'value': 'outdoor_shower', 'label': 'Душ на улице', 'icon': 'bi-droplet'},
-            {'value': 'pool', 'label': 'Бассейн', 'icon': 'bi-droplet-fill'},
-            {'value': 'sunbeds', 'label': 'Шезлонги', 'icon': 'bi-sun'},
-            {'value': 'fire_pit', 'label': 'Костровая яма', 'icon': 'bi-fire'},
-        ],
-    },
-    ]
-
-    # -------------------------------------------------------------------------
-    # Handle form submission and rendering for the amenities step
-    #
-    # On POST we record the selected amenities and then complete the wizard by
-    # redirecting back to the list of rooms.  On GET we prepopulate any
-    # previously selected amenities from the session and render the selection
-    # interface.  Progress is set to 100% because this is the final step.  The
-    # back button returns to step 3 (photo upload) and there is no explicit
-    # next step.
+    # Handle file uploads on POST
     if request.method == 'POST':
-        selected = request.form.getlist('amenities')
-        session['new_listing_amenities'] = selected
+        files = request.files.getlist('photos')
+        # Limit to the first 100 files
+        if len(files) > 100:
+            files = files[:100]
+        # Optional: handle reordering if provided via hidden input
+        order_str = request.form.get('photo_order', '')
+        order_indices: list[int] = []
+        if order_str:
+            for part in order_str.split(','):
+                part = part.strip()
+                if part.isdigit():
+                    order_indices.append(int(part))
+        if order_indices:
+            ordered_files: list = []
+            for idx in order_indices:
+                if 0 <= idx < len(files):
+                    ordered_files.append(files[idx])
+            # Append any files not referenced in the order
+            for i, f in enumerate(files):
+                if i not in order_indices:
+                    ordered_files.append(f)
+            files = ordered_files
+        saved_filenames: list[str] = []
+        for file in files:
+            if not file or file.filename == '':
+                continue
+            filename = secure_filename(file.filename)
+            ext = os.path.splitext(filename)[1].lower()
+            if ext not in {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'}:
+                continue
+            unique_name = f"{uuid.uuid4().hex}{ext}"
+            try:
+                file.save(os.path.join(UPLOAD_ROOMS_FOLDER, unique_name))
+                saved_filenames.append(unique_name)
+            except Exception:
+                continue
+        session['new_listing_photos'] = saved_filenames
+        # After uploading photos, complete the wizard
         return redirect(url_for('list_rooms'))
-
-    # On GET display the amenity selection form
+    # On GET display the upload interface
     progress = 100
     back_url = url_for('new_room_step3')
     next_url: typing.Optional[str] = None
-    # Preselect amenities from session if editing a draft
-    selected = session.get('new_listing_amenities', [])
+    existing_photos = session.get('new_listing_photos', [])
     return render_template(
-        'new_room_step4.html',
+        'new_room_step3.html',
+        property_type=property_type,
         progress=progress,
         back_url=back_url,
         next_url=next_url,
         hide_nav=True,
-        categories=amenities_categories,
-        selected=selected,
+        existing_photos=existing_photos,
     )
 
 
