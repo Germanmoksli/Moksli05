@@ -59,12 +59,10 @@
           <div class="d-flex justify-content-between align-items-center">
             <label for="rooms_count" class="fw-bold fs-4 mb-0 me-2">Комнаты</label>
             <div class="d-flex align-items-center">
-              <button type="button" class="btn btn-outline-secondary fw-bold fs-3 decrement" data-target="rooms_count"
-                      style="width: 3rem; height: 3rem;">–</button>
+              <button type="button" class="inc-dec-btn decrement" data-target="rooms_count">–</button>
               <span class="mx-3 count-display" id="rooms_count_display">{{ rooms_count }}</span>
               <input type="hidden" name="rooms_count" id="rooms_count" value="{{ rooms_count }}">
-              <button type="button" class="btn btn-outline-secondary fw-bold fs-3 increment" data-target="rooms_count"
-                      style="width: 3rem; height: 3rem;">+</button>
+              <button type="button" class="inc-dec-btn increment" data-target="rooms_count">+</button>
             </div>
           </div>
         </div>
@@ -73,12 +71,10 @@
           <div class="d-flex justify-content-between align-items-center">
             <label for="guests_count" class="fw-bold fs-4 mb-0 me-2">Гости</label>
             <div class="d-flex align-items-center">
-              <button type="button" class="btn btn-outline-secondary fw-bold fs-3 decrement" data-target="guests_count"
-                      style="width: 3rem; height: 3rem;">–</button>
+              <button type="button" class="inc-dec-btn decrement" data-target="guests_count">–</button>
               <span class="mx-3 count-display" id="guests_count_display">{{ guests_count }}</span>
               <input type="hidden" name="guests_count" id="guests_count" value="{{ guests_count }}">
-              <button type="button" class="btn btn-outline-secondary fw-bold fs-3 increment" data-target="guests_count"
-                      style="width: 3rem; height: 3rem;">+</button>
+              <button type="button" class="inc-dec-btn increment" data-target="guests_count">+</button>
             </div>
           </div>
         </div>
@@ -87,12 +83,10 @@
           <div class="d-flex justify-content-between align-items-center">
             <label for="beds_count" class="fw-bold fs-4 mb-0 me-2">Кровати</label>
             <div class="d-flex align-items-center">
-              <button type="button" class="btn btn-outline-secondary fw-bold fs-3 decrement" data-target="beds_count"
-                      style="width: 3rem; height: 3rem;">–</button>
+              <button type="button" class="inc-dec-btn decrement" data-target="beds_count">–</button>
               <span class="mx-3 count-display" id="beds_count_display">{{ beds_count }}</span>
               <input type="hidden" name="beds_count" id="beds_count" value="{{ beds_count }}">
-              <button type="button" class="btn btn-outline-secondary fw-bold fs-3 increment" data-target="beds_count"
-                      style="width: 3rem; height: 3rem;">+</button>
+              <button type="button" class="inc-dec-btn increment" data-target="beds_count">+</button>
             </div>
           </div>
         </div>
@@ -101,12 +95,10 @@
           <div class="d-flex justify-content-between align-items-center">
             <label for="sofas_count" class="fw-bold fs-4 mb-0 me-2">Диваны</label>
             <div class="d-flex align-items-center">
-              <button type="button" class="btn btn-outline-secondary fw-bold fs-3 decrement" data-target="sofas_count"
-                      style="width: 3rem; height: 3rem;">–</button>
+              <button type="button" class="inc-dec-btn decrement" data-target="sofas_count">–</button>
               <span class="mx-3 count-display" id="sofas_count_display">{{ sofas_count }}</span>
               <input type="hidden" name="sofas_count" id="sofas_count" value="{{ sofas_count }}">
-              <button type="button" class="btn btn-outline-secondary fw-bold fs-3 increment" data-target="sofas_count"
-                      style="width: 3rem; height: 3rem;">+</button>
+              <button type="button" class="inc-dec-btn increment" data-target="sofas_count">+</button>
             </div>
           </div>
         </div>
@@ -138,6 +130,23 @@
       .decrement:focus {
         box-shadow: none !important;
         outline: none;
+      }
+      /* Styles for the plus/minus buttons: grey by default, blue on active */
+      .inc-dec-btn {
+        background-color: #f8f9fa;
+        border: 1px solid #ced4da;
+        color: #6c757d;
+        width: 3rem;
+        height: 3rem;
+        font-weight: bold;
+        font-size: 1.5rem;
+        line-height: 1;
+        border-radius: 0.375rem;
+      }
+      .inc-dec-btn:active {
+        color: var(--bs-primary);
+        border-color: var(--bs-primary);
+        background-color: #e8efff;
       }
     </style>
 
