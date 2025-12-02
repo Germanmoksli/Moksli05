@@ -8290,14 +8290,36 @@ def new_room_step3():
     ]
     # Save selected amenities and go to the next step
     if request.method == 'POST':
+        # Extract quantitative fields from the form.  Use safe conversion to int
+        def to_int(value: str | None, default: int = 0) -> int:
+            try:
+                return max(0, int(value)) if value is not None else default
+            except Exception:
+                return default
+        rooms_count = to_int(request.form.get('rooms_count'), 0)
+        guests_count = to_int(request.form.get('guests_count'), 1)
+        beds_count = to_int(request.form.get('beds_count'), 0)
+        sofas_count = to_int(request.form.get('sofas_count'), 0)
+        # Save counts in the session for later use
+        session['new_listing_rooms_count'] = rooms_count
+        session['new_listing_guests_count'] = guests_count
+        session['new_listing_beds_count'] = beds_count
+        session['new_listing_sofas_count'] = sofas_count
+        # Save selected amenities
         selected = request.form.getlist('amenities')
         session['new_listing_amenities'] = selected
+        # Proceed to the next step (photo upload)
         return redirect(url_for('new_room_step4'))
     # Display the amenity selection interface
     progress = 75
     back_url = url_for('new_room_step2')
     next_url = url_for('new_room_step4')
     selected = session.get('new_listing_amenities', [])
+    # Provide any previously entered counts to the template
+    rooms_count = session.get('new_listing_rooms_count', 0)
+    guests_count = session.get('new_listing_guests_count', 1)
+    beds_count = session.get('new_listing_beds_count', 0)
+    sofas_count = session.get('new_listing_sofas_count', 0)
     return render_template(
         'new_room_step4.html',
         progress=progress,
@@ -8306,6 +8328,10 @@ def new_room_step3():
         hide_nav=True,
         categories=amenities_categories,
         selected=selected,
+        rooms_count=rooms_count,
+        guests_count=guests_count,
+        beds_count=beds_count,
+        sofas_count=sofas_count,
     )
 
 

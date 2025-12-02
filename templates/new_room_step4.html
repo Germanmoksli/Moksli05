@@ -50,6 +50,49 @@
   <!-- Заголовок для шага 4: центрированный, крупнее и жирнее -->
   <h2 class="mb-4 text-primary fw-bold fs-2 text-center">Какие имеются удобства?</h2>
   <form method="post" id="amenitiesForm">
+    <!-- Раздел с возможностями размещения: количество комнат, гостей, кроватей и диванов -->
+    <div class="mb-4">
+      <h5 class="fw-bold fs-4 text-center text-primary mb-2">Возможности размещения</h5>
+      <p class="text-center text-muted mb-3">Укажите количество комнат, максимальное число гостей, кроватей и диванов</p>
+      <div class="row row-cols-2 g-3 justify-content-center" style="max-width: 500px; margin: 0 auto;">
+        <!-- Количество комнат -->
+        <div class="col">
+          <label for="rooms_count" class="form-label fw-semibold">Комнаты</label>
+          <div class="d-flex align-items-center">
+            <button type="button" class="btn btn-outline-secondary decrement" data-target="rooms_count"><i class="bi bi-dash"></i></button>
+            <input type="number" name="rooms_count" id="rooms_count" class="form-control mx-2 text-center" value="{{ rooms_count }}" min="0" readonly style="max-width: 70px;">
+            <button type="button" class="btn btn-outline-secondary increment" data-target="rooms_count"><i class="bi bi-plus"></i></button>
+          </div>
+        </div>
+        <!-- Максимальное число гостей -->
+        <div class="col">
+          <label for="guests_count" class="form-label fw-semibold">Гости</label>
+          <div class="d-flex align-items-center">
+            <button type="button" class="btn btn-outline-secondary decrement" data-target="guests_count"><i class="bi bi-dash"></i></button>
+            <input type="number" name="guests_count" id="guests_count" class="form-control mx-2 text-center" value="{{ guests_count }}" min="1" readonly style="max-width: 70px;">
+            <button type="button" class="btn btn-outline-secondary increment" data-target="guests_count"><i class="bi bi-plus"></i></button>
+          </div>
+        </div>
+        <!-- Количество кроватей -->
+        <div class="col">
+          <label for="beds_count" class="form-label fw-semibold">Кровати</label>
+          <div class="d-flex align-items-center">
+            <button type="button" class="btn btn-outline-secondary decrement" data-target="beds_count"><i class="bi bi-dash"></i></button>
+            <input type="number" name="beds_count" id="beds_count" class="form-control mx-2 text-center" value="{{ beds_count }}" min="0" readonly style="max-width: 70px;">
+            <button type="button" class="btn btn-outline-secondary increment" data-target="beds_count"><i class="bi bi-plus"></i></button>
+          </div>
+        </div>
+        <!-- Количество диванов -->
+        <div class="col">
+          <label for="sofas_count" class="form-label fw-semibold">Диваны</label>
+          <div class="d-flex align-items-center">
+            <button type="button" class="btn btn-outline-secondary decrement" data-target="sofas_count"><i class="bi bi-dash"></i></button>
+            <input type="number" name="sofas_count" id="sofas_count" class="form-control mx-2 text-center" value="{{ sofas_count }}" min="0" readonly style="max-width: 70px;">
+            <button type="button" class="btn btn-outline-secondary increment" data-target="sofas_count"><i class="bi bi-plus"></i></button>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- Styles for amenity cards -->
     <style>
@@ -102,5 +145,31 @@
     {% endfor %}
 
   </form>
+  <!-- Скрипт для управления плюс/минус в числовых полях -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const incButtons = document.querySelectorAll('.increment');
+      const decButtons = document.querySelectorAll('.decrement');
+      incButtons.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          const targetId = this.getAttribute('data-target');
+          const input = document.getElementById(targetId);
+          let value = parseInt(input.value || 0);
+          input.value = value + 1;
+        });
+      });
+      decButtons.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          const targetId = this.getAttribute('data-target');
+          const input = document.getElementById(targetId);
+          let value = parseInt(input.value || 0);
+          const min = parseInt(input.getAttribute('min') || '0');
+          if (value > min) {
+            input.value = value - 1;
+          }
+        });
+      });
+    });
+  </script>
 </div>
 {% endblock %}
