@@ -1,14 +1,21 @@
 {% extends "base.html" %}
 
-{# Заголовок обновлён: загрузка фото теперь шаг 4 #}
-{% block title %}Новое объявление – Шаг 4{% endblock %}
+{#
+  Step 3 of the new listing wizard now collects additional details and
+  amenities.  This template displays the 'Возможности размещения'
+  controls (rooms, guests, beds, sofas) followed by the amenity
+  categories defined in ``app.py``.  The navigation bar is unified at
+  the top with buttons for cancel/draft, a progress indicator, and
+  back/next actions.
+#}
+{% block title %}Новое объявление – Шаг 3{% endblock %}
 
 {% block content %}
 {% if hide_nav %}
-  <!-- Унифицированная верхняя панель: закрыть/черновик, индикатор прогресса, кнопки назад/далее -->
+  <!-- Top navigation bar: cancel/draft, progress bar, navigation -->
   <div class="container-fluid bg-light py-2 mb-3" style="border: none;">
     <div class="d-flex align-items-center justify-content-between">
-      <!-- Левая группа: закрыть и в черновик -->
+      <!-- Left group: cancel and save draft -->
       <div class="d-flex align-items-center gap-2 me-3">
         <a href="{{ url_for('cancel_new_room') }}" class="d-flex align-items-center justify-content-center rounded-circle"
            style="width: 40px; height: 40px; background-color: #f1f3f5; text-decoration: none;">
@@ -22,230 +29,178 @@
           </button>
         </form>
       </div>
-      <!-- Индикатор прогресса -->
+      <!-- Progress bar -->
       <div class="progress flex-grow-1 mx-3 border-0" style="height: 6px; border: none;">
         <div class="progress-bar bg-primary" role="progressbar" style="width: {{ progress }}%;"
              aria-valuenow="{{ progress }}" aria-valuemin="0" aria-valuemax="100"></div>
       </div>
-      <!-- Правая группа: навигация. Кнопка "Завершить" отправляет форму с фотографиями -->
+      <!-- Right group: back and next buttons -->
       <div class="d-flex align-items-center gap-2 ms-3">
         <a href="{{ back_url }}" class="btn btn-link d-flex align-items-center justify-content-center"
            style="height: 40px;">Назад</a>
-        <button type="submit" form="photoForm" class="btn btn-primary d-flex align-items-center justify-content-center"
-                style="height: 40px;">Завершить</button>
+        <button type="submit" form="amenitiesForm" class="btn btn-primary d-flex align-items-center justify-content-center"
+                style="height: 40px;">Далее</button>
       </div>
     </div>
   </div>
 {% endif %}
+
 <div class="container py-4">
-  {# Прогресс бар находится в верхней панели #}
-  <!-- Заголовок выравнен по центру, увеличен и жирный -->
-  <h2 class="mb-4 text-primary fw-bold fs-2 text-center">Добавьте фото</h2>
-  <form method="post" enctype="multipart/form-data" id="photoForm">
-    <!-- Upload area -->
-    <div id="uploadContainer" class="mb-3 d-flex justify-content-center">
-      <div id="uploadArea"
-           class="d-flex flex-column align-items-center justify-content-center text-center"
-           style="cursor: pointer; margin-bottom: 1rem; max-width: 500px; width: 100%; height: 260px; border: 3px dashed var(--bs-primary); border-radius: 20px;">
-        <!-- Иконка: фото плюс плюсик -->
-        <div class="d-flex align-items-center justify-content-center mb-2" style="font-size: 2.5rem;">
-          <i class="bi bi-image text-primary"></i>
-          <i class="bi bi-plus-lg text-primary ms-2"></i>
+  {# Page heading for amenities step #}
+  <h2 class="mb-4 text-primary fw-bold fs-2 text-center">Какие имеются удобства?</h2>
+  <form method="post" id="amenitiesForm">
+    <!-- Accommodation options: rooms, guests, beds, sofas -->
+    <div class="mb-4">
+      <h5 class="fw-bold fs-4 text-center text-primary mb-2">Возможности размещения</h5>
+      <p class="text-center text-muted mb-3">Укажите количество комнат, максимальное число гостей, кроватей и диванов</p>
+      <div class="row row-cols-1 g-3 justify-content-center" style="max-width: 500px; margin: 0 auto;">
+        <!-- Rooms count -->
+        <div class="col">
+          <div class="d-flex justify-content-between align-items-center">
+            <label for="rooms_count" class="fw-bold fs-4 mb-0 me-2">Комнаты</label>
+            <div class="d-flex align-items-center">
+              <button type="button" class="btn btn-outline-secondary fw-bold fs-3 decrement" data-target="rooms_count"
+                      style="width: 3rem; height: 3rem;">–</button>
+              <span class="mx-3 count-display" id="rooms_count_display">{{ rooms_count }}</span>
+              <input type="hidden" name="rooms_count" id="rooms_count" value="{{ rooms_count }}">
+              <button type="button" class="btn btn-outline-secondary fw-bold fs-3 increment" data-target="rooms_count"
+                      style="width: 3rem; height: 3rem;">+</button>
+            </div>
+          </div>
         </div>
-        <span class="text-primary fw-semibold">Выберите фотографии с компьютера или перетащите сюда</span>
+        <!-- Guests count -->
+        <div class="col">
+          <div class="d-flex justify-content-between align-items-center">
+            <label for="guests_count" class="fw-bold fs-4 mb-0 me-2">Гости</label>
+            <div class="d-flex align-items-center">
+              <button type="button" class="btn btn-outline-secondary fw-bold fs-3 decrement" data-target="guests_count"
+                      style="width: 3rem; height: 3rem;">–</button>
+              <span class="mx-3 count-display" id="guests_count_display">{{ guests_count }}</span>
+              <input type="hidden" name="guests_count" id="guests_count" value="{{ guests_count }}">
+              <button type="button" class="btn btn-outline-secondary fw-bold fs-3 increment" data-target="guests_count"
+                      style="width: 3rem; height: 3rem;">+</button>
+            </div>
+          </div>
+        </div>
+        <!-- Beds count -->
+        <div class="col">
+          <div class="d-flex justify-content-between align-items-center">
+            <label for="beds_count" class="fw-bold fs-4 mb-0 me-2">Кровати</label>
+            <div class="d-flex align-items-center">
+              <button type="button" class="btn btn-outline-secondary fw-bold fs-3 decrement" data-target="beds_count"
+                      style="width: 3rem; height: 3rem;">–</button>
+              <span class="mx-3 count-display" id="beds_count_display">{{ beds_count }}</span>
+              <input type="hidden" name="beds_count" id="beds_count" value="{{ beds_count }}">
+              <button type="button" class="btn btn-outline-secondary fw-bold fs-3 increment" data-target="beds_count"
+                      style="width: 3rem; height: 3rem;">+</button>
+            </div>
+          </div>
+        </div>
+        <!-- Sofas count -->
+        <div class="col">
+          <div class="d-flex justify-content-between align-items-center">
+            <label for="sofas_count" class="fw-bold fs-4 mb-0 me-2">Диваны</label>
+            <div class="d-flex align-items-center">
+              <button type="button" class="btn btn-outline-secondary fw-bold fs-3 decrement" data-target="sofas_count"
+                      style="width: 3rem; height: 3rem;">–</button>
+              <span class="mx-3 count-display" id="sofas_count_display">{{ sofas_count }}</span>
+              <input type="hidden" name="sofas_count" id="sofas_count" value="{{ sofas_count }}">
+              <button type="button" class="btn btn-outline-secondary fw-bold fs-3 increment" data-target="sofas_count"
+                      style="width: 3rem; height: 3rem;">+</button>
+            </div>
+          </div>
+        </div>
       </div>
-      <input type="file" id="photoInput" name="photos" accept="image/*" multiple class="d-none">
     </div>
-    <!-- Grid for photo previews -->
-    <!-- Grid for photo previews.  CSS grid (see styles below) controls layout -->
-    <div id="photoGrid" style="max-width: 900px; margin: 0 auto;"></div>
-    <!-- Hidden field to store the order of photos (comma-separated indices) -->
-    <input type="hidden" id="photoOrder" name="photo_order" value="">
-    {# Навигационная панель перенесена вверх, поэтому нижняя полоса удалена #}
+
+    <!-- Amenity cards styling -->
+    <style>
+      .amenity-card {
+        border: 1px solid #dee2e6;
+        border-radius: 0.75rem;
+        padding: 0.75rem;
+        aspect-ratio: 1 / 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      }
+      input[type=checkbox]:checked + .amenity-card {
+        border: 2px solid var(--bs-primary);
+        box-shadow: 0 0 0 2px rgba(var(--bs-primary-rgb), 0.25);
+        background-color: #f1f3f5;
+      }
+      /* Remove focus outlines from increment/decrement buttons */
+      .increment:focus,
+      .decrement:focus {
+        box-shadow: none !important;
+        outline: none;
+      }
+    </style>
+
+    {% for category in categories %}
+      <div class="mb-3">
+        <h5 class="fw-bold fs-3 text-center mb-3">{{ category.name }}</h5>
+        <div class="row row-cols-3 g-2 justify-content-center" style="max-width: 600px; margin: 0 auto;">
+          {% for item in category.options %}
+            <div class="col">
+              <label class="w-100">
+                <input type="checkbox" name="amenities" value="{{ item.value }}" class="d-none">
+                <div class="amenity-card text-center">
+                  {# Use specified icons or override for specific amenities #}
+                  {% set icon_class = item.icon %}
+                  {% if item.value == 'parking' %}
+                    {% set icon_class = 'bi-car-front' %}
+                  {% elif item.value == 'bedding' %}
+                    {% set icon_class = 'bi-bed' %}
+                  {% elif item.value == 'microwave' %}
+                    {% set icon_class = 'bi-microwave' %}
+                  {% endif %}
+                  <i class="bi {{ icon_class }} fs-2 mb-2 text-primary"></i>
+                  <div class="small fw-semibold">{{ item.label }}</div>
+                </div>
+              </label>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endfor %}
   </form>
-
-  <!-- Styles to display uploaded photos as square tiles -->
-  <style>
-    /* Display the photo grid as a 3‑column CSS grid.  The first item spans 2 columns and 2 rows to act as a cover photo. */
-    #photoGrid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 0.5rem;
-    }
-    /* The first photo (cover) spans two columns and two rows */
-    #photoGrid .photo-item:first-child {
-      grid-column: span 2;
-      grid-row: span 2;
-    }
-    /* Ensure each tile maintains a square shape */
-    #photoGrid .photo-item {
-      position: relative;
-      aspect-ratio: 1 / 1;
-      overflow: hidden;
-    }
-    #photoGrid .photo-item img {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-  </style>
+  <!-- JavaScript controlling the plus/minus buttons -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const incButtons = document.querySelectorAll('.increment');
+      const decButtons = document.querySelectorAll('.decrement');
+      incButtons.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          const targetId = this.getAttribute('data-target');
+          const hiddenInput = document.getElementById(targetId);
+          const displaySpan = document.getElementById(targetId + '_display');
+          let value = parseInt(hiddenInput.value || 0);
+          value += 1;
+          hiddenInput.value = value;
+          if (displaySpan) displaySpan.textContent = value;
+        });
+      });
+      decButtons.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          const targetId = this.getAttribute('data-target');
+          const hiddenInput = document.getElementById(targetId);
+          const displaySpan = document.getElementById(targetId + '_display');
+          let value = parseInt(hiddenInput.value || 0);
+          const minAttr = hiddenInput.getAttribute('min');
+          const min = minAttr ? parseInt(minAttr) : 0;
+          if (value > min) {
+            value -= 1;
+            hiddenInput.value = value;
+            if (displaySpan) displaySpan.textContent = value;
+          }
+        });
+      });
+    });
+  </script>
 </div>
-
-<!-- JavaScript logic for photo upload, preview, ordering and deletion -->
-<script>
-  document.addEventListener('DOMContentLoaded', function() {
-    const uploadArea = document.getElementById('uploadArea');
-    const uploadContainer = document.getElementById('uploadContainer');
-    const photoInput = document.getElementById('photoInput');
-    const photoGrid = document.getElementById('photoGrid');
-    const photoOrderInput = document.getElementById('photoOrder');
-    // Array to hold selected photos. Each entry is {file: File, url: string}
-    let photos = [];
-    const MAX_PHOTOS = 100;
-
-    // When the upload area is clicked, trigger the hidden file input
-    uploadArea.addEventListener('click', function() {
-      photoInput.click();
-    });
-
-    // Handle file selection
-    photoInput.addEventListener('change', function(event) {
-      const selected = Array.from(event.target.files);
-      // If adding these files would exceed the limit, truncate
-      if (photos.length + selected.length > MAX_PHOTOS) {
-        selected.splice(MAX_PHOTOS - photos.length);
-      }
-      selected.forEach(function(file) {
-        // Only process image files
-        if (!file.type.startsWith('image/')) {
-          return;
-        }
-        const url = URL.createObjectURL(file);
-        photos.push({file: file, url: url});
-      });
-      renderGrid();
-      // Reset the file input so that the same file can be selected again if needed
-      photoInput.value = '';
-    });
-
-    // Render the grid of photo previews
-    function renderGrid() {
-      // Toggle visibility of the large upload area based on whether photos exist.
-      // We cannot rely on inline display because Bootstrap's d-flex uses !important.
-      if (photos.length > 0) {
-        // Hide entire upload container by applying d-none (display:none !important)
-        uploadContainer.classList.add('d-none');
-      } else {
-        // Show the upload container again: remove d-none; ensure it has d-flex for layout
-        uploadContainer.classList.remove('d-none');
-      }
-
-      // Clear existing content
-      photoGrid.innerHTML = '';
-      photos.forEach(function(item, index) {
-        const col = document.createElement('div');
-        // Use a plain photo-item class; CSS grid in #photoGrid controls the layout
-        col.className = 'photo-item position-relative';
-        col.setAttribute('draggable', 'true');
-        col.dataset.index = index;
-        // Image element
-        const img = document.createElement('img');
-        img.src = item.url;
-        img.className = 'img-fluid rounded';
-        // Delete button
-        const btnDel = document.createElement('button');
-        btnDel.type = 'button';
-        btnDel.className = 'btn-close position-absolute top-0 end-0 m-1';
-        btnDel.ariaLabel = 'Удалить';
-        btnDel.addEventListener('click', function(e) {
-          e.stopPropagation();
-          // Show confirmation before deletion
-          if (confirm('После удаления фото восстановить его будет нельзя. Уверены, что хотите удалить?')) {
-            photos.splice(index, 1);
-            renderGrid();
-          }
-        });
-        // Append elements. First image, then optional cover label, then delete button
-        col.appendChild(img);
-        // Label for cover photo (added after image so it stays on top)
-        if (index === 0) {
-          const badge = document.createElement('span');
-          // Белый фон и чёрный текст для метки "Обложка"
-          badge.className = 'badge bg-white text-dark position-absolute top-0 start-0 m-1';
-          badge.textContent = 'Обложка';
-          col.appendChild(badge);
-        }
-        col.appendChild(btnDel);
-        // Drag events
-        col.addEventListener('dragstart', function(ev) {
-          ev.dataTransfer.setData('text/plain', index.toString());
-          // Use the actual image as the drag ghost for better feedback
-          ev.dataTransfer.setDragImage(img, 50, 50);
-        });
-        col.addEventListener('dragover', function(ev) {
-          ev.preventDefault();
-          col.classList.add('border', 'border-primary');
-        });
-        col.addEventListener('dragleave', function(ev) {
-          col.classList.remove('border', 'border-primary');
-        });
-        col.addEventListener('drop', function(ev) {
-          ev.preventDefault();
-          col.classList.remove('border', 'border-primary');
-          const fromIndex = parseInt(ev.dataTransfer.getData('text/plain'), 10);
-          const toIndex = index;
-          if (!isNaN(fromIndex) && fromIndex !== toIndex) {
-            const moved = photos.splice(fromIndex, 1)[0];
-            photos.splice(toIndex, 0, moved);
-            renderGrid();
-          }
-        });
-        photoGrid.appendChild(col);
-      });
-      // If there are existing photos and we haven't reached the max, show an "add more" tile at the end
-      if (photos.length > 0 && photos.length < MAX_PHOTOS) {
-        const addTile = document.createElement('div');
-        addTile.className = 'photo-item d-flex flex-column align-items-center justify-content-center text-center';
-        addTile.style.border = '3px dashed var(--bs-primary)';
-        addTile.style.borderRadius = '20px';
-        addTile.style.cursor = 'pointer';
-        // Icon and text for add tile
-        const iconWrap = document.createElement('div');
-        iconWrap.className = 'd-flex align-items-center justify-content-center mb-2';
-        iconWrap.style.fontSize = '1.5rem';
-        const iconImg = document.createElement('i');
-        iconImg.className = 'bi bi-image text-primary';
-        const iconPlus = document.createElement('i');
-        iconPlus.className = 'bi bi-plus-lg text-primary ms-1';
-        iconWrap.appendChild(iconImg);
-        iconWrap.appendChild(iconPlus);
-        const text = document.createElement('span');
-        text.className = 'text-primary fw-semibold';
-        text.textContent = 'Добавить ещё фото';
-        addTile.appendChild(iconWrap);
-        addTile.appendChild(text);
-        addTile.addEventListener('click', function() {
-          photoInput.click();
-        });
-        photoGrid.appendChild(addTile);
-      }
-      // Update hidden input with the current order
-      const order = photos.map((_, idx) => idx).join(',');
-      photoOrderInput.value = order;
-    }
-    // Initial render in case there are existing photos from a draft.  The
-    // server passes their URLs via the existing_photos context variable.
-    {% if existing_photos %}
-      photos = [
-        {% for filename in existing_photos %}
-          {file: null, url: '{{ url_for('uploaded_room_image', filename=filename) }}'},
-        {% endfor %}
-      ];
-      renderGrid();
-    {% endif %}
-  });
-</script>
 {% endblock %}

@@ -1,22 +1,21 @@
-{#
-  Use the lower‑case base template.  On some deployments (e.g. Linux),
-  template lookup is case‑sensitive.  Other templates such as
-  ``new_room_step3.html`` extend ``base.html`` (lower‑case), and the
-  corresponding file is named ``base.html`` on the production server.
-  Switching to the same casing here avoids a ``TemplateNotFound: Base.html``
-  error when rendering this page.
-#}
 {% extends "base.html" %}
 
-{# Отображаем корректный номер шага (удобства теперь шаг 3) #}
-{% block title %}Новое объявление – Шаг 3{% endblock %}
+{#
+  Step 4 of the new listing wizard handles photo uploads.  Users can
+  upload up to 100 images, reorder them via drag and drop, delete
+  unwanted photos and designate the first image as the cover.  A
+  unified navigation bar provides cancel/draft actions, progress and
+  navigation buttons.  Upon submission the wizard completes and
+  redirects to the rooms list.
+#}
+{% block title %}Новое объявление – Шаг 4{% endblock %}
 
 {% block content %}
 {% if hide_nav %}
-  <!-- Унифицированная верхняя панель: закрыть/черновик, прогресс, навигация -->
+  <!-- Top navigation bar for photo upload (final step) -->
   <div class="container-fluid bg-light py-2 mb-3" style="border: none;">
     <div class="d-flex align-items-center justify-content-between">
-      <!-- Левая группа: закрыть и черновик -->
+      <!-- Left group: cancel and save draft -->
       <div class="d-flex align-items-center gap-2 me-3">
         <a href="{{ url_for('cancel_new_room') }}" class="d-flex align-items-center justify-content-center rounded-circle"
            style="width: 40px; height: 40px; background-color: #f1f3f5; text-decoration: none;">
@@ -30,153 +29,193 @@
           </button>
         </form>
       </div>
-      <!-- Индикатор прогресса -->
+      <!-- Progress bar -->
       <div class="progress flex-grow-1 mx-3 border-0" style="height: 6px; border: none;">
         <div class="progress-bar bg-primary" role="progressbar" style="width: {{ progress }}%;"
              aria-valuenow="{{ progress }}" aria-valuemin="0" aria-valuemax="100"></div>
       </div>
-      <!-- Правая группа: навигация. Кнопка "Далее" отправляет форму -->
+      <!-- Right group: back and finish buttons -->
       <div class="d-flex align-items-center gap-2 ms-3">
         <a href="{{ back_url }}" class="btn btn-link d-flex align-items-center justify-content-center"
            style="height: 40px;">Назад</a>
-        <button type="submit" form="amenitiesForm" class="btn btn-primary d-flex align-items-center justify-content-center"
-                style="height: 40px;">Далее</button>
+        <button type="submit" form="photoForm" class="btn btn-primary d-flex align-items-center justify-content-center"
+                style="height: 40px;">Завершить</button>
       </div>
     </div>
   </div>
 {% endif %}
+
 <div class="container py-4">
-  {# Прогресс бар перенесён в верхнюю панель #}
-  <!-- Заголовок для шага 4: центрированный, крупнее и жирнее -->
-  <h2 class="mb-4 text-primary fw-bold fs-2 text-center">Какие имеются удобства?</h2>
-  <form method="post" id="amenitiesForm">
-    <!-- Раздел с возможностями размещения: количество комнат, гостей, кроватей и диванов -->
-    <div class="mb-4">
-      <h5 class="fw-bold fs-4 text-center text-primary mb-2">Возможности размещения</h5>
-      <p class="text-center text-muted mb-3">Укажите количество комнат, максимальное число гостей, кроватей и диванов</p>
-      <div class="row row-cols-1 g-3 justify-content-center" style="max-width: 500px; margin: 0 auto;">
-        <!-- Количество комнат -->
-        <div class="col">
-          <div class="d-flex justify-content-between align-items-center">
-            <label for="rooms_count" class="fw-semibold mb-0 me-2">Комнаты</label>
-            <div class="d-flex align-items-center">
-              <button type="button" class="btn btn-outline-secondary decrement" data-target="rooms_count"><i class="bi bi-dash"></i></button>
-              <input type="number" name="rooms_count" id="rooms_count" class="form-control mx-2 text-center" value="{{ rooms_count }}" min="0" readonly style="max-width: 70px;">
-              <button type="button" class="btn btn-outline-secondary increment" data-target="rooms_count"><i class="bi bi-plus"></i></button>
-            </div>
-          </div>
+  <!-- Heading for photo upload step -->
+  <h2 class="mb-4 text-primary fw-bold fs-2 text-center">Добавьте фото</h2>
+  <form method="post" enctype="multipart/form-data" id="photoForm">
+    <!-- Large upload area (hidden once photos are added) -->
+    <div id="uploadContainer" class="mb-3 d-flex justify-content-center">
+      <div id="uploadArea"
+           class="d-flex flex-column align-items-center justify-content-center text-center"
+           style="cursor: pointer; margin-bottom: 1rem; max-width: 500px; width: 100%; height: 260px; border: 3px dashed var(--bs-primary); border-radius: 20px;">
+        <!-- Icon group: photo plus plus symbol -->
+        <div class="d-flex align-items-center justify-content-center mb-2" style="font-size: 2.5rem;">
+          <i class="bi bi-image text-primary"></i>
+          <i class="bi bi-plus-lg text-primary ms-2"></i>
         </div>
-        <!-- Максимальное число гостей -->
-        <div class="col">
-          <div class="d-flex justify-content-between align-items-center">
-            <label for="guests_count" class="fw-semibold mb-0 me-2">Гости</label>
-            <div class="d-flex align-items-center">
-              <button type="button" class="btn btn-outline-secondary decrement" data-target="guests_count"><i class="bi bi-dash"></i></button>
-              <input type="number" name="guests_count" id="guests_count" class="form-control mx-2 text-center" value="{{ guests_count }}" min="1" readonly style="max-width: 70px;">
-              <button type="button" class="btn btn-outline-secondary increment" data-target="guests_count"><i class="bi bi-plus"></i></button>
-            </div>
-          </div>
-        </div>
-        <!-- Количество кроватей -->
-        <div class="col">
-          <div class="d-flex justify-content-between align-items-center">
-            <label for="beds_count" class="fw-semibold mb-0 me-2">Кровати</label>
-            <div class="d-flex align-items-center">
-              <button type="button" class="btn btn-outline-secondary decrement" data-target="beds_count"><i class="bi bi-dash"></i></button>
-              <input type="number" name="beds_count" id="beds_count" class="form-control mx-2 text-center" value="{{ beds_count }}" min="0" readonly style="max-width: 70px;">
-              <button type="button" class="btn btn-outline-secondary increment" data-target="beds_count"><i class="bi bi-plus"></i></button>
-            </div>
-          </div>
-        </div>
-        <!-- Количество диванов -->
-        <div class="col">
-          <div class="d-flex justify-content-between align-items-center">
-            <label for="sofas_count" class="fw-semibold mb-0 me-2">Диваны</label>
-            <div class="d-flex align-items-center">
-              <button type="button" class="btn btn-outline-secondary decrement" data-target="sofas_count"><i class="bi bi-dash"></i></button>
-              <input type="number" name="sofas_count" id="sofas_count" class="form-control mx-2 text-center" value="{{ sofas_count }}" min="0" readonly style="max-width: 70px;">
-              <button type="button" class="btn btn-outline-secondary increment" data-target="sofas_count"><i class="bi bi-plus"></i></button>
-            </div>
-          </div>
-        </div>
+        <span class="text-primary fw-semibold">Выберите фотографии с компьютера или перетащите сюда</span>
       </div>
+      <input type="file" id="photoInput" name="photos" accept="image/*" multiple class="d-none">
     </div>
-
-    <!-- Styles for amenity cards -->
-    <style>
-      .amenity-card {
-        border: 1px solid #dee2e6;
-        border-radius: 0.75rem;
-        padding: 0.75rem;
-        aspect-ratio: 1 / 1;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-        transition: border-color 0.2s ease, box-shadow 0.2s ease;
-      }
-      input[type=checkbox]:checked + .amenity-card {
-        border: 2px solid var(--bs-primary);
-        box-shadow: 0 0 0 2px rgba(var(--bs-primary-rgb), 0.25);
-        background-color: #f1f3f5;
-      }
-    </style>
-
-    {% for category in categories %}
-      <div class="mb-3">
-        <h5 class="fw-bold fs-3 text-center mb-3">{{ category.name }}</h5>
-        <div class="row row-cols-3 g-2 justify-content-center" style="max-width: 600px; margin: 0 auto;">
-          {% for item in category.options %}
-            <div class="col">
-              <label class="w-100">
-                <input type="checkbox" name="amenities" value="{{ item.value }}" class="d-none">
-                <div class="amenity-card text-center">
-                  {# Override icons for specific amenities if needed #}
-                  {% set icon_class = item.icon %}
-                  {% if item.value == 'parking' %}
-                    {% set icon_class = 'bi-car-front' %}
-                  {% elif item.value == 'bedding' %}
-                    {% set icon_class = 'bi-bed' %}
-                  {% elif item.value == 'microwave' %}
-                    {% set icon_class = 'bi-microwave' %}
-                  {% endif %}
-                  <i class="bi {{ icon_class }} fs-2 mb-2 text-primary"></i>
-                  <div class="small fw-semibold">{{ item.label }}</div>
-                </div>
-              </label>
-            </div>
-          {% endfor %}
-        </div>
-      </div>
-    {% endfor %}
-
+    <!-- Grid for photo previews -->
+    <div id="photoGrid" style="max-width: 900px; margin: 0 auto;"></div>
+    <!-- Hidden input storing photo order for reordering -->
+    <input type="hidden" id="photoOrder" name="photo_order" value="">
   </form>
-  <!-- Скрипт для управления плюс/минус в числовых полях -->
+  <!-- Styles controlling the grid layout of photo previews -->
+  <style>
+    #photoGrid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.5rem;
+    }
+    #photoGrid .photo-item:first-child {
+      grid-column: span 2;
+      grid-row: span 2;
+    }
+    #photoGrid .photo-item {
+      position: relative;
+      aspect-ratio: 1 / 1;
+      overflow: hidden;
+    }
+    #photoGrid .photo-item img {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+  </style>
+  <!-- JavaScript handling upload, preview, drag‑and‑drop ordering and deletion -->
   <script>
     document.addEventListener('DOMContentLoaded', function() {
-      const incButtons = document.querySelectorAll('.increment');
-      const decButtons = document.querySelectorAll('.decrement');
-      incButtons.forEach(function(btn) {
-        btn.addEventListener('click', function() {
-          const targetId = this.getAttribute('data-target');
-          const input = document.getElementById(targetId);
-          let value = parseInt(input.value || 0);
-          input.value = value + 1;
-        });
+      const uploadArea = document.getElementById('uploadArea');
+      const uploadContainer = document.getElementById('uploadContainer');
+      const photoInput = document.getElementById('photoInput');
+      const photoGrid = document.getElementById('photoGrid');
+      const photoOrderInput = document.getElementById('photoOrder');
+      let photos = [];
+      const MAX_PHOTOS = 100;
+      uploadArea.addEventListener('click', function() {
+        photoInput.click();
       });
-      decButtons.forEach(function(btn) {
-        btn.addEventListener('click', function() {
-          const targetId = this.getAttribute('data-target');
-          const input = document.getElementById(targetId);
-          let value = parseInt(input.value || 0);
-          const min = parseInt(input.getAttribute('min') || '0');
-          if (value > min) {
-            input.value = value - 1;
+      photoInput.addEventListener('change', function(event) {
+        const selected = Array.from(event.target.files);
+        if (photos.length + selected.length > MAX_PHOTOS) {
+          selected.splice(MAX_PHOTOS - photos.length);
+        }
+        selected.forEach(function(file) {
+          if (!file.type.startsWith('image/')) {
+            return;
           }
+          const url = URL.createObjectURL(file);
+          photos.push({file: file, url: url});
         });
+        renderGrid();
+        photoInput.value = '';
       });
+      function renderGrid() {
+        // Hide the large upload area once there are photos
+        if (photos.length > 0) {
+          uploadContainer.classList.add('d-none');
+        } else {
+          uploadContainer.classList.remove('d-none');
+        }
+        photoGrid.innerHTML = '';
+        photos.forEach(function(item, index) {
+          const col = document.createElement('div');
+          col.className = 'photo-item position-relative';
+          col.setAttribute('draggable', 'true');
+          col.dataset.index = index;
+          const img = document.createElement('img');
+          img.src = item.url;
+          img.className = 'img-fluid rounded';
+          const btnDel = document.createElement('button');
+          btnDel.type = 'button';
+          btnDel.className = 'btn-close position-absolute top-0 end-0 m-1';
+          btnDel.ariaLabel = 'Удалить';
+          btnDel.addEventListener('click', function(e) {
+            e.stopPropagation();
+            if (confirm('После удаления фото восстановить его будет нельзя. Уверены, что хотите удалить?')) {
+              photos.splice(index, 1);
+              renderGrid();
+            }
+          });
+          col.appendChild(img);
+          if (index === 0) {
+            const badge = document.createElement('span');
+            badge.className = 'badge bg-white text-dark position-absolute top-0 start-0 m-1';
+            badge.textContent = 'Обложка';
+            col.appendChild(badge);
+          }
+          col.appendChild(btnDel);
+          col.addEventListener('dragstart', function(ev) {
+            ev.dataTransfer.setData('text/plain', index.toString());
+            ev.dataTransfer.setDragImage(img, 50, 50);
+          });
+          col.addEventListener('dragover', function(ev) {
+            ev.preventDefault();
+            col.classList.add('border', 'border-primary');
+          });
+          col.addEventListener('dragleave', function(ev) {
+            col.classList.remove('border', 'border-primary');
+          });
+          col.addEventListener('drop', function(ev) {
+            ev.preventDefault();
+            col.classList.remove('border', 'border-primary');
+            const fromIndex = parseInt(ev.dataTransfer.getData('text/plain'), 10);
+            const toIndex = index;
+            if (!isNaN(fromIndex) && fromIndex !== toIndex) {
+              const moved = photos.splice(fromIndex, 1)[0];
+              photos.splice(toIndex, 0, moved);
+              renderGrid();
+            }
+          });
+          photoGrid.appendChild(col);
+        });
+        if (photos.length > 0 && photos.length < MAX_PHOTOS) {
+          const addTile = document.createElement('div');
+          addTile.className = 'photo-item d-flex flex-column align-items-center justify-content-center text-center';
+          addTile.style.border = '3px dashed var(--bs-primary)';
+          addTile.style.borderRadius = '20px';
+          addTile.style.cursor = 'pointer';
+          const iconWrap = document.createElement('div');
+          iconWrap.className = 'd-flex align-items-center justify-content-center mb-2';
+          iconWrap.style.fontSize = '1.5rem';
+          const iconImg = document.createElement('i');
+          iconImg.className = 'bi bi-image text-primary';
+          const iconPlus = document.createElement('i');
+          iconPlus.className = 'bi bi-plus-lg text-primary ms-1';
+          iconWrap.appendChild(iconImg);
+          iconWrap.appendChild(iconPlus);
+          const text = document.createElement('span');
+          text.className = 'text-primary fw-semibold';
+          text.textContent = 'Добавить ещё фото';
+          addTile.appendChild(iconWrap);
+          addTile.appendChild(text);
+          addTile.addEventListener('click', function() {
+            photoInput.click();
+          });
+          photoGrid.appendChild(addTile);
+        }
+        const order = photos.map((_, idx) => idx).join(',');
+        photoOrderInput.value = order;
+      }
+      {% if existing_photos %}
+        photos = [
+          {% for filename in existing_photos %}
+            {file: null, url: '{{ url_for('uploaded_room_image', filename=filename) }}'},
+          {% endfor %}
+        ];
+        renderGrid();
+      {% endif %}
     });
   </script>
 </div>
