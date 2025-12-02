@@ -105,43 +105,37 @@
       </div>
     </div>
 
-    <!-- Amenity cards styling -->
+    <!-- Amenity cards and pill styling -->
     <style>
-      /* Card styling for amenity options to resemble AirBnB style cards:
-         rectangular with rounded corners, thin border and a small check box on the right.
-         On selection the border becomes the primary colour and the check box fills with the same colour. */
+      /* Large cards for the first category (Удобства) */
       .amenity-card {
         border: 1px solid #dee2e6;
         border-radius: 0.75rem;
-        padding: 0.75rem 1rem;
+        padding: 1rem;
         display: flex;
         align-items: center;
         justify-content: space-between;
-        min-height: 3.5rem;
+        min-height: 4.5rem;
         background-color: #fff;
-        transition: border-color 0.2s ease, background-color 0.2s ease;
         cursor: pointer;
+        transition: border-color 0.2s ease, background-color 0.2s ease;
       }
-      /* Icon and label wrapper inside card */
       .amenity-card .amenity-info {
         display: flex;
         align-items: center;
         gap: 0.5rem;
       }
       .amenity-card i {
-        font-size: 1.25rem;
+        font-size: 1.5rem;
       }
-      /* Small square indicator at the right side of the card */
       .amenity-card .amenity-check {
         width: 1.25rem;
         height: 1.25rem;
         border: 1px solid #ced4da;
         border-radius: 0.25rem;
-        display: inline-block;
-        background-color: #fff;
         position: relative;
+        background-color: #fff;
       }
-      /* Show check mark using a pseudo element when the checkbox is selected */
       .amenity-card .amenity-check::after {
         content: '';
         position: absolute;
@@ -149,12 +143,12 @@
         left: 3px;
         width: 0.5rem;
         height: 0.8rem;
-        border: solid transparent;
+        border: solid #fff;
         border-width: 0 0.15rem 0.15rem 0;
         transform: rotate(45deg);
         opacity: 0;
       }
-      /* Checkbox control is hidden but triggers styling */
+      /* Selected state for large cards */
       input[type=checkbox]:checked + .amenity-card {
         border-color: var(--bs-primary);
         background-color: #eef5ff;
@@ -164,10 +158,55 @@
         background-color: var(--bs-primary);
       }
       input[type=checkbox]:checked + .amenity-card .amenity-check::after {
-        border-color: #fff;
         opacity: 1;
       }
 
+      /* Pill style for other categories */
+      .amenity-pill {
+        display: inline-flex;
+        align-items: center;
+        border: 1px solid #dee2e6;
+        border-radius: 1rem;
+        padding: 0.5rem 1rem;
+        background-color: #fff;
+        cursor: pointer;
+        transition: border-color 0.2s ease, background-color 0.2s ease;
+      }
+      .amenity-pill-check {
+        width: 1.25rem;
+        height: 1.25rem;
+        border: 1px solid #ced4da;
+        border-radius: 0.25rem;
+        margin-right: 0.5rem;
+        position: relative;
+        background-color: #fff;
+      }
+      .amenity-pill-check::after {
+        content: '';
+        position: absolute;
+        top: 2px;
+        left: 3px;
+        width: 0.5rem;
+        height: 0.8rem;
+        border: solid #fff;
+        border-width: 0 0.15rem 0.15rem 0;
+        transform: rotate(45deg);
+        opacity: 0;
+      }
+      .amenity-pill-label {
+        white-space: nowrap;
+      }
+      /* Selected state for pill style */
+      .amenity-pill input[type=checkbox]:checked + .amenity-pill-check {
+        border-color: var(--bs-primary);
+        background-color: var(--bs-primary);
+      }
+      .amenity-pill input[type=checkbox]:checked + .amenity-pill-check::after {
+        opacity: 1;
+      }
+      .amenity-pill input[type=checkbox]:checked + .amenity-pill-check + .amenity-pill-label {
+        color: var(--bs-primary);
+      }
       /* Remove focus outlines from increment/decrement buttons */
       .increment:focus,
       .decrement:focus {
@@ -197,6 +236,7 @@
       /* Larger font for the count display */
       .count-display {
         font-size: 2rem;
+        font-weight: 600;
       }
       /* Larger and bold labels for room settings */
       .rooms-label {
@@ -209,6 +249,8 @@
       <div class="mb-4">
         <h5 class="fw-bold fs-4 mb-1">{{ category.name }}</h5>
         <p class="text-muted mb-2">Выберите подходящие варианты</p>
+        {% if category.name == 'Удобства' %}
+        <!-- First category uses large cards with icons and right aligned check -->
         <div class="row row-cols-2 g-2">
           {% for item in category.options %}
             <div class="col">
@@ -225,6 +267,18 @@
             </div>
           {% endfor %}
         </div>
+        {% else %}
+        <!-- Other categories use pill style options with left aligned check -->
+        <div class="d-flex flex-wrap gap-2">
+          {% for item in category.options %}
+            <label class="amenity-pill">
+              <input type="checkbox" name="amenities" value="{{ item.value }}" class="d-none">
+              <span class="amenity-pill-check"></span>
+              <span class="amenity-pill-label fw-semibold">{{ item.label }}</span>
+            </label>
+          {% endfor %}
+        </div>
+        {% endif %}
       </div>
     {% endfor %}
   </form>
