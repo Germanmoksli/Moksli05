@@ -8,7 +8,8 @@
 #}
 {% extends "base.html" %}
 
-{% block title %}Новое объявление – Шаг 4{% endblock %}
+{# Отображаем корректный номер шага (удобства теперь шаг 3) #}
+{% block title %}Новое объявление – Шаг 3{% endblock %}
 
 {% block content %}
 {% if hide_nav %}
@@ -34,12 +35,12 @@
         <div class="progress-bar bg-primary" role="progressbar" style="width: {{ progress }}%;"
              aria-valuenow="{{ progress }}" aria-valuemin="0" aria-valuemax="100"></div>
       </div>
-      <!-- Правая группа: навигация. Кнопка "Завершить" отправляет форму -->
+      <!-- Правая группа: навигация. Кнопка "Далее" отправляет форму -->
       <div class="d-flex align-items-center gap-2 ms-3">
         <a href="{{ back_url }}" class="btn btn-link d-flex align-items-center justify-content-center"
            style="height: 40px;">Назад</a>
         <button type="submit" form="amenitiesForm" class="btn btn-primary d-flex align-items-center justify-content-center"
-                style="height: 40px;">Завершить</button>
+                style="height: 40px;">Далее</button>
       </div>
     </div>
   </div>

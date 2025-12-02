@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 
-{% block title %}Новое объявление – Шаг 3{% endblock %}
+{# Заголовок обновлён: загрузка фото теперь шаг 4 #}
+{% block title %}Новое объявление – Шаг 4{% endblock %}
 
 {% block content %}
 {% if hide_nav %}
@@ -26,12 +27,12 @@
         <div class="progress-bar bg-primary" role="progressbar" style="width: {{ progress }}%;"
              aria-valuenow="{{ progress }}" aria-valuemin="0" aria-valuemax="100"></div>
       </div>
-      <!-- Правая группа: навигация. Кнопка "Далее" отправляет форму с фотографиями -->
+      <!-- Правая группа: навигация. Кнопка "Завершить" отправляет форму с фотографиями -->
       <div class="d-flex align-items-center gap-2 ms-3">
         <a href="{{ back_url }}" class="btn btn-link d-flex align-items-center justify-content-center"
            style="height: 40px;">Назад</a>
         <button type="submit" form="photoForm" class="btn btn-primary d-flex align-items-center justify-content-center"
-                style="height: 40px;">Далее</button>
+                style="height: 40px;">Завершить</button>
       </div>
     </div>
   </div>
