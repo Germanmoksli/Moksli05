@@ -56,8 +56,13 @@
     <form method="post" id="pricingForm">
       <!-- Base price input displayed in large format -->
       <div class="d-flex justify-content-center align-items-baseline mb-4">
-        <span class="display-3 fw-bold me-2">₸</span>
-        <input type="number" class="form-control p-0 border-0 display-3 fw-bold text-center" id="base_price" name="base_price" min="0" step="1" value="{{ base_price }}" placeholder="0" style="max-width: 200px; outline: none;" required>
+        <span class="display-4 fw-bold me-2">₸</span>
+        {# The base price is rendered as plain text but remains editable.  #}
+        <input type="number" id="base_price" name="base_price"
+               class="border-0 display-4 fw-bold text-center"
+               min="0" step="1" value="{{ base_price }}" placeholder="0"
+               style="background-color: transparent; outline: none; min-width: 120px;"
+               required>
       </div>
       <!-- Weekend/holiday markup section -->
       <div class="mt-5">
@@ -70,16 +75,58 @@
         </div>
         <!-- Display percentage label -->
         <div class="text-center mb-3">
-          <span class="badge bg-light text-dark fw-semibold" style="font-size: 1rem;">Надбавка: <span id="weekendPercent">0</span>%</span>
+          <span class="fw-semibold" style="font-size: 1rem;">Надбавка: <span id="weekendPercent">0</span>%</span>
         </div>
         <!-- Slider for weekend markup -->
         <div class="d-flex align-items-center justify-content-center">
-          <input type="range" class="form-range" id="weekendMarkup" name="weekend_markup" min="0" max="100" step="1" value="{{ weekend_markup or 0 }}" style="max-width: 400px;">
+          <input type="range" id="weekendMarkup" name="weekend_markup" min="0" max="100" step="1" value="{{ weekend_markup or 0 }}"
+                 class="custom-range" style="max-width: 500px;">
         </div>
       </div>
     </form>
   </div>
 </div>
+<!-- Custom styles for the pricing page -->
+<style>
+  /* Hide spin buttons on number inputs for all browsers */
+  input[type=number]::-webkit-outer-spin-button,
+  input[type=number]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type=number] {
+    -moz-appearance: textfield;
+  }
+  /* Custom range slider styles */
+  input.custom-range {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 0.5rem;
+    width: 100%;
+    background-color: var(--bs-gray-300);
+    border-radius: 0.25rem;
+    outline: none;
+  }
+  input.custom-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 50%;
+    background-color: var(--bs-primary);
+    border: none;
+    cursor: pointer;
+    margin-top: -0.375rem; /* Align thumb vertically */
+  }
+  input.custom-range::-moz-range-thumb {
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 50%;
+    background-color: var(--bs-primary);
+    border: none;
+    cursor: pointer;
+  }
+</style>
 <!-- Script to compute weekend price and update percentage display -->
 <script>
   document.addEventListener('DOMContentLoaded', function() {
@@ -93,6 +140,13 @@
       const weekend = Math.round(base * (1 + markup / 100));
       weekendPriceSpan.textContent = weekend.toLocaleString('ru-RU');
       weekendPercentSpan.textContent = markup;
+      // Update the slider track background to show filled portion in primary color
+      const max = parseFloat(markupRange.max) || 100;
+      const percent = (markup / max) * 100;
+      // Set a linear gradient: primary color up to the current value, then gray
+      markupRange.style.background =
+        'linear-gradient(to right, var(--bs-primary) 0%, var(--bs-primary) ' + percent + '%, ' +
+        'var(--bs-gray-300) ' + percent + '%, var(--bs-gray-300) 100%)';
     }
     baseInput.addEventListener('input', updateWeekend);
     markupRange.addEventListener('input', updateWeekend);
