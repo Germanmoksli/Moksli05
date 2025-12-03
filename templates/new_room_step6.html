@@ -60,7 +60,7 @@
           <input type="number" class="form-control" id="floor" name="floor" min="1" step="1" value="{{ floor }}" required>
         </div>
         <!-- Elevator radio group aligned to the right -->
-        <div class="col-12 col-md-6 d-flex align-items-center justify-content-md-end">
+        <div class="col-12 col-md-6 d-flex align-items-center mt-md-2">
           <label for="elevator_yes" class="form-label fw-bold me-2 mb-0">Есть лифт?</label>
           <div class="form-check form-check-inline mb-0">
             <input class="form-check-input" type="radio" id="elevator_yes" name="elevator" value="yes" {% if elevator == 'yes' %}checked{% endif %}>
