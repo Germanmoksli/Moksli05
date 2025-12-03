@@ -8815,21 +8815,33 @@ def new_room_step9():
     if not session.get('new_listing_property_type'):
         return redirect(url_for('new_room_step1'))
     if request.method == 'POST':
-        # Save times (default to empty string if not provided)
-        session['new_listing_check_in_time'] = request.form.get('check_in_time', '')
-        session['new_listing_check_out_time'] = request.form.get('check_out_time', '')
-        # Save smoking and pet policies
-        session['new_listing_smoking'] = request.form.get('smoking', '')
-        session['new_listing_pets'] = request.form.get('pets', '')
-        # Save discount selections if posted
-        discounts_raw = request.form.getlist('discounts')
-        if discounts_raw:
-            try:
-                session['new_listing_discounts'] = [int(x) for x in discounts_raw if x.isdigit()]
-            except Exception:
+        # Determine whether this POST came from the house rules form or the discount selection
+        # If check-in/out times or policies are present, treat it as the final submission
+        if any(key in request.form for key in ['check_in_time', 'check_out_time', 'smoking', 'pets']):
+            session['new_listing_check_in_time'] = request.form.get('check_in_time', '')
+            session['new_listing_check_out_time'] = request.form.get('check_out_time', '')
+            session['new_listing_smoking'] = request.form.get('smoking', '')
+            session['new_listing_pets'] = request.form.get('pets', '')
+            # Save discount selections if posted along with the final form
+            discounts_raw = request.form.getlist('discounts')
+            if discounts_raw:
+                try:
+                    session['new_listing_discounts'] = [int(x) for x in discounts_raw if x.isdigit()]
+                except Exception:
+                    session['new_listing_discounts'] = []
+            # Redirect to rooms list (listing creation complete)
+            return redirect(url_for('list_rooms'))
+        else:
+            # POST came from the discount step; save selected discounts and then show house rules
+            discounts_raw = request.form.getlist('discounts')
+            if discounts_raw:
+                try:
+                    session['new_listing_discounts'] = [int(x) for x in discounts_raw if x.isdigit()]
+                except Exception:
+                    session['new_listing_discounts'] = []
+            else:
                 session['new_listing_discounts'] = []
-        # Redirect to rooms list (listing creation complete)
-        return redirect(url_for('list_rooms'))
+            return redirect(url_for('new_room_step9'))
     # Determine progress for final step
     progress = 100
     back_url = url_for('new_room_step8')
