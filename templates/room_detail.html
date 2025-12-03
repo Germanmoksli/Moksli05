@@ -2,145 +2,154 @@
 {% block title %}{{ room['room_number'] }}{% endblock %}
 {% block content %}
 <div class="container py-4">
-  <!-- Заголовок с названием квартиры -->
-  <h1 class="fw-bold fs-2 mb-3">{{ room['room_number'] }}</h1>
+  <!-- Название объекта -->
+  <h1 class="fw-bold fs-2 mb-4">{{ room['room_number'] }}</h1>
   <div class="row">
+    <!-- Левая колонка: галерея и дополнительные сведения -->
     <div class="col-lg-8">
-      {% if photos and photos|length > 0 %}
-      <!-- Галерея: крупное изображение с миниатюрами -->
-      <div class="mb-3">
-        <!-- Основное изображение -->
-        <img id="mainImage" src="{{ photos[0] }}" class="img-fluid rounded shadow-sm w-100 mb-2" alt="Фото квартиры" style="height: 450px; object-fit: cover;">
-        <!-- Миниатюры -->
-        <div class="d-flex flex-wrap gap-2">
-          {% for photo_src in photos %}
-          <img src="{{ photo_src }}" class="img-thumbnail" alt="Фото квартиры"
-               style="width: 100px; height: 70px; object-fit: cover; cursor: pointer;"
-               onclick="document.getElementById('mainImage').src='{{ photo_src }}'">
-          {% endfor %}
+      <div class="row">
+        <div class="col-12 col-lg-8 mb-3">
+          {% if photos and photos|length > 0 %}
+          <!-- Галерея: крупное изображение и миниатюры -->
+          <div class="mb-3">
+            <img id="mainImage" src="{{ photos[0] }}" class="img-fluid rounded shadow-sm w-100 mb-2" alt="Фото квартиры" style="height: 450px; object-fit: cover;">
+            <div class="d-flex flex-wrap gap-2">
+              {% for photo_src in photos %}
+              <img src="{{ photo_src }}" class="img-thumbnail" alt="Фото квартиры"
+                   style="width: 100px; height: 70px; object-fit: cover; cursor: pointer;"
+                   onclick="document.getElementById('mainImage').src='{{ photo_src }}'">
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+        </div>
+        <div class="col-12 col-lg-4 mb-3">
+          <!-- Плавающий блок с ценой и бронированием -->
+          <div class="card shadow-sm">
+            <div class="card-body">
+              {% if room['price_per_night'] %}
+              <h3 class="fw-bold text-success mb-3">{{ room['price_per_night'] }} ₸/сутки</h3>
+              {% endif %}
+              <form method="post" action="{{ url_for('booking_form') if room.get('id') else '#' }}">
+                <div class="mb-2">
+                  <label for="checkin_date" class="form-label">Заезд</label>
+                  <input type="date" class="form-control" id="checkin_date" name="checkin_date">
+                </div>
+                <div class="mb-3">
+                  <label for="checkout_date" class="form-label">Выезд</label>
+                  <input type="date" class="form-control" id="checkout_date" name="checkout_date">
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Забронировать</button>
+              </form>
+              {% if room['owner_phone'] %}
+              <a href="tel:{{ room['owner_phone'] }}" class="btn btn-outline-secondary w-100 mt-3">Позвонить владельцу</a>
+              {% endif %}
+              {% if room['owner_messenger'] %}
+              <a href="{{ room['owner_messenger'] }}" class="btn btn-outline-secondary w-100 mt-2">Написать владельцу</a>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Отзывы и рейтинг -->
+      <div class="card shadow-sm mb-3">
+        <div class="card-body">
+          <h5 class="fw-bold mb-3">Отзывы и рейтинг</h5>
+          <div class="d-flex align-items-center">
+            {% set rating = room.get('rating', 0) %}
+            {% for i in range(1, 6) %}
+              <i class="bi {% if i <= rating %}bi-star-fill{% else %}bi-star{% endif %} text-warning me-1"></i>
+            {% endfor %}
+            <span class="ms-2">{{ room.get('review_count', 0) }} отзывов</span>
+          </div>
+        </div>
+      </div>
+      <!-- Удобства -->
+      <div class="card shadow-sm mb-3">
+        <div class="card-body">
+          <h5 class="fw-bold mb-3">Удобства</h5>
+          <div class="row row-cols-4 g-3">
+            {% set amenities_list = (room.get('amenities') or '').split(',') %}
+            {% for amenity in amenities_list[:8] %}
+            <div class="col d-flex flex-column align-items-center">
+              <i class="bi bi-check2-circle fs-4 text-primary"></i>
+              <small class="text-center">{{ amenity.strip() }}</small>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      <!-- Информация о владельце -->
+      {% if room['owner_name'] %}
+      <div class="card shadow-sm mb-3">
+        <div class="card-body d-flex align-items-start">
+          <div class="me-3">
+            <i class="bi bi-person-circle" style="font-size: 3rem;"></i>
+          </div>
+          <div>
+            <h5 class="fw-bold mb-1">{{ room['owner_name'] }}</h5>
+            {% if room.get('owner_experience') %}<p class="mb-1">Стаж: {{ room['owner_experience'] }} лет</p>{% endif %}
+            {% if room.get('owner_comment') %}<p class="mb-0">{{ room['owner_comment'] }}</p>{% endif %}
+          </div>
         </div>
       </div>
       {% endif %}
-      <div class="d-flex flex-wrap gap-2 mb-3">
-        {% if room['housing_type'] %}
-        {% set type_map = {'flat': 'Квартира', 'studio': 'Студия', 'house': 'Дом', 'apartment': 'Апартаменты', 'room': 'Комната'} %}
-        <span class="badge bg-light text-dark border">{{ type_map.get(room['housing_type'], room['housing_type']) }}</span>
-        {% endif %}
-        {% if room['num_rooms'] %}
-        <span class="badge bg-light text-dark border">{{ room['num_rooms'] }} комн.</span>
-        {% endif %}
-        {% if room['area_total'] %}
-        <span class="badge bg-light text-dark border">{{ room['area_total'] }} м²</span>
-        {% endif %}
-        {% if room['floor'] is not none %}
-        <span class="badge bg-light text-dark border">{{ room['floor'] }}{% if room['floors_total'] %}/{{ room['floors_total'] }}{% endif %} эт.</span>
-        {% endif %}
-        {% if room['max_guests'] %}
-        <span class="badge bg-light text-dark border">до {{ room['max_guests'] }} гостей</span>
-        {% endif %}
+      <!-- Описание от владельца -->
+      {% if room['description'] %}
+      <div class="card shadow-sm mb-3">
+        <div class="card-body">
+          <h5 class="fw-bold mb-3">Описание от владельца</h5>
+          <p class="mb-0">{{ room['description'] }}</p>
+        </div>
       </div>
+      {% endif %}
     </div>
+    <!-- Правая колонка: информация, карта и отзывы -->
     <div class="col-lg-4">
+      <!-- Информация о доме -->
       <div class="card shadow-sm mb-3">
         <div class="card-body">
-          <h5 class="fw-bold mb-2">{{ room['room_number'] }}</h5>
-          {% if room['price_per_night'] %}
-          <h3 class="fw-bold text-success mb-3">{{ room['price_per_night'] }} ₸/сутки</h3>
-          {% endif %}
-          {% if room['owner_phone'] %}
-          <a href="tel:{{ room['owner_phone'] }}" class="btn btn-success w-100 mb-2">Позвонить</a>
-          {% endif %}
-          {% if room['owner_messenger'] %}
-          <a href="{{ room['owner_messenger'] }}" class="btn btn-outline-secondary w-100 mb-2">Написать</a>
-          {% endif %}
+          <h5 class="fw-bold mb-3">Информация о доме</h5>
+          <p class="mb-1"><strong>Этаж:</strong> {{ room.get('floor') }}{% if room.get('floors_total') %}/{{ room['floors_total'] }}{% endif %}</p>
+          {% if room.get('area_total') %}<p class="mb-1"><strong>Площадь:</strong> {{ room['area_total'] }} м²</p>{% endif %}
+          {% if room.get('condition') %}<p class="mb-1"><strong>Состояние:</strong> {{ room['condition'] }}</p>{% endif %}
+          <p class="mb-0"><strong>Адрес:</strong> {{ room['country'] or '' }}{% if room['city'] %}, {{ room['city'] }}{% endif %}{% if room['street'] %}, {{ room['street'] }}{% endif %}{% if room['house_number'] %}, {{ room['house_number'] }}{% endif %}</p>
         </div>
       </div>
-      {% if room['owner_name'] or room['owner_phone'] or room['owner_messenger'] or room['owner_email'] %}
+      <!-- Карта -->
+      {% if room['latitude'] and room['longitude'] %}
       <div class="card shadow-sm mb-3">
         <div class="card-body">
-          <h6 class="fw-bold mb-2">Контакты владельца</h6>
-          {% if room['owner_name'] %}<p class="mb-1"><strong>Имя:</strong> {{ room['owner_name'] }}</p>{% endif %}
-          {% if room['owner_phone'] %}<p class="mb-1"><strong>Телефон:</strong> {{ room['owner_phone'] }}</p>{% endif %}
-          {% if room['owner_messenger'] %}<p class="mb-1"><strong>Связь:</strong> {{ room['owner_messenger'] }}</p>{% endif %}
-          {% if room['owner_email'] %}<p class="mb-0"><strong>Email:</strong> {{ room['owner_email'] }}</p>{% endif %}
+          <h5 class="fw-bold mb-3">Карта</h5>
+          <div id="mapid" style="height: 200px;"></div>
         </div>
       </div>
       {% endif %}
-      {% if room['country'] or room['city'] or room['street'] or room['house_number'] %}
+      <!-- Последние отзывы -->
       <div class="card shadow-sm">
         <div class="card-body">
-          <h6 class="fw-bold mb-2">Местоположение</h6>
-          <p class="mb-2">
-            {{ room['country'] or '' }}{% if room['city'] %}, {{ room['city'] }}{% endif %}{% if room['street'] %}, {{ room['street'] }}{% endif %}{% if room['house_number'] %}, {{ room['house_number'] }}{% endif %}
-          </p>
-          {% if room['latitude'] and room['longitude'] %}
-          <div id="mapid" style="height: 200px;"></div>
+          <h5 class="fw-bold mb-3">Последние отзывы</h5>
+          {% if reviews %}
+            {% for review in reviews[:4] %}
+            <div class="mb-3">
+              <p class="mb-1"><strong>{{ review['author'] }}</strong></p>
+              <p class="mb-1 text-muted" style="font-size: 0.875rem;">{{ review['date'] }}</p>
+              <p class="mb-0">{{ review['content'] }}</p>
+            </div>
+            {% endfor %}
+          {% else %}
+            <p class="text-muted mb-0">Отзывы отсутствуют</p>
           {% endif %}
         </div>
       </div>
-      {% endif %}
     </div>
   </div>
-  <div class="row mt-4">
-    <div class="col-lg-8">
-      {% if room['description'] %}
-      <div class="mb-4">
-        <h5 class="fw-bold">Описание</h5>
-        <p>{{ room['description'] }}</p>
-      </div>
-      {% endif %}
-      <div class="mb-4">
-        <h5 class="fw-bold">Дополнительная информация</h5>
-        <ul class="list-unstyled">
-          {% if room['discount'] %}<li><strong>Скидки:</strong> {{ room['discount'] }}</li>{% endif %}
-          {% if room['deposit'] is not none %}<li><strong>Залог:</strong> {{ room['deposit'] }} ₸</li>{% endif %}
-          {% if room['min_rent_days'] %}<li><strong>Минимальный срок аренды:</strong> {{ room['min_rent_days'] }} суток</li>{% endif %}
-          {% if room['max_rent_days'] %}<li><strong>Максимальный срок аренды:</strong> {{ room['max_rent_days'] }} суток</li>{% endif %}
-          {% if room['extra_charges'] %}<li><strong>Дополнительные расходы:</strong> {{ room['extra_charges'] }}</li>{% endif %}
-          {% if room['allow_children'] is not none %}<li><strong>Разрешено с детьми:</strong> {{ 'Да' if room['allow_children'] else 'Нет' }}</li>{% endif %}
-          {% if room['allow_pets'] is not none %}<li><strong>Разрешено с животными:</strong> {{ 'Да' if room['allow_pets'] else 'Нет' }}</li>{% endif %}
-          {% if room['smoking_policy'] %}
-            {% set smoke_map = {'allowed': 'Разрешено курить', 'forbidden': 'Курение запрещено', 'balcony': 'Курить только на балконе'} %}
-            <li><strong>Курение:</strong> {{ smoke_map.get(room['smoking_policy'], room['smoking_policy']) }}</li>
-          {% endif %}
-          {% if room['parties_policy'] %}
-            {% set party_map = {'allowed': 'Вечеринки разрешены', 'not_allowed': 'Вечеринки не разрешены'} %}
-            <li><strong>Вечеринки:</strong> {{ party_map.get(room['parties_policy'], room['parties_policy']) }}</li>
-          {% endif %}
-          {% if room['checkin_time'] %}<li><strong>Время заезда:</strong> {{ room['checkin_time'] }}</li>{% endif %}
-          {% if room['checkout_time'] %}<li><strong>Время выезда:</strong> {{ room['checkout_time'] }}</li>{% endif %}
-          {% if room['amenities'] %}
-            <li><strong>Удобства:</strong> {{ room['amenities'].replace(',', ', ') }}</li>
-          {% endif %}
-          {% if room['features'] %}
-            <li><strong>Особенности:</strong> {{ room['features'].replace(',', ', ') }}</li>
-          {% endif %}
-          {% if room['unavailable_dates'] %}
-            <li><strong>Недоступные даты:</strong> {{ room['unavailable_dates'].replace(',', ', ') }}</li>
-          {% endif %}
-          {% if room['min_notice_days'] %}
-            <li><strong>Минимальный срок до бронирования:</strong> {{ room['min_notice_days'] }} дней</li>
-          {% endif %}
-          {% if room['booking_method'] %}
-            {% set book_map = {'auto': 'Автоматическое подтверждение', 'manual': 'Только после одобрения владельца'} %}
-            <li><strong>Способ бронирования:</strong> {{ book_map.get(room['booking_method'], room['booking_method']) }}</li>
-          {% endif %}
-        </ul>
-      </div>
-    </div>
-  </div>
-  <div class="row mt-3">
-    <div class="col-lg-8">
-      <a href="{{ url_for('public_listings') }}" class="btn btn-outline-secondary">&larr; Назад в каталог</a>
-    </div>
+  <!-- Кнопка возврата -->
+  <div class="mt-4">
+    <a href="{{ url_for('public_listings') }}" class="btn btn-outline-secondary">&larr; Назад в каталог</a>
   </div>
 </div>
 {% if room['latitude'] and room['longitude'] %}
-<!-- Отображение карты Google для страницы с деталями квартиры.  Карта появляется
-     только если известны координаты (широта и долгота). Мы загружаем API
-     Google Maps с вашим ключом и библиотекой Places, а затем инициализируем
-     карту внутри функции initRoomDetailMap.  Функция вызывается из
-     callback-параметра после загрузки API. -->
 <script>
   function initRoomDetailMap() {
     var lat = {{ room['latitude'] }};
