@@ -104,21 +104,23 @@
        a property type and prevents proceeding until a name is provided. #}
     <div class="modal fade" id="propertyNameModal" tabindex="-1" aria-labelledby="propertyNameModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
       <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="propertyNameModalLabel">Введите название объекта</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+        {# Custom modal styling: rounded corners and no borders between sections #}
+        <div class="modal-content" style="border-radius: 20px; border: none;">
+          <div class="modal-header" style="border: none; display: block;">
+            <h5 class="modal-title mb-1" id="propertyNameModalLabel">Введите название объекта</h5>
+            <p class="text-muted mb-0" style="font-size: 0.9rem;">Это название увидят все пользователи на других страницах Moksli</p>
+            <button type="button" class="btn-close position-absolute end-0 top-0 m-3" data-bs-dismiss="modal" aria-label="Закрыть"></button>
           </div>
-          <div class="modal-body">
+          <div class="modal-body pt-0">
             <div class="mb-3">
-              <label for="propertyNameInput" class="form-label">Название</label>
+              {# Remove the label above the input for a cleaner look #}
               <input type="text" class="form-control" id="propertyNameInput" placeholder="Например, Уютная квартира" />
               <div class="invalid-feedback">
                 Пожалуйста, введите название, чтобы продолжить.
               </div>
             </div>
           </div>
-          <div class="modal-footer">
+          <div class="modal-footer" style="border: none;">
             <button type="button" class="btn btn-primary" id="propertyNameSave">Сохранить</button>
           </div>
         </div>
