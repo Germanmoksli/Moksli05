@@ -61,7 +61,7 @@
         <input type="number" id="base_price" name="base_price"
                class="border-0 display-4 fw-bold text-center"
                min="0" step="1" value="{{ base_price }}" placeholder="0"
-               style="background-color: transparent; outline: none; min-width: 120px;"
+               style="background-color: transparent; outline: none; min-width: 80px; width: auto;"
                required>
       </div>
       <!-- Weekend/holiday markup section -->
@@ -116,7 +116,8 @@
     background-color: var(--bs-primary);
     border: none;
     cursor: pointer;
-    margin-top: -0.375rem; /* Align thumb vertically */
+    /* Drop the thumb slightly below the track to visually separate it. */
+    margin-top: 0.5rem;
   }
   input.custom-range::-moz-range-thumb {
     width: 1.25rem;
@@ -125,6 +126,7 @@
     background-color: var(--bs-primary);
     border: none;
     cursor: pointer;
+    /* Firefox does not support margin-top on range-thumb, but we can leave default */
   }
 </style>
 <!-- Script to compute weekend price and update percentage display -->
