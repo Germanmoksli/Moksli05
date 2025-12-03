@@ -1,23 +1,22 @@
 {% extends "base.html" %}
 
 {#
-  Step 7 of the new listing wizard: pricing.  This page collects the base
-  nightly price and an optional percentage markup for weekends and
-  holidays.  The owner enters the base price (in Tenge) and adjusts a
-  slider to set a markup.  The weekend price is calculated and displayed
-  dynamically based on the base price and selected markup.  A unified
-  navigation bar appears at the top with cancel/draft actions, a
-  progress bar and back/finish buttons.
+  Шаг 7 мастера создания объявления: дополнительные параметры.  Здесь
+  владелец вводит физические характеристики объекта: этаж,
+  наличие лифта, площадь (общая, жилая, кухня) и тип ремонта.
+  После заполнения пользователь переходит к установке цены.  Панель
+  навигации содержит кнопки отмены/черновика, индикатор прогресса и
+  кнопки назад/далее.
 #}
 
 {% block title %}Новое объявление – Шаг 7{% endblock %}
 
 {% block content %}
 {% if hide_nav %}
-  <!-- Top navigation bar for pricing step -->
+  <!-- Навигационная панель для шага дополнительных параметров -->
   <div class="container-fluid bg-light py-2 mb-3" style="border: none;">
     <div class="d-flex align-items-center justify-content-between">
-      <!-- Left group: cancel and save draft -->
+      <!-- Левая группа: отмена и черновик -->
       <div class="d-flex align-items-center gap-2 me-3">
         <a href="{{ url_for('cancel_new_room') }}" class="d-flex align-items-center justify-content-center rounded-circle"
            style="width: 40px; height: 40px; background-color: #f1f3f5; text-decoration: none;">
@@ -31,16 +30,16 @@
           </button>
         </form>
       </div>
-      <!-- Progress bar -->
+      <!-- Индикатор прогресса -->
       <div class="progress flex-grow-1 mx-3 border-0" style="height: 6px; border: none;">
         <div class="progress-bar bg-primary" role="progressbar" style="width: {{ progress }}%;"
              aria-valuenow="{{ progress }}" aria-valuemin="0" aria-valuemax="100"></div>
       </div>
-      <!-- Right group: back and finish buttons -->
+      <!-- Правая группа: кнопки назад и далее -->
       <div class="d-flex align-items-center gap-2 ms-3">
         <a href="{{ back_url }}" class="btn btn-link d-flex align-items-center justify-content-center"
            style="height: 40px;">Назад</a>
-        <button type="submit" form="pricingForm" class="btn btn-primary d-flex align-items-center justify-content-center"
+        <button type="submit" form="detailsForm" class="btn btn-primary d-flex align-items-center justify-content-center"
                 style="height: 40px;">Далее</button>
       </div>
     </div>
@@ -48,178 +47,67 @@
 {% endif %}
 
 <div class="container py-4">
-  <!-- Constrained container to align with previous steps -->
+  <!-- Контейнер фиксированной ширины для выравнивания -->
   <div class="mx-auto" style="max-width: 700px;">
-    <!-- Base price section -->
-    <h2 class="fw-bold fs-2 mb-2 text-start">Установите базовую цену на будние дни</h2>
-    <p class="text-muted mb-4 text-start">Её можно изменить в любое время.</p>
-    <form method="post" id="pricingForm">
-      <!-- Base price input displayed in large format -->
-      <div class="d-flex justify-content-center mb-4">
-        <div id="basePriceContainer" class="d-flex align-items-baseline justify-content-center">
-          <span class="display-4 fw-bold me-2">₸</span>
-          {# The base price is rendered as plain text but remains editable.  #}
-        <input type="text" id="base_price" name="base_price"
-               class="border-0 display-4 fw-bold text-center"
-               inputmode="numeric" pattern="[0-9\s]*" value="{{ base_price }}" placeholder="00 000"
-               style="background-color: transparent; outline: none; flex: 0 0 auto; width: auto; min-width: 1ch;"
-               required>
+    <h2 class="fw-bold fs-2 mb-4 text-start">Дополнительно</h2>
+    <form method="post" id="detailsForm" action="{{ url_for('new_room_step7') }}">
+      <!-- Строка для этажа и лифта -->
+      <div class="mb-3 d-flex flex-column flex-md-row align-items-md-center">
+        <div class="flex-grow-1 me-md-3">
+          <label for="floor" class="form-label fw-bold">Этаж</label>
+          <input type="number" class="form-control" id="floor" name="floor" min="1" step="1" value="{{ floor }}" required>
         </div>
-      </div>
-      <!-- Weekend/holiday markup section -->
-      <div class="mt-5">
-        <h3 class="fw-bold fs-4 mb-2 text-start">Цена на выходные и праздничные дни</h3>
-        <p class="text-muted mb-3 text-start">Укажите процентную надбавку относительно базовой цены.</p>
-        <!-- Display calculated weekend price -->
-        <div class="d-flex justify-content-center align-items-baseline mb-2">
-          <div id="weekendPriceContainer" class="d-flex align-items-baseline justify-content-center">
-            <span class="display-4 fw-bold me-2">₸</span>
-            <span id="weekend_price" class="display-4 fw-bold">0</span>
+        <div class="d-flex align-items-center mt-2 mt-md-4">
+          <label for="elevator_yes" class="form-label fw-bold me-2 mb-0">Есть лифт?</label>
+          <div class="form-check form-check-inline mb-0">
+            <input class="form-check-input" type="radio" id="elevator_yes" name="elevator" value="yes" {% if elevator == 'yes' %}checked{% endif %}>
+            <label class="form-check-label" for="elevator_yes">Да</label>
+          </div>
+          <div class="form-check form-check-inline mb-0">
+            <input class="form-check-input" type="radio" id="elevator_no" name="elevator" value="no" {% if elevator == 'no' %}checked{% endif %}>
+            <label class="form-check-label" for="elevator_no">Нет</label>
           </div>
         </div>
-        <!-- Display percentage label -->
-        <div class="text-center mb-3">
-          <span class="fw-semibold" style="font-size: 1rem;">Надбавка: <span id="weekendPercent">0</span>%</span>
-        </div>
-        <!-- Slider for weekend markup -->
-        <div class="d-flex align-items-center justify-content-center">
-          <input type="range" id="weekendMarkup" name="weekend_markup" min="0" max="100" step="1" value="{{ weekend_markup or 0 }}"
-                 class="custom-range" style="max-width: 500px;">
+      </div>
+      <!-- Строка для площадей -->
+      <div class="mb-3">
+        <div class="row g-2 justify-content-end">
+          <div class="col-12 col-md-4">
+            <label for="total_area" class="form-label fw-bold">Общая площадь (м²)</label>
+            <input type="number" class="form-control" id="total_area" name="total_area" min="0" step="0.1" value="{{ total_area }}" required>
+          </div>
+          <div class="col-12 col-md-4">
+            <label for="living_area" class="form-label fw-bold">Жилая площадь (м²)</label>
+            <input type="number" class="form-control" id="living_area" name="living_area" min="0" step="0.1" value="{{ living_area }}" required>
+          </div>
+          <div class="col-12 col-md-4">
+            <label for="kitchen_area" class="form-label fw-bold">Площадь кухни (м²)</label>
+            <input type="number" class="form-control" id="kitchen_area" name="kitchen_area" min="0" step="0.1" value="{{ kitchen_area }}" required>
+          </div>
         </div>
       </div>
+      <!-- Тип ремонта -->
+      <div class="mb-4">
+        <label for="renovation" class="form-label fw-bold">Ремонт</label>
+        <select class="form-select" id="renovation" name="renovation" required>
+          <option value="" disabled {% if not renovation %}selected{% endif %}>Выберите тип ремонта</option>
+          <option value="designer" {% if renovation == 'designer' %}selected{% endif %}>Дизайнерский</option>
+          <option value="euro" {% if renovation == 'euro' %}selected{% endif %}>Евроремонт</option>
+          <option value="standard" {% if renovation == 'standard' %}selected{% endif %}>Стандарт</option>
+        </select>
+      </div>
     </form>
+    <!-- Скрыть стрелки инкремента у number -->
+    <style>
+      input[type=number]::-webkit-inner-spin-button,
+      input[type=number]::-webkit-outer-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+      }
+      input[type=number] {
+        -moz-appearance: textfield;
+      }
+    </style>
   </div>
 </div>
-<!-- Custom styles for the pricing page -->
-<style>
-  /* Hide spin buttons on number inputs for all browsers */
-  input[type=number]::-webkit-outer-spin-button,
-  input[type=number]::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-  }
-  input[type=number] {
-    -moz-appearance: textfield;
-  }
-  /* Custom range slider styles */
-  input.custom-range {
-    -webkit-appearance: none;
-    appearance: none;
-    height: 0.5rem;
-    width: 100%;
-    background-color: var(--bs-gray-300);
-    border-radius: 0.25rem;
-    outline: none;
-  }
-  input.custom-range::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 1.25rem;
-    height: 1.25rem;
-    border-radius: 50%;
-    background-color: var(--bs-primary);
-    border: none;
-    cursor: pointer;
-    /* Move the thumb slightly below the track to visually separate it */
-    margin-top: 0.5rem;
-  }
-  input.custom-range::-moz-range-thumb {
-    width: 1.25rem;
-    height: 1.25rem;
-    border-radius: 50%;
-    background-color: var(--bs-primary);
-    border: none;
-    cursor: pointer;
-  }
-</style>
-<!-- Script to compute weekend price and update percentage display -->
-<script>
-  document.addEventListener('DOMContentLoaded', function() {
-    const baseInput = document.getElementById('base_price');
-    const markupRange = document.getElementById('weekendMarkup');
-    const weekendPriceSpan = document.getElementById('weekend_price');
-    const weekendPercentSpan = document.getElementById('weekendPercent');
-    const baseContainer = document.getElementById('basePriceContainer');
-    const weekendContainer = document.getElementById('weekendPriceContainer');
-
-    /**
-     * Adjust the width of the base price input based on the number of digits.
-     * This keeps the input compact while allowing it to expand when the user
-     * enters a longer number. Width is calculated in ch units which roughly
-     * correspond to the width of the "0" character in the current font.
-     */
-    function updateBaseInputWidth() {
-      // Remove spaces to measure only digit characters
-      const digitsOnly = baseInput.value.replace(/\s+/g, '');
-      const length = digitsOnly.length || 1;
-      // Add one extra character of space for the caret
-      const newWidth = (length + 1) + 'ch';
-      baseInput.style.width = newWidth;
-    }
-
-    /**
-     * Format a numeric string by inserting spaces every three digits.
-     */
-    function formatNumberWithSpaces(val) {
-      const digits = val.replace(/\D+/g, '');
-      return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
-    }
-
-    // Format the base price input on each keystroke to include spaces as thousand separators
-    baseInput.addEventListener('input', function() {
-      const raw = baseInput.value.replace(/\s+/g, '');
-      // Do not process non-digit characters
-      const formatted = formatNumberWithSpaces(raw);
-      baseInput.value = formatted;
-      updateBaseInputWidth();
-      updateWeekend();
-    });
-
-    /**
-     * Make the base price and weekend price containers the same width so that
-     * the currency icons align vertically in a single column. The larger
-     * container width is applied to both elements. Widths are measured
-     * temporarily by resetting to 'auto'.
-     */
-    function updateContainersWidth() {
-      // Reset widths to measure natural size
-      baseContainer.style.width = 'auto';
-      weekendContainer.style.width = 'auto';
-      const baseWidth = baseContainer.offsetWidth;
-      const weekendWidth = weekendContainer.offsetWidth;
-      const maxWidth = Math.max(baseWidth, weekendWidth);
-      baseContainer.style.width = maxWidth + 'px';
-      weekendContainer.style.width = maxWidth + 'px';
-    }
-    function updateWeekend() {
-      // Remove spaces when parsing the base value
-      const rawBase = baseInput.value.replace(/\s+/g, '');
-      const base = parseFloat(rawBase) || 0;
-      const markup = parseFloat(markupRange.value) || 0;
-      const weekend = Math.round(base * (1 + markup / 100));
-      weekendPriceSpan.textContent = weekend.toLocaleString('ru-RU');
-      weekendPercentSpan.textContent = markup;
-      // Update the slider track background to show filled portion in primary color
-      const max = parseFloat(markupRange.max) || 100;
-      const percent = (markup / max) * 100;
-      // Set a linear gradient: primary color up to the current value, then gray
-      markupRange.style.background =
-        'linear-gradient(to right, var(--bs-primary) 0%, var(--bs-primary) ' + percent + '%, ' +
-        'var(--bs-gray-300) ' + percent + '%, var(--bs-gray-300) 100%)';
-      // Update container widths when weekend price changes
-      updateContainersWidth();
-    }
-    markupRange.addEventListener('input', updateWeekend);
-    // baseInput input handler defined above will call updateWeekend and updateBaseInputWidth
-    // Initialize values and widths on load
-    // Format the initial value if provided
-    if (baseInput.value) {
-      const formatted = formatNumberWithSpaces(baseInput.value.replace(/\s+/g, ''));
-      baseInput.value = formatted;
-    }
-    updateBaseInputWidth();
-    updateWeekend();
-    updateContainersWidth();
-  });
-</script>
 {% endblock %}

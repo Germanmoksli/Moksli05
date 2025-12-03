@@ -1,21 +1,24 @@
 {% extends "base.html" %}
 
 {#
-  Step 9 of the new listing wizard: house rules.  This final step allows
-  hosts to define check‑in and check‑out times and specify smoking and
-  pet policies.  A unified navigation bar appears at the top with
-  cancel/draft actions, a progress bar and back/finish buttons.  A
-  constrained container centres the form and aligns with prior steps.
+  Шаг 9 мастера создания объявления: скидки.  Это финальный этап,
+  где владелец может выбрать дополнительные скидки для первых
+  бронирований и длительных проживаний.  Вместо кнопки «Завершить» на
+  этом шаге отображается кнопка «Предпросмотр», которая открывает
+  всплывающее окно с предварительным видом объявления.  В модальном
+  окне пользователь видит собранную информацию об объекте, после чего
+  может либо опубликовать объявление, либо закрыть окно и вернуться
+  для внесения изменений.
 #}
 
 {% block title %}Новое объявление – Шаг 9{% endblock %}
 
 {% block content %}
 {% if hide_nav %}
-  <!-- Top navigation bar for house rules step -->
+  <!-- Навигационная панель для шага скидок -->
   <div class="container-fluid bg-light py-2 mb-3" style="border: none;">
     <div class="d-flex align-items-center justify-content-between">
-      <!-- Left group: cancel and save draft -->
+      <!-- Левая группа: отмена и черновик -->
       <div class="d-flex align-items-center gap-2 me-3">
         <a href="{{ url_for('cancel_new_room') }}" class="d-flex align-items-center justify-content-center rounded-circle"
            style="width: 40px; height: 40px; background-color: #f1f3f5; text-decoration: none;">
@@ -29,77 +32,169 @@
           </button>
         </form>
       </div>
-      <!-- Progress bar -->
+      <!-- Индикатор прогресса -->
       <div class="progress flex-grow-1 mx-3 border-0" style="height: 6px; border: none;">
         <div class="progress-bar bg-primary" role="progressbar" style="width: {{ progress }}%;"
              aria-valuenow="{{ progress }}" aria-valuemin="0" aria-valuemax="100"></div>
       </div>
-      <!-- Right group: back and finish buttons -->
+      <!-- Правая группа: кнопки назад и предпросмотра -->
       <div class="d-flex align-items-center gap-2 ms-3">
         <a href="{{ back_url }}" class="btn btn-link d-flex align-items-center justify-content-center"
            style="height: 40px;">Назад</a>
-        <button type="submit" form="rulesForm" class="btn btn-primary d-flex align-items-center justify-content-center"
-                style="height: 40px;">Завершить</button>
+        <!-- Кнопка предпросмотра открывает модальное окно -->
+        <button type="button" class="btn btn-primary d-flex align-items-center justify-content-center"
+                style="height: 40px;" data-bs-toggle="modal" data-bs-target="#previewModal">
+          Предпросмотр
+        </button>
       </div>
     </div>
   </div>
 {% endif %}
 
 <div class="container py-4">
-  <div class="mx-auto" style="max-width: 700px;">
-    <!-- Heading for house rules -->
-    <h2 class="fw-bold fs-2 mb-4 text-start">Правила дома</h2>
-    <form method="post" id="rulesForm">
-      <!-- Check-in/out times -->
-      <div class="mb-4">
-        <label class="form-label fw-bold d-block">Время заезда/выезда</label>
-        <div class="row g-2">
-          <div class="col-12 col-md-6">
-            <input type="time" class="form-control" name="check_in_time" value="{{ check_in_time or '14:00' }}" required>
+  <div class="mx-auto" style="max-width: 600px;">
+    <h2 class="fw-bold fs-2 mb-4 text-start">Выберите скидки</h2>
+    <form method="post" id="discountForm" action="{{ url_for('new_room_step9') }}">
+      <div class="d-flex flex-column align-items-center gap-4">
+        <input type="checkbox" class="btn-check" id="discount20" name="discounts" value="20" autocomplete="off"
+               {% if discounts and 20 in discounts %}checked{% endif %}>
+        <label class="discount-tile w-100" for="discount20">
+          <div class="discount-check">
+            <i class="bi bi-check-lg"></i>
           </div>
-          <div class="col-12 col-md-6">
-            <input type="time" class="form-control" name="check_out_time" value="{{ check_out_time or '12:00' }}" required>
+          <div class="discount-icon">20%</div>
+          <h5 class="fw-bold mb-1">Скидка 20%</h5>
+          <p class="text-muted mb-0">Первые 3 бронирования на эту квартиру получают скидку</p>
+        </label>
+        <input type="checkbox" class="btn-check" id="discount5" name="discounts" value="5" autocomplete="off"
+               {% if discounts and 5 in discounts %}checked{% endif %}>
+        <label class="discount-tile w-100" for="discount5">
+          <div class="discount-check">
+            <i class="bi bi-check-lg"></i>
           </div>
-        </div>
-      </div>
-      <!-- Smoking policy -->
-      <div class="mb-4">
-        <label class="form-label fw-bold">Курение</label>
-        <div class="d-flex flex-wrap align-items-center">
-          <div class="form-check me-3">
-            <input class="form-check-input" type="radio" id="smoking_allowed" name="smoking" value="allowed"
-                   {% if smoking == 'allowed' %}checked{% endif %}>
-            <label class="form-check-label" for="smoking_allowed">Разрешено</label>
+          <div class="discount-icon">5%</div>
+          <h5 class="fw-bold mb-1">Скидка 5%</h5>
+          <p class="text-muted mb-0">Если проживание 7 или более дней</p>
+        </label>
+        <input type="checkbox" class="btn-check" id="discount10" name="discounts" value="10" autocomplete="off"
+               {% if discounts and 10 in discounts %}checked{% endif %}>
+        <label class="discount-tile w-100" for="discount10">
+          <div class="discount-check">
+            <i class="bi bi-check-lg"></i>
           </div>
-          <div class="form-check">
-            <input class="form-check-input" type="radio" id="smoking_forbidden" name="smoking" value="forbidden"
-                   {% if smoking == 'forbidden' %}checked{% endif %}>
-            <label class="form-check-label" for="smoking_forbidden">Запрещено</label>
-          </div>
-        </div>
-      </div>
-      <!-- Pets policy -->
-      <div class="mb-4">
-        <label class="form-label fw-bold">Питомцы</label>
-        <div class="d-flex flex-wrap align-items-center">
-          <div class="form-check me-3">
-            <input class="form-check-input" type="radio" id="pets_allowed" name="pets" value="allowed"
-                   {% if pets == 'allowed' %}checked{% endif %}>
-            <label class="form-check-label" for="pets_allowed">Разрешено</label>
-          </div>
-          <div class="form-check me-3">
-            <input class="form-check-input" type="radio" id="pets_forbidden" name="pets" value="forbidden"
-                   {% if pets == 'forbidden' %}checked{% endif %}>
-            <label class="form-check-label" for="pets_forbidden">Запрещено</label>
-          </div>
-          <div class="form-check">
-            <input class="form-check-input" type="radio" id="pets_negotiable" name="pets" value="negotiable"
-                   {% if pets == 'negotiable' %}checked{% endif %}>
-            <label class="form-check-label" for="pets_negotiable">По согласованию</label>
-          </div>
-        </div>
+          <div class="discount-icon">10%</div>
+          <h5 class="fw-bold mb-1">Скидка 10%</h5>
+          <p class="text-muted mb-0">Если проживание 30 или более дней</p>
+        </label>
       </div>
     </form>
+  </div>
+</div>
+
+<!-- Стили для скидочных плиток -->
+<style>
+  .discount-tile {
+    position: relative;
+    border: 1px solid var(--bs-gray-300);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    cursor: pointer;
+    transition: border-color 0.2s, background-color 0.2s;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.05);
+  }
+  .discount-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background-color: var(--bs-primary);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1.25rem;
+    margin-bottom: 0.75rem;
+  }
+  .discount-check {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    width: 24px;
+    height: 24px;
+    border: 2px solid var(--bs-gray-400);
+    border-radius: 0.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+  .discount-check i {
+    color: var(--bs-primary);
+    font-size: 1rem;
+    display: none;
+  }
+  .btn-check:checked + .discount-tile {
+    border-color: var(--bs-primary);
+    background-color: rgba(var(--bs-primary-rgb, 0,123,255), 0.05);
+  }
+  .btn-check:checked + .discount-tile .discount-check {
+    border-color: var(--bs-primary);
+  }
+  .btn-check:checked + .discount-tile .discount-check i {
+    display: block;
+  }
+</style>
+
+<!-- Модальное окно предпросмотра -->
+<div class="modal fade" id="previewModal" tabindex="-1" aria-labelledby="previewModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="previewModalLabel">Предпросмотр объявления</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+      </div>
+      <div class="modal-body">
+        <!-- Сводная информация об объекте.  Используем данные из сессии -->
+        <p><strong>Тип жилья:</strong> {{ session['new_listing_property_type'] }}</p>
+        <p><strong>Адрес:</strong> {{ session['new_listing_address'] }}</p>
+        <p><strong>Описание:</strong> {{ session.get('new_listing_description', '') }}</p>
+        <p><strong>Правила заезда/выезда:</strong>
+          Заезд с {{ session.get('new_listing_check_in_time', '') }} до {{ session.get('new_listing_check_out_time', '') }};
+          Курение: {{ 'разрешено' if session.get('new_listing_smoking') == 'yes' else 'запрещено' }};
+          Домашние животные: {{ 'разрешены' if session.get('new_listing_pets') == 'yes' else 'запрещены' }}
+        </p>
+        <p><strong>Дополнительно:</strong>
+          Этаж {{ session.get('new_listing_floor', '') }},
+          лифт: {{ 'есть' if session.get('new_listing_elevator') == 'yes' else 'нет' }},
+          общая площадь: {{ session.get('new_listing_total_area', '') }} м²,
+          жилая площадь: {{ session.get('new_listing_living_area', '') }} м²,
+          площадь кухни: {{ session.get('new_listing_kitchen_area', '') }} м²,
+          ремонт: {{ session.get('new_listing_renovation', '') }}
+        </p>
+        <p><strong>Цены:</strong>
+          базовая цена {{ session.get('new_listing_base_price', '0') }} ₸,
+          надбавка на выходные {{ session.get('new_listing_weekend_markup', '0') }}%
+        </p>
+        <p><strong>Скидки:</strong>
+          {% if session.get('new_listing_discounts') %}
+            {{ session['new_listing_discounts'] | join(', ') }}%
+          {% else %}
+            не выбраны
+          {% endif %}
+        </p>
+      </div>
+      <div class="modal-footer">
+        <!-- Кнопка публикации отправляет форму скидок -->
+        <form method="post" action="{{ url_for('new_room_step9') }}">
+          <input type="hidden" name="publish" value="1">
+          {% for d in session.get('new_listing_discounts', []) %}
+            <input type="hidden" name="discounts" value="{{ d }}">
+          {% endfor %}
+          <button type="submit" class="btn btn-primary">Опубликовать</button>
+        </form>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Назад</button>
+      </div>
+    </div>
   </div>
 </div>
 {% endblock %}

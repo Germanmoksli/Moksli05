@@ -1,24 +1,22 @@
 {% extends "base.html" %}
 
 {#
-  Step 8 of the new listing wizard: discounts.  This page allows the
-  host to select optional discounts that will automatically apply to the
-  first bookings or longer stays.  Three tiles are displayed in a
-  vertical column.  Each tile contains a percentage icon, a title and
-  description, and a checkbox indicator in the upper right corner.
-  Selecting a tile toggles the corresponding discount.  The layout
-  mirrors the style of previous steps, with a top navigation bar for
-  cancelling, saving drafts, progress and navigation.
+  Шаг 8 мастера создания объявления: ценообразование.  Здесь
+  владелец устанавливает базовую цену за ночь и может выбрать
+  процентную надбавку для выходных и праздничных дней.  Стоимость
+  выходного дня рассчитывается динамически и показывается под
+  слайдером.  Панель навигации содержит кнопки отмены/черновика,
+  индикатор прогресса и кнопки назад/далее.
 #}
 
 {% block title %}Новое объявление – Шаг 8{% endblock %}
 
 {% block content %}
 {% if hide_nav %}
-  <!-- Top navigation bar for discounts step -->
+  <!-- Навигационная панель для шага ценообразования -->
   <div class="container-fluid bg-light py-2 mb-3" style="border: none;">
     <div class="d-flex align-items-center justify-content-between">
-      <!-- Left group: cancel and save draft -->
+      <!-- Левая группа: отмена и черновик -->
       <div class="d-flex align-items-center gap-2 me-3">
         <a href="{{ url_for('cancel_new_room') }}" class="d-flex align-items-center justify-content-center rounded-circle"
            style="width: 40px; height: 40px; background-color: #f1f3f5; text-decoration: none;">
@@ -32,16 +30,16 @@
           </button>
         </form>
       </div>
-      <!-- Progress bar -->
+      <!-- Индикатор прогресса -->
       <div class="progress flex-grow-1 mx-3 border-0" style="height: 6px; border: none;">
         <div class="progress-bar bg-primary" role="progressbar" style="width: {{ progress }}%;"
              aria-valuenow="{{ progress }}" aria-valuemin="0" aria-valuemax="100"></div>
       </div>
-      <!-- Right group: back and finish buttons -->
+      <!-- Правая группа: кнопки назад и далее -->
       <div class="d-flex align-items-center gap-2 ms-3">
         <a href="{{ back_url }}" class="btn btn-link d-flex align-items-center justify-content-center"
            style="height: 40px;">Назад</a>
-        <button type="submit" form="discountForm" class="btn btn-primary d-flex align-items-center justify-content-center"
+        <button type="submit" form="pricingForm" class="btn btn-primary d-flex align-items-center justify-content-center"
                 style="height: 40px;">Далее</button>
       </div>
     </div>
@@ -49,101 +47,128 @@
 {% endif %}
 
 <div class="container py-4">
-  <div class="mx-auto" style="max-width: 600px;">
-    <h2 class="fw-bold fs-2 mb-4 text-start">Выберите скидки</h2>
-    <form method="post" id="discountForm" action="{{ url_for('new_room_step9') }}">
-      <div class="d-flex flex-column align-items-center gap-4">
-        <!-- 20% discount tile -->
-        <input type="checkbox" class="btn-check" id="discount20" name="discounts" value="20" autocomplete="off"
-               {% if discounts and 20 in discounts %}checked{% endif %}>
-        <label class="discount-tile w-100" for="discount20">
-          <div class="discount-check">
-            <i class="bi bi-check-lg"></i>
+  <div class="mx-auto" style="max-width: 700px;">
+    <h2 class="fw-bold fs-2 mb-2 text-start">Установите базовую цену на будние дни</h2>
+    <p class="text-muted mb-4 text-start">Её можно изменить в любое время.</p>
+    <form method="post" id="pricingForm" action="{{ url_for('new_room_step8') }}">
+      <div class="d-flex justify-content-center mb-4">
+        <div id="basePriceContainer" class="d-flex align-items-baseline justify-content-center">
+          <span class="display-4 fw-bold me-2">₸</span>
+          <input type="text" id="base_price" name="base_price"
+                 class="border-0 display-4 fw-bold text-center"
+                 inputmode="numeric" pattern="[0-9\s]*" value="{{ base_price }}" placeholder="00 000"
+                 style="background-color: transparent; outline: none; flex: 0 0 auto; width: auto; min-width: 1ch;"
+                 required>
+        </div>
+      </div>
+      <div class="mt-5">
+        <h3 class="fw-bold fs-4 mb-2 text-start">Цена на выходные и праздничные дни</h3>
+        <p class="text-muted mb-3 text-start">Укажите процентную надбавку относительно базовой цены.</p>
+        <div class="d-flex justify-content-center align-items-baseline mb-2">
+          <div id="weekendPriceContainer" class="d-flex align-items-baseline justify-content-center">
+            <span class="display-4 fw-bold me-2">₸</span>
+            <span id="weekend_price" class="display-4 fw-bold">0</span>
           </div>
-          <div class="discount-icon">20%</div>
-          <h5 class="fw-bold mb-1">Скидка 20%</h5>
-          <p class="text-muted mb-0">Первые 3 бронирования на эту квартиру получают скидку</p>
-        </label>
-        <!-- 5% discount tile -->
-        <input type="checkbox" class="btn-check" id="discount5" name="discounts" value="5" autocomplete="off"
-               {% if discounts and 5 in discounts %}checked{% endif %}>
-        <label class="discount-tile w-100" for="discount5">
-          <div class="discount-check">
-            <i class="bi bi-check-lg"></i>
-          </div>
-          <div class="discount-icon">5%</div>
-          <h5 class="fw-bold mb-1">Скидка 5%</h5>
-          <p class="text-muted mb-0">Если проживание 7 или более дней</p>
-        </label>
-        <!-- 10% discount tile -->
-        <input type="checkbox" class="btn-check" id="discount10" name="discounts" value="10" autocomplete="off"
-               {% if discounts and 10 in discounts %}checked{% endif %}>
-        <label class="discount-tile w-100" for="discount10">
-          <div class="discount-check">
-            <i class="bi bi-check-lg"></i>
-          </div>
-          <div class="discount-icon">10%</div>
-          <h5 class="fw-bold mb-1">Скидка 10%</h5>
-          <p class="text-muted mb-0">Если проживание 30 или более дней</p>
-        </label>
+        </div>
+        <div class="text-center mb-3">
+          <span class="fw-semibold" style="font-size: 1rem;">Надбавка: <span id="weekendPercent">0</span>%</span>
+        </div>
+        <div class="d-flex align-items-center justify-content-center">
+          <input type="range" id="weekendMarkup" name="weekend_markup" min="0" max="100" step="1" value="{{ weekend_markup or 0 }}"
+                 class="custom-range" style="max-width: 500px;">
+        </div>
       </div>
     </form>
   </div>
 </div>
-
-<!-- Styles for discount tiles -->
 <style>
-  .discount-tile {
-    position: relative;
-    border: 1px solid var(--bs-gray-300);
-    border-radius: 1rem;
-    padding: 1.5rem;
-    cursor: pointer;
-    transition: border-color 0.2s, background-color 0.2s;
-    /* Add a subtle shadow to elevate the tiles */
-    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.05);
+  input[type=number]::-webkit-outer-spin-button,
+  input[type=number]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
   }
-  .discount-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    /* Use the primary color for the background and white text */
-    background-color: var(--bs-primary);
-    color: #fff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    font-size: 1.25rem;
-    margin-bottom: 0.75rem;
+  input[type=number] {
+    -moz-appearance: textfield;
   }
-  .discount-check {
-    position: absolute;
-    top: 1rem;
-    right: 1rem;
-    width: 24px;
-    height: 24px;
-    border: 2px solid var(--bs-gray-400);
+  input.custom-range {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 0.5rem;
+    width: 100%;
+    background-color: var(--bs-gray-300);
     border-radius: 0.25rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    pointer-events: none;
+    outline: none;
   }
-  .discount-check i {
-    color: var(--bs-primary);
-    font-size: 1rem;
-    display: none;
+  input.custom-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 50%;
+    background-color: var(--bs-primary);
+    border: none;
+    cursor: pointer;
+    margin-top: 0.5rem;
   }
-  .btn-check:checked + .discount-tile {
-    border-color: var(--bs-primary);
-    background-color: rgba(var(--bs-primary-rgb, 0,123,255), 0.05);
-  }
-  .btn-check:checked + .discount-tile .discount-check {
-    border-color: var(--bs-primary);
-  }
-  .btn-check:checked + .discount-tile .discount-check i {
-    display: block;
+  input.custom-range::-moz-range-thumb {
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 50%;
+    background-color: var(--bs-primary);
+    border: none;
+    cursor: pointer;
   }
 </style>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const baseInput = document.getElementById('base_price');
+    const markupRange = document.getElementById('weekendMarkup');
+    const weekendPriceSpan = document.getElementById('weekend_price');
+    const weekendPercentSpan = document.getElementById('weekendPercent');
+    const baseContainer = document.getElementById('basePriceContainer');
+    const weekendContainer = document.getElementById('weekendPriceContainer');
+
+    function updateBaseInputWidth() {
+      const digitsOnly = baseInput.value.replace(/\s+/g, '');
+      const length = digitsOnly.length || 1;
+      const newWidth = (length + 1) + 'ch';
+      baseInput.style.width = newWidth;
+    }
+
+    function formatNumberWithSpaces(val) {
+      const digits = val.replace(/\D+/g, '');
+      return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+    }
+
+    baseInput.addEventListener('input', function() {
+      const raw = baseInput.value.replace(/\s+/g, '');
+      const formatted = formatNumberWithSpaces(raw);
+      baseInput.value = formatted;
+      updateBaseInputWidth();
+      updateWeekend();
+    });
+
+    function updateContainersWidth() {
+      baseContainer.style.width = 'auto';
+      weekendContainer.style.width = 'auto';
+      const baseWidth = baseContainer.offsetWidth;
+      const weekendWidth = weekendContainer.offsetWidth;
+      const maxWidth = Math.max(baseWidth, weekendWidth);
+      baseContainer.style.width = maxWidth + 'px';
+      weekendContainer.style.width = maxWidth + 'px';
+    }
+    function updateWeekend() {
+      const rawBase = baseInput.value.replace(/\s+/g, '');
+      const base = parseFloat(rawBase) || 0;
+      const markup = parseFloat(markupRange.value) || 0;
+      const weekend = Math.round(base * (1 + markup / 100));
+      weekendPriceSpan.textContent = weekend.toLocaleString('ru-RU');
+      weekendPercentSpan.textContent = markupRange.value;
+      updateContainersWidth();
+    }
+    markupRange.addEventListener('input', updateWeekend);
+    updateBaseInputWidth();
+    updateWeekend();
+  });
+</script>
 {% endblock %}

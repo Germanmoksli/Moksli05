@@ -1,22 +1,22 @@
 {% extends "base.html" %}
 
 {#
-  Step 6 of the new listing wizard: additional details.  This final
-  step collects physical characteristics of the listing such as floor,
-  elevator availability, total/living/kitchen areas and the renovation
-  type.  A unified navigation bar appears at the top with cancel/draft
-  actions, a progress bar and back/finish buttons.  A constrained
-  container centres the form and aligns labels consistent with
-  previous steps.
+  Шаг 6 мастера создания объявления: правила дома.  После описания
+  объекта пользователь должен указать время заезда и выезда и выбрать
+  политики по курению и домашним животным.  Это не финальный шаг:
+  после заполнения правил дома пользователь переходит к вводу
+  дополнительных параметров.  Навигационная панель содержит кнопки
+  отмены/черновика, индикатор прогресса и кнопки назад/далее.
 #}
+
 {% block title %}Новое объявление – Шаг 6{% endblock %}
 
 {% block content %}
 {% if hide_nav %}
-  <!-- Top navigation bar for details step -->
+  <!-- Навигационная панель для шага правил дома -->
   <div class="container-fluid bg-light py-2 mb-3" style="border: none;">
     <div class="d-flex align-items-center justify-content-between">
-      <!-- Left group: cancel and save draft -->
+      <!-- Левая группа: отмена и черновик -->
       <div class="d-flex align-items-center gap-2 me-3">
         <a href="{{ url_for('cancel_new_room') }}" class="d-flex align-items-center justify-content-center rounded-circle"
            style="width: 40px; height: 40px; background-color: #f1f3f5; text-decoration: none;">
@@ -30,16 +30,16 @@
           </button>
         </form>
       </div>
-      <!-- Progress bar -->
+      <!-- Индикатор прогресса -->
       <div class="progress flex-grow-1 mx-3 border-0" style="height: 6px; border: none;">
         <div class="progress-bar bg-primary" role="progressbar" style="width: {{ progress }}%;"
              aria-valuenow="{{ progress }}" aria-valuemin="0" aria-valuemax="100"></div>
       </div>
-      <!-- Right group: back and finish buttons -->
+      <!-- Правая группа: кнопки назад и далее -->
       <div class="d-flex align-items-center gap-2 ms-3">
         <a href="{{ back_url }}" class="btn btn-link d-flex align-items-center justify-content-center"
            style="height: 40px;">Назад</a>
-        <button type="submit" form="detailsForm" class="btn btn-primary d-flex align-items-center justify-content-center"
+        <button type="submit" form="rulesForm" class="btn btn-primary d-flex align-items-center justify-content-center"
                 style="height: 40px;">Далее</button>
       </div>
     </div>
@@ -47,75 +47,40 @@
 {% endif %}
 
 <div class="container py-4">
-  <!-- Constrained container to align with previous steps -->
-  <div class="mx-auto" style="max-width: 700px;">
-    <!-- Heading for details step (renamed) -->
-    <h2 class="fw-bold fs-2 mb-4 text-start">Дополнительно</h2>
-    <form method="post" id="detailsForm">
-      <!-- Row for floor and elevator: use flexbox to ensure they remain in one line on medium screens and above -->
-      <div class="mb-3 d-flex flex-column flex-md-row align-items-md-center">
-        <!-- Floor input occupies available space and has margin on the right when inline -->
-        <div class="flex-grow-1 me-md-3">
-          <label for="floor" class="form-label fw-bold">Этаж</label>
-          <input type="number" class="form-control" id="floor" name="floor" min="1" step="1" value="{{ floor }}" required>
-        </div>
-        <!-- Elevator radio group.  On small screens it has a top margin for separation; on md screens it aligns vertically center with the input -->
-        <div class="d-flex align-items-center mt-2 mt-md-4">
-          <label for="elevator_yes" class="form-label fw-bold me-2 mb-0">Есть лифт?</label>
-          <div class="form-check form-check-inline mb-0">
-            <input class="form-check-input" type="radio" id="elevator_yes" name="elevator" value="yes" {% if elevator == 'yes' %}checked{% endif %}>
-            <label class="form-check-label" for="elevator_yes">Да</label>
-          </div>
-          <div class="form-check form-check-inline mb-0">
-            <input class="form-check-input" type="radio" id="elevator_no" name="elevator" value="no" {% if elevator == 'no' %}checked{% endif %}>
-            <label class="form-check-label" for="elevator_no">Нет</label>
-          </div>
-        </div>
-      </div>
-      <!-- Row for area fields: place total, living and kitchen area inputs side by side and align to the right -->
+  <div class="mx-auto" style="max-width: 600px;">
+    <h2 class="fw-bold fs-2 mb-4 text-start">Правила дома</h2>
+    <form method="post" id="rulesForm" action="{{ url_for('new_room_step6') }}">
       <div class="mb-3">
-        <div class="row g-2 justify-content-end">
-          <!-- Total area -->
-          <div class="col-12 col-md-4">
-            <label for="total_area" class="form-label fw-bold">Общая площадь (м²)</label>
-            <input type="number" class="form-control" id="total_area" name="total_area" min="0" step="0.1" value="{{ total_area }}" required>
-          </div>
-          <!-- Living area -->
-          <div class="col-12 col-md-4">
-            <label for="living_area" class="form-label fw-bold">Жилая площадь (м²)</label>
-            <input type="number" class="form-control" id="living_area" name="living_area" min="0" step="0.1" value="{{ living_area }}" required>
-          </div>
-          <!-- Kitchen area -->
-          <div class="col-12 col-md-4">
-            <label for="kitchen_area" class="form-label fw-bold">Площадь кухни (м²)</label>
-            <input type="number" class="form-control" id="kitchen_area" name="kitchen_area" min="0" step="0.1" value="{{ kitchen_area }}" required>
-          </div>
+        <label for="check_in_time" class="form-label fw-bold">Время заезда</label>
+        <input type="time" class="form-control" id="check_in_time" name="check_in_time" value="{{ check_in_time }}">
+      </div>
+      <div class="mb-3">
+        <label for="check_out_time" class="form-label fw-bold">Время выезда</label>
+        <input type="time" class="form-control" id="check_out_time" name="check_out_time" value="{{ check_out_time }}">
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-bold d-block">Курение разрешено?</label>
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" name="smoking" id="smokingYes" value="yes" {% if smoking == 'yes' %}checked{% endif %}>
+          <label class="form-check-label" for="smokingYes">Да</label>
+        </div>
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" name="smoking" id="smokingNo" value="no" {% if smoking == 'no' %}checked{% endif %}>
+          <label class="form-check-label" for="smokingNo">Нет</label>
         </div>
       </div>
-      <!-- Renovation type -->
       <div class="mb-4">
-        <label for="renovation" class="form-label fw-bold">Ремонт</label>
-        <select class="form-select" id="renovation" name="renovation" required>
-          <option value="" disabled {% if not renovation %}selected{% endif %}>Выберите тип ремонта</option>
-          <option value="designer" {% if renovation == 'designer' %}selected{% endif %}>Дизайнерский</option>
-          <option value="euro" {% if renovation == 'euro' %}selected{% endif %}>Евроремонт</option>
-          <option value="standard" {% if renovation == 'standard' %}selected{% endif %}>Стандарт</option>
-        </select>
+        <label class="form-label fw-bold d-block">Домашние животные разрешены?</label>
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" name="pets" id="petsYes" value="yes" {% if pets == 'yes' %}checked{% endif %}>
+          <label class="form-check-label" for="petsYes">Да</label>
+        </div>
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" name="pets" id="petsNo" value="no" {% if pets == 'no' %}checked{% endif %}>
+          <label class="form-check-label" for="petsNo">Нет</label>
+        </div>
       </div>
     </form>
-    <!-- Hide the spinner arrows on number inputs -->
-    <style>
-      /* Hide spin buttons in WebKit browsers */
-      input[type=number]::-webkit-inner-spin-button,
-      input[type=number]::-webkit-outer-spin-button {
-        -webkit-appearance: none;
-        margin: 0;
-      }
-      /* Hide arrows in Firefox */
-      input[type=number] {
-        -moz-appearance: textfield;
-      }
-    </style>
   </div>
 </div>
 {% endblock %}
