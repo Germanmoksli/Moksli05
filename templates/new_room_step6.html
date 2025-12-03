@@ -49,40 +49,48 @@
 <div class="container py-4">
   <!-- Constrained container to align with previous steps -->
   <div class="mx-auto" style="max-width: 700px;">
-    <!-- Heading for details step -->
-    <h2 class="mb-4 text-primary fw-bold fs-2 text-center">Дополнительные параметры</h2>
+    <!-- Heading for details step (renamed) -->
+    <h2 class="mb-4 text-primary fw-bold fs-2 text-center">Дополнительно</h2>
     <form method="post" id="detailsForm">
-      <!-- Floor -->
-      <div class="mb-3">
-        <label for="floor" class="form-label fw-bold">Этаж</label>
-        <input type="number" class="form-control" id="floor" name="floor" min="1" step="1" value="{{ floor }}" required>
-      </div>
-      <!-- Elevator -->
-      <div class="mb-3">
-        <span class="form-label fw-bold d-block">Есть ли лифт?</span>
-        <div class="form-check form-check-inline">
-          <input class="form-check-input" type="radio" id="elevator_yes" name="elevator" value="yes" {% if elevator == 'yes' %}checked{% endif %}>
-          <label class="form-check-label" for="elevator_yes">Да</label>
+      <!-- Row for floor and elevator: align elevator controls to the right of the floor field -->
+      <div class="mb-3 row g-2 align-items-end">
+        <!-- Floor input -->
+        <div class="col-12 col-md-6">
+          <label for="floor" class="form-label fw-bold">Этаж</label>
+          <input type="number" class="form-control" id="floor" name="floor" min="1" step="1" value="{{ floor }}" required>
         </div>
-        <div class="form-check form-check-inline">
-          <input class="form-check-input" type="radio" id="elevator_no" name="elevator" value="no" {% if elevator == 'no' %}checked{% endif %}>
-          <label class="form-check-label" for="elevator_no">Нет</label>
+        <!-- Elevator radio group aligned to the right -->
+        <div class="col-12 col-md-6 d-flex flex-column flex-md-row align-items-md-center justify-content-md-end">
+          <span class="form-label fw-bold me-2">Есть лифт?</span>
+          <div class="form-check form-check-inline">
+            <input class="form-check-input" type="radio" id="elevator_yes" name="elevator" value="yes" {% if elevator == 'yes' %}checked{% endif %}>
+            <label class="form-check-label" for="elevator_yes">Да</label>
+          </div>
+          <div class="form-check form-check-inline">
+            <input class="form-check-input" type="radio" id="elevator_no" name="elevator" value="no" {% if elevator == 'no' %}checked{% endif %}>
+            <label class="form-check-label" for="elevator_no">Нет</label>
+          </div>
         </div>
       </div>
-      <!-- Total area -->
+      <!-- Row for area fields: place total, living and kitchen area inputs side by side and align to the right -->
       <div class="mb-3">
-        <label for="total_area" class="form-label fw-bold">Общая площадь (м²)</label>
-        <input type="number" class="form-control" id="total_area" name="total_area" min="0" step="0.1" value="{{ total_area }}" required>
-      </div>
-      <!-- Living area -->
-      <div class="mb-3">
-        <label for="living_area" class="form-label fw-bold">Жилая площадь (м²)</label>
-        <input type="number" class="form-control" id="living_area" name="living_area" min="0" step="0.1" value="{{ living_area }}" required>
-      </div>
-      <!-- Kitchen area -->
-      <div class="mb-3">
-        <label for="kitchen_area" class="form-label fw-bold">Площадь кухни (м²)</label>
-        <input type="number" class="form-control" id="kitchen_area" name="kitchen_area" min="0" step="0.1" value="{{ kitchen_area }}" required>
+        <div class="row g-2 justify-content-end">
+          <!-- Total area -->
+          <div class="col-12 col-md-4">
+            <label for="total_area" class="form-label fw-bold">Общая площадь (м²)</label>
+            <input type="number" class="form-control" id="total_area" name="total_area" min="0" step="0.1" value="{{ total_area }}" required>
+          </div>
+          <!-- Living area -->
+          <div class="col-12 col-md-4">
+            <label for="living_area" class="form-label fw-bold">Жилая площадь (м²)</label>
+            <input type="number" class="form-control" id="living_area" name="living_area" min="0" step="0.1" value="{{ living_area }}" required>
+          </div>
+          <!-- Kitchen area -->
+          <div class="col-12 col-md-4">
+            <label for="kitchen_area" class="form-label fw-bold">Площадь кухни (м²)</label>
+            <input type="number" class="form-control" id="kitchen_area" name="kitchen_area" min="0" step="0.1" value="{{ kitchen_area }}" required>
+          </div>
+        </div>
       </div>
       <!-- Renovation type -->
       <div class="mb-4">
@@ -95,6 +103,19 @@
         </select>
       </div>
     </form>
+    <!-- Hide the spinner arrows on number inputs -->
+    <style>
+      /* Hide spin buttons in WebKit browsers */
+      input[type=number]::-webkit-inner-spin-button,
+      input[type=number]::-webkit-outer-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+      }
+      /* Hide arrows in Firefox */
+      input[type=number] {
+        -moz-appearance: textfield;
+      }
+    </style>
   </div>
 </div>
 {% endblock %}
