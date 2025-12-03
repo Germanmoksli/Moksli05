@@ -8046,7 +8046,7 @@ def new_room_step1():
     selected_type = session.get('new_listing_property_type')
     # Set progress (out of 100) for step 1. With three steps the first
     # represents roughly one third of the process.
-    progress = 25
+    progress = 11
     # In the first step there is no previous page in the wizard, but we use
     # None to indicate the back button should be hidden.
     back_url: typing.Optional[str] = None
@@ -8099,7 +8099,7 @@ def new_room_step2():
     # On GET we determine the progress and navigation values for the
     # template.  With three steps in the wizard this represents the
     # second step, so progress is approximately two thirds of the way.
-    progress = 50
+    progress = 22
     back_url = url_for('new_room_step1')
     # ``next_url`` is not used when the form is posted.  It can remain
     # present in the template for consistency with step 1 but will be
@@ -8316,7 +8316,7 @@ def new_room_step3():
         # Proceed to the next step (photo upload)
         return redirect(url_for('new_room_step4'))
     # Display the amenity selection interface
-    progress = 75
+    progress = 33
     back_url = url_for('new_room_step2')
     next_url = url_for('new_room_step4')
     selected = session.get('new_listing_amenities', [])
@@ -8672,7 +8672,7 @@ def new_room_step6():
         # Proceed to pricing step
         return redirect(url_for('new_room_step7'))
     # On GET set progress (roughly 65 percent of the way through 9 steps)
-    progress = 65
+    progress = 66
     back_url = url_for('new_room_step5')
     next_url = url_for('new_room_step7')
     return render_template(
@@ -8728,7 +8728,7 @@ def new_room_step7():
         # Proceed to discount selection
         return redirect(url_for('new_room_step8'))
     # On GET determine progress (roughly 75 percent)
-    progress = 75
+    progress = 77
     back_url = url_for('new_room_step6')
     next_url = url_for('new_room_step8')
     # Prepare the base price string with spaces for thousands separators
@@ -8785,7 +8785,7 @@ def new_room_step8():
             session['new_listing_discounts'] = []
         return redirect(url_for('new_room_step9'))
     # On GET progress is roughly 85 percent
-    progress = 85
+    progress = 88
     back_url = url_for('new_room_step7')
     next_url = url_for('new_room_step9')
     return render_template(
