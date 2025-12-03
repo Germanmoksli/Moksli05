@@ -52,15 +52,15 @@
     <!-- Heading for details step (renamed) -->
     <h2 class="mb-4 text-primary fw-bold fs-2 text-center">Дополнительно</h2>
     <form method="post" id="detailsForm">
-      <!-- Row for floor and elevator: align elevator controls horizontally with the floor field -->
-      <div class="mb-3 row g-2 align-items-center">
-        <!-- Floor input -->
-        <div class="col-12 col-md-6">
+      <!-- Row for floor and elevator: use flexbox to ensure they remain in one line on medium screens and above -->
+      <div class="mb-3 d-flex flex-column flex-md-row align-items-md-center">
+        <!-- Floor input occupies available space and has margin on the right when inline -->
+        <div class="flex-grow-1 me-md-3">
           <label for="floor" class="form-label fw-bold">Этаж</label>
           <input type="number" class="form-control" id="floor" name="floor" min="1" step="1" value="{{ floor }}" required>
         </div>
-        <!-- Elevator radio group aligned to the right -->
-        <div class="col-12 col-md-6 d-flex align-items-center mt-md-2 ms-md-3">
+        <!-- Elevator radio group.  On small screens it has a top margin for separation; on md screens it aligns vertically center with the input -->
+        <div class="d-flex align-items-center mt-2 mt-md-0">
           <label for="elevator_yes" class="form-label fw-bold me-2 mb-0">Есть лифт?</label>
           <div class="form-check form-check-inline mb-0">
             <input class="form-check-input" type="radio" id="elevator_yes" name="elevator" value="yes" {% if elevator == 'yes' %}checked{% endif %}>
