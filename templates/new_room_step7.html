@@ -55,14 +55,16 @@
     <p class="text-center text-muted mb-4">Её можно изменить в любое время.</p>
     <form method="post" id="pricingForm">
       <!-- Base price input displayed in large format -->
-      <div class="d-flex justify-content-center align-items-baseline mb-4">
-        <span class="display-4 fw-bold me-2">₸</span>
-        {# The base price is rendered as plain text but remains editable.  #}
-        <input type="number" id="base_price" name="base_price"
-               class="border-0 display-4 fw-bold text-center"
-               min="0" step="1" value="{{ base_price }}" placeholder="0"
-               style="background-color: transparent; outline: none; flex: 0 0 auto; width: auto; min-width: 60px; max-width: 120px;"
-               required>
+      <div class="d-flex justify-content-center mb-4">
+        <div id="basePriceContainer" class="d-flex align-items-baseline justify-content-center">
+          <span class="display-4 fw-bold me-2">₸</span>
+          {# The base price is rendered as plain text but remains editable.  #}
+          <input type="number" id="base_price" name="base_price"
+                 class="border-0 display-4 fw-bold text-center"
+                 min="0" step="1" value="{{ base_price }}" placeholder="0"
+                 style="background-color: transparent; outline: none; flex: 0 0 auto; width: auto; min-width: 1ch;"
+                 required>
+        </div>
       </div>
       <!-- Weekend/holiday markup section -->
       <div class="mt-5">
@@ -70,8 +72,10 @@
         <p class="text-center text-muted mb-3">Укажите процентную надбавку относительно базовой цены.</p>
         <!-- Display calculated weekend price -->
         <div class="d-flex justify-content-center align-items-baseline mb-2">
-          <span class="display-4 fw-bold me-2">₸</span>
-          <span id="weekend_price" class="display-4 fw-bold">0</span>
+          <div id="weekendPriceContainer" class="d-flex align-items-baseline justify-content-center">
+            <span class="display-4 fw-bold me-2">₸</span>
+            <span id="weekend_price" class="display-4 fw-bold">0</span>
+          </div>
         </div>
         <!-- Display percentage label -->
         <div class="text-center mb-3">
@@ -135,6 +139,38 @@
     const markupRange = document.getElementById('weekendMarkup');
     const weekendPriceSpan = document.getElementById('weekend_price');
     const weekendPercentSpan = document.getElementById('weekendPercent');
+    const baseContainer = document.getElementById('basePriceContainer');
+    const weekendContainer = document.getElementById('weekendPriceContainer');
+
+    /**
+     * Adjust the width of the base price input based on the number of digits.
+     * This keeps the input compact while allowing it to expand when the user
+     * enters a longer number. Width is calculated in ch units which roughly
+     * correspond to the width of the "0" character in the current font.
+     */
+    function updateBaseInputWidth() {
+      const length = baseInput.value ? baseInput.value.length : 1;
+      // Add one extra character of space for the caret
+      const newWidth = (length + 1) + 'ch';
+      baseInput.style.width = newWidth;
+    }
+
+    /**
+     * Make the base price and weekend price containers the same width so that
+     * the currency icons align vertically in a single column. The larger
+     * container width is applied to both elements. Widths are measured
+     * temporarily by resetting to 'auto'.
+     */
+    function updateContainersWidth() {
+      // Reset widths to measure natural size
+      baseContainer.style.width = 'auto';
+      weekendContainer.style.width = 'auto';
+      const baseWidth = baseContainer.offsetWidth;
+      const weekendWidth = weekendContainer.offsetWidth;
+      const maxWidth = Math.max(baseWidth, weekendWidth);
+      baseContainer.style.width = maxWidth + 'px';
+      weekendContainer.style.width = maxWidth + 'px';
+    }
     function updateWeekend() {
       const base = parseFloat(baseInput.value) || 0;
       const markup = parseFloat(markupRange.value) || 0;
@@ -148,11 +184,16 @@
       markupRange.style.background =
         'linear-gradient(to right, var(--bs-primary) 0%, var(--bs-primary) ' + percent + '%, ' +
         'var(--bs-gray-300) ' + percent + '%, var(--bs-gray-300) 100%)';
+      // Update container widths when weekend price changes
+      updateContainersWidth();
     }
     baseInput.addEventListener('input', updateWeekend);
     markupRange.addEventListener('input', updateWeekend);
-    // Initialize values on load
+    baseInput.addEventListener('input', updateBaseInputWidth);
+    // Initialize values and widths on load
+    updateBaseInputWidth();
     updateWeekend();
+    updateContainersWidth();
   });
 </script>
 {% endblock %}
