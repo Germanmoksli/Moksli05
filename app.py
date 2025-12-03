@@ -8044,9 +8044,9 @@ def new_room_step1():
         return redirect(url_for('new_room_step2'))
     # Determine selected property type from session for highlighting cards
     selected_type = session.get('new_listing_property_type')
-    # Set progress (out of 100) for step 1. With three steps the first
-    # represents roughly one third of the process.
-    progress = 25
+    # Set progress (out of 100) for step 1.  With five steps the first
+    # represents roughly one fifth of the process.
+    progress = 20
     # In the first step there is no previous page in the wizard, but we use
     # None to indicate the back button should be hidden.
     back_url: typing.Optional[str] = None
@@ -8097,9 +8097,9 @@ def new_room_step2():
         return redirect(url_for('new_room_step3'))
 
     # On GET we determine the progress and navigation values for the
-    # template.  With three steps in the wizard this represents the
-    # second step, so progress is approximately two thirds of the way.
-    progress = 50
+    # template.  With five steps in the wizard this represents the
+    # second step, so progress is approximately 40 %% of the way.
+    progress = 40
     back_url = url_for('new_room_step1')
     # ``next_url`` is not used when the form is posted.  It can remain
     # present in the template for consistency with step 1 but will be
@@ -8316,7 +8316,9 @@ def new_room_step3():
         # Proceed to the next step (photo upload)
         return redirect(url_for('new_room_step4'))
     # Display the amenity selection interface
-    progress = 75
+    # With five steps in the wizard this represents roughly 60 %% of the
+    # overall progress (step 3 of 5).
+    progress = 60
     back_url = url_for('new_room_step2')
     next_url = url_for('new_room_step4')
     selected = session.get('new_listing_amenities', [])
@@ -8356,10 +8358,11 @@ def new_room_step4():
 
     This step comes after selecting amenities.  The owner can upload up to
     100 photos.  On POST the uploaded photos are saved to the ``uploads``
-    folder and their filenames stored in the session.  After uploading the
-    wizard finishes and redirects back to the list of rooms.  On GET the
-    previously saved photos (if any) are shown, progress is 100%% and the
-    back button returns to step 3 (amenities).
+    folder and their filenames stored in the session.  Once photos are
+    uploaded the wizard proceeds to the description step (step 5).  On GET
+    the previously saved photos (if any) are shown.  Because there is now
+    a fifth step, the progress is set to 80 %% and the back button returns
+    to step 3 (amenities).
     """
     # Ensure prior steps have been completed
     property_type = session.get('new_listing_property_type')
@@ -8409,12 +8412,14 @@ def new_room_step4():
             except Exception:
                 continue
         session['new_listing_photos'] = saved_filenames
-        # After uploading photos, complete the wizard
-        return redirect(url_for('list_rooms'))
+        # After uploading photos, proceed to the description step
+        return redirect(url_for('new_room_step5'))
     # On GET display the upload interface
-    progress = 100
+    # This step is now the fourth of five, so progress is 80%% and
+    # ``next_url`` points to step 5.
+    progress = 80
     back_url = url_for('new_room_step3')
-    next_url: typing.Optional[str] = None
+    next_url: typing.Optional[str] = url_for('new_room_step5')
     existing_photos = session.get('new_listing_photos', [])
     return render_template(
         'new_room_step4.html',
@@ -8424,6 +8429,57 @@ def new_room_step4():
         next_url=next_url,
         hide_nav=True,
         existing_photos=existing_photos,
+    )
+
+
+# -----------------------------------------------------------------------------
+# Step 5 of the new listing wizard: descriptions
+#
+# This final step collects textual descriptions about the listing.  The owner
+# can provide a main description (up to 2000 characters) and additional
+# notes that guests should know in advance (up to 1000 characters).  On POST
+# the descriptions are stored in the session and the wizard completes,
+# redirecting back to the list of rooms.  On GET the previously saved
+# descriptions (if any) are shown.  The progress is 100 % and the back
+# button returns to step 4 (photo upload).
+@app.route('/rooms/new/step5', methods=['GET', 'POST'])
+@login_required
+@roles_required('owner')
+def new_room_step5():
+    # Ensure prior steps have been completed
+    property_type = session.get('new_listing_property_type')
+    if property_type is None:
+        return redirect(url_for('new_room_step1'))
+    if 'new_listing_address' not in session:
+        return redirect(url_for('new_room_step2'))
+    if 'new_listing_amenities' not in session:
+        return redirect(url_for('new_room_step3'))
+    if 'new_listing_photos' not in session:
+        return redirect(url_for('new_room_step4'))
+    # Handle submission on POST
+    if request.method == 'POST':
+        main_description = request.form.get('main_description', '').strip()
+        guest_notes = request.form.get('guest_notes', '').strip()
+        # Persist to session
+        session['new_listing_main_description'] = main_description
+        session['new_listing_guest_notes'] = guest_notes
+        # After descriptions are saved, complete the wizard
+        return redirect(url_for('list_rooms'))
+    # On GET populate form fields from session
+    progress = 100
+    back_url = url_for('new_room_step4')
+    next_url: typing.Optional[str] = None
+    main_description = session.get('new_listing_main_description', '')
+    guest_notes = session.get('new_listing_guest_notes', '')
+    return render_template(
+        'new_room_step5.html',
+        property_type=property_type,
+        progress=progress,
+        back_url=back_url,
+        next_url=next_url,
+        hide_nav=True,
+        main_description=main_description,
+        guest_notes=guest_notes,
     )
 
 
