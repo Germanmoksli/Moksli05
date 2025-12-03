@@ -50,7 +50,7 @@
 
 <div class="container py-4">
   <div class="mx-auto" style="max-width: 600px;">
-    <h2 class="fw-bold fs-2 text-center mb-4">Выберите скидки</h2>
+    <h2 class="fw-bold fs-2 mb-4 text-start">Выберите скидки</h2>
     <form method="post" id="discountForm">
       <div class="d-flex flex-column align-items-center gap-4">
         <!-- 20% discount tile -->
@@ -100,13 +100,16 @@
     padding: 1.5rem;
     cursor: pointer;
     transition: border-color 0.2s, background-color 0.2s;
+    /* Add a subtle shadow to elevate the tiles */
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.05);
   }
   .discount-icon {
     width: 48px;
     height: 48px;
-    border-radius: 0.5rem;
-    background-color: var(--bs-primary-bg-subtle, #e7f1ff);
-    color: var(--bs-primary);
+    border-radius: 50%;
+    /* Use the primary color for the background and white text */
+    background-color: var(--bs-primary);
+    color: #fff;
     display: flex;
     align-items: center;
     justify-content: center;
