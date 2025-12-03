@@ -42,7 +42,7 @@
         <a href="{{ back_url }}" class="btn btn-link d-flex align-items-center justify-content-center"
            style="height: 40px;">Назад</a>
         <button type="submit" form="discountForm" class="btn btn-primary d-flex align-items-center justify-content-center"
-                style="height: 40px;">Завершить</button>
+                style="height: 40px;">Далее</button>
       </div>
     </div>
   </div>
@@ -51,7 +51,7 @@
 <div class="container py-4">
   <div class="mx-auto" style="max-width: 600px;">
     <h2 class="fw-bold fs-2 mb-4 text-start">Выберите скидки</h2>
-    <form method="post" id="discountForm">
+    <form method="post" id="discountForm" action="{{ url_for('new_room_step9') }}">
       <div class="d-flex flex-column align-items-center gap-4">
         <!-- 20% discount tile -->
         <input type="checkbox" class="btn-check" id="discount20" name="discounts" value="20" autocomplete="off"

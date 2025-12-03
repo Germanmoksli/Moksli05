@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{#
+  Step 9 of the new listing wizard: house rules.  This final step allows
+  hosts to define check‑in and check‑out times and specify smoking and
+  pet policies.  A unified navigation bar appears at the top with
+  cancel/draft actions, a progress bar and back/finish buttons.  A
+  constrained container centres the form and aligns with prior steps.
+#}
+
+{% block title %}Новое объявление – Шаг 9{% endblock %}
+
+{% block content %}
+{% if hide_nav %}
+  <!-- Top navigation bar for house rules step -->
+  <div class="container-fluid bg-light py-2 mb-3" style="border: none;">
+    <div class="d-flex align-items-center justify-content-between">
+      <!-- Left group: cancel and save draft -->
+      <div class="d-flex align-items-center gap-2 me-3">
+        <a href="{{ url_for('cancel_new_room') }}" class="d-flex align-items-center justify-content-center rounded-circle"
+           style="width: 40px; height: 40px; background-color: #f1f3f5; text-decoration: none;">
+          <i class="bi bi-x-lg fs-4 fw-bold text-primary"></i>
+        </a>
+        <form action="{{ url_for('save_new_room_draft') }}" method="post" class="m-0">
+          <button type="submit"
+                  class="btn fw-bold text-primary d-flex align-items-center justify-content-center"
+                  style="background-color: #f1f3f5; border: none; border-radius: 0.375rem; height: 40px; padding: 0 1rem;">
+            В черновик
+          </button>
+        </form>
+      </div>
+      <!-- Progress bar -->
+      <div class="progress flex-grow-1 mx-3 border-0" style="height: 6px; border: none;">
+        <div class="progress-bar bg-primary" role="progressbar" style="width: {{ progress }}%;"
+             aria-valuenow="{{ progress }}" aria-valuemin="0" aria-valuemax="100"></div>
+      </div>
+      <!-- Right group: back and finish buttons -->
+      <div class="d-flex align-items-center gap-2 ms-3">
+        <a href="{{ back_url }}" class="btn btn-link d-flex align-items-center justify-content-center"
+           style="height: 40px;">Назад</a>
+        <button type="submit" form="rulesForm" class="btn btn-primary d-flex align-items-center justify-content-center"
+                style="height: 40px;">Завершить</button>
+      </div>
+    </div>
+  </div>
+{% endif %}
+
+<div class="container py-4">
+  <div class="mx-auto" style="max-width: 700px;">
+    <!-- Heading for house rules -->
+    <h2 class="fw-bold fs-2 mb-4 text-start">Правила дома</h2>
+    <form method="post" id="rulesForm">
+      <!-- Check-in/out times -->
+      <div class="mb-4">
+        <label class="form-label fw-bold d-block">Время заезда/выезда</label>
+        <div class="row g-2">
+          <div class="col-12 col-md-6">
+            <input type="time" class="form-control" name="check_in_time" value="{{ check_in_time or '14:00' }}" required>
+          </div>
+          <div class="col-12 col-md-6">
+            <input type="time" class="form-control" name="check_out_time" value="{{ check_out_time or '12:00' }}" required>
+          </div>
+        </div>
+      </div>
+      <!-- Smoking policy -->
+      <div class="mb-4">
+        <label class="form-label fw-bold">Курение</label>
+        <div class="d-flex flex-wrap align-items-center">
+          <div class="form-check me-3">
+            <input class="form-check-input" type="radio" id="smoking_allowed" name="smoking" value="allowed"
+                   {% if smoking == 'allowed' %}checked{% endif %}>
+            <label class="form-check-label" for="smoking_allowed">Разрешено</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="radio" id="smoking_forbidden" name="smoking" value="forbidden"
+                   {% if smoking == 'forbidden' %}checked{% endif %}>
+            <label class="form-check-label" for="smoking_forbidden">Запрещено</label>
+          </div>
+        </div>
+      </div>
+      <!-- Pets policy -->
+      <div class="mb-4">
+        <label class="form-label fw-bold">Питомцы</label>
+        <div class="d-flex flex-wrap align-items-center">
+          <div class="form-check me-3">
+            <input class="form-check-input" type="radio" id="pets_allowed" name="pets" value="allowed"
+                   {% if pets == 'allowed' %}checked{% endif %}>
+            <label class="form-check-label" for="pets_allowed">Разрешено</label>
+          </div>
+          <div class="form-check me-3">
+            <input class="form-check-input" type="radio" id="pets_forbidden" name="pets" value="forbidden"
+                   {% if pets == 'forbidden' %}checked{% endif %}>
+            <label class="form-check-label" for="pets_forbidden">Запрещено</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="radio" id="pets_negotiable" name="pets" value="negotiable"
+                   {% if pets == 'negotiable' %}checked{% endif %}>
+            <label class="form-check-label" for="pets_negotiable">По согласованию</label>
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
