@@ -59,11 +59,11 @@
         <div id="basePriceContainer" class="d-flex align-items-baseline justify-content-center">
           <span class="display-4 fw-bold me-2">₸</span>
           {# The base price is rendered as plain text but remains editable.  #}
-          <input type="number" id="base_price" name="base_price"
-                 class="border-0 display-4 fw-bold text-center"
-                 min="0" step="1" value="{{ base_price }}" placeholder="0"
-                 style="background-color: transparent; outline: none; flex: 0 0 auto; width: auto; min-width: 1ch;"
-                 required>
+        <input type="text" id="base_price" name="base_price"
+               class="border-0 display-4 fw-bold text-center"
+               inputmode="numeric" pattern="[0-9\s]*" value="{{ base_price }}" placeholder="00 000"
+               style="background-color: transparent; outline: none; flex: 0 0 auto; width: auto; min-width: 1ch;"
+               required>
         </div>
       </div>
       <!-- Weekend/holiday markup section -->
@@ -149,11 +149,31 @@
      * correspond to the width of the "0" character in the current font.
      */
     function updateBaseInputWidth() {
-      const length = baseInput.value ? baseInput.value.length : 1;
+      // Remove spaces to measure only digit characters
+      const digitsOnly = baseInput.value.replace(/\s+/g, '');
+      const length = digitsOnly.length || 1;
       // Add one extra character of space for the caret
       const newWidth = (length + 1) + 'ch';
       baseInput.style.width = newWidth;
     }
+
+    /**
+     * Format a numeric string by inserting spaces every three digits.
+     */
+    function formatNumberWithSpaces(val) {
+      const digits = val.replace(/\D+/g, '');
+      return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+    }
+
+    // Format the base price input on each keystroke to include spaces as thousand separators
+    baseInput.addEventListener('input', function() {
+      const raw = baseInput.value.replace(/\s+/g, '');
+      // Do not process non-digit characters
+      const formatted = formatNumberWithSpaces(raw);
+      baseInput.value = formatted;
+      updateBaseInputWidth();
+      updateWeekend();
+    });
 
     /**
      * Make the base price and weekend price containers the same width so that
@@ -172,7 +192,9 @@
       weekendContainer.style.width = maxWidth + 'px';
     }
     function updateWeekend() {
-      const base = parseFloat(baseInput.value) || 0;
+      // Remove spaces when parsing the base value
+      const rawBase = baseInput.value.replace(/\s+/g, '');
+      const base = parseFloat(rawBase) || 0;
       const markup = parseFloat(markupRange.value) || 0;
       const weekend = Math.round(base * (1 + markup / 100));
       weekendPriceSpan.textContent = weekend.toLocaleString('ru-RU');
@@ -187,10 +209,14 @@
       // Update container widths when weekend price changes
       updateContainersWidth();
     }
-    baseInput.addEventListener('input', updateWeekend);
     markupRange.addEventListener('input', updateWeekend);
-    baseInput.addEventListener('input', updateBaseInputWidth);
+    // baseInput input handler defined above will call updateWeekend and updateBaseInputWidth
     // Initialize values and widths on load
+    // Format the initial value if provided
+    if (baseInput.value) {
+      const formatted = formatNumberWithSpaces(baseInput.value.replace(/\s+/g, ''));
+      baseInput.value = formatted;
+    }
     updateBaseInputWidth();
     updateWeekend();
     updateContainersWidth();

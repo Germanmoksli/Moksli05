@@ -43,13 +43,15 @@
 {% endif %}
 <div class="container py-4">
   {# Progress bar is now included in the unified top bar; remove duplicate here #}
-  <h2 class="fw-bold fs-2 mb-4 text-start">Что вы хотите сдать?</h2>
   <style>
     /* Highlight the selected property card when its radio button is checked */
     input[type=radio]:checked + .card {
       border: 2px solid var(--bs-primary) !important;
     }
   </style>
+  <div class="mx-auto" style="max-width: 600px;">
+    <!-- Step heading aligned with the form below -->
+    <h2 class="fw-bold fs-2 mb-4 text-start">Что вы хотите сдать?</h2>
     <form method="post" id="typeForm">
       {# Hidden field to store the name of the property entered in the popup.  This
          value will be submitted along with the property type and used on
@@ -99,6 +101,7 @@
         </label>
       </div>
     </form>
+    </div>
 
     {# Modal dialog to capture the property name.  It opens when the user selects
        a property type and prevents proceeding until a name is provided. #}

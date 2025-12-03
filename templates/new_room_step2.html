@@ -38,9 +38,10 @@
 {% endif %}
 <div class="container py-4">
   {# Прогресс бар перемещён в верхнюю панель #}
-  <!-- Заголовок выравнен по центру, увеличен и выделен жирным -->
-  <h2 class="fw-bold fs-2 mb-4 text-start">Где находится объект?</h2>
-  {% if property_type %}
+  <div class="mx-auto" style="max-width: 700px;">
+    <!-- Page heading aligned with form -->
+    <h2 class="fw-bold fs-2 mb-4 text-start">Где находится объект?</h2>
+    {% if property_type %}
     {# Убрали подзаголовок "Вы выбрали: ..."; только форма адреса #}
     <form method="post" id="addressForm">
       {# Центрируем и ограничиваем ширину блока с адресными полями, чтобы поля были уже #}
@@ -196,9 +197,10 @@
       window.initAddressMap = initAddressMap;
       }
     </script>
-  {% else %}
-    <p>Тип жилья не выбран. Пожалуйста, начните процесс создания объявления заново.</p>
-    <a href="{{ url_for('new_room_step1') }}" class="btn btn-primary mt-3">Вернуться к выбору</a>
-  {% endif %}
+    {% else %}
+      <p>Тип жилья не выбран. Пожалуйста, начните процесс создания объявления заново.</p>
+      <a href="{{ url_for('new_room_step1') }}" class="btn btn-primary mt-3">Вернуться к выбору</a>
+    {% endif %}
+  </div>  {# Close the mx-auto container #}
 </div>
 {% endblock %}

@@ -51,19 +51,19 @@
   <!-- Wrap the form in a constrained container to align with previous steps -->
   <div class="mx-auto" style="max-width: 700px;">
     <!-- Heading for descriptions step -->
-    <h2 class="fw-bold fs-2 mb-4 text-start">Описание квартиры</h2>
+    <h2 class="fw-bold fs-2 mb-4 text-start">Описание объекта</h2>
     <form method="post" id="descriptionForm">
       <!-- Main description -->
       <div class="mb-4">
         <label for="main_description" class="form-label fw-bold">Основное описание</label>
-        <textarea class="form-control" id="main_description" name="main_description" rows="6" maxlength="2000" required>{{ main_description }}</textarea>
-        <div class="form-text text-end"><span id="mainDescCount">0</span>/2000</div>
+        <textarea class="form-control" id="main_description" name="main_description" rows="6" maxlength="1000" required>{{ main_description }}</textarea>
+        <div class="form-text text-end"><span id="mainDescCount">0</span>/1000</div>
       </div>
       <!-- Guest notes -->
       <div class="mb-4">
         <label for="guest_notes" class="form-label fw-bold">Что важно знать гостю заранее?</label>
-        <textarea class="form-control" id="guest_notes" name="guest_notes" rows="4" maxlength="1000">{{ guest_notes }}</textarea>
-        <div class="form-text text-end"><span id="guestNotesCount">0</span>/1000</div>
+        <textarea class="form-control" id="guest_notes" name="guest_notes" rows="4" maxlength="500">{{ guest_notes }}</textarea>
+        <div class="form-text text-end"><span id="guestNotesCount">0</span>/500</div>
       </div>
     </form>
   </div>

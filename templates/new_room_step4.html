@@ -46,9 +46,11 @@
 {% endif %}
 
 <div class="container py-4">
-  <!-- Heading for photo upload step -->
-  <h2 class="fw-bold fs-2 mb-4 text-start">Добавьте фото</h2>
-  <form method="post" enctype="multipart/form-data" id="photoForm">
+  <!-- Constrain the photo upload section to align with other steps -->
+  <div class="mx-auto" style="max-width: 700px;">
+    <!-- Heading for photo upload step -->
+    <h2 class="fw-bold fs-2 mb-4 text-start">Добавьте фото</h2>
+    <form method="post" enctype="multipart/form-data" id="photoForm">
     <!-- Large upload area (hidden once photos are added) -->
     <div id="uploadContainer" class="mb-3 d-flex justify-content-center">
       <div id="uploadArea"
@@ -217,6 +219,7 @@
         renderGrid();
       {% endif %}
     });
-  </script>
+    </script>
+    </div> {# Close the mx-auto container #}
 </div>
 {% endblock %}

@@ -337,6 +337,47 @@
             <span class="label">Рядом есть парковка</span>
           </label>
         </div>
+
+        <!-- Датчик дыма -->
+        <div class="col">
+          <label class="amenity-tile no-icon" for="amenity_smoke_detector">
+            <input type="checkbox" id="amenity_smoke_detector" name="amenities" value="smoke_detector" {% if 'smoke_detector' in selected %}checked{% endif %}>
+            <span class="icon"><i class="bi bi-bell"></i></span>
+            <span class="label">Датчик дыма</span>
+          </label>
+        </div>
+        <!-- Датчик газа -->
+        <div class="col">
+          <label class="amenity-tile no-icon" for="amenity_gas_detector">
+            <input type="checkbox" id="amenity_gas_detector" name="amenities" value="gas_detector" {% if 'gas_detector' in selected %}checked{% endif %}>
+            <span class="icon"><i class="bi bi-exclamation-octagon"></i></span>
+            <span class="label">Датчик газа</span>
+          </label>
+        </div>
+        <!-- Огнетушитель -->
+        <div class="col">
+          <label class="amenity-tile no-icon" for="amenity_fire_extinguisher">
+            <input type="checkbox" id="amenity_fire_extinguisher" name="amenities" value="fire_extinguisher" {% if 'fire_extinguisher' in selected %}checked{% endif %}>
+            <span class="icon"><i class="bi bi-fire"></i></span>
+            <span class="label">Огнетушитель</span>
+          </label>
+        </div>
+        <!-- Аптечка -->
+        <div class="col">
+          <label class="amenity-tile no-icon" for="amenity_first_aid_kit">
+            <input type="checkbox" id="amenity_first_aid_kit" name="amenities" value="first_aid_kit" {% if 'first_aid_kit' in selected %}checked{% endif %}>
+            <span class="icon"><i class="bi bi-plus-square"></i></span>
+            <span class="label">Аптечка</span>
+          </label>
+        </div>
+        <!-- Закрытый двор -->
+        <div class="col">
+          <label class="amenity-tile no-icon" for="amenity_gated_courtyard">
+            <input type="checkbox" id="amenity_gated_courtyard" name="amenities" value="gated_courtyard" {% if 'gated_courtyard' in selected %}checked{% endif %}>
+            <span class="icon"><i class="bi bi-shield-lock"></i></span>
+            <span class="label">Закрытый двор</span>
+          </label>
+        </div>
       </div>
     </div>
 
