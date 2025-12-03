@@ -8044,9 +8044,9 @@ def new_room_step1():
         return redirect(url_for('new_room_step2'))
     # Determine selected property type from session for highlighting cards
     selected_type = session.get('new_listing_property_type')
-    # Set progress (out of 100) for step 1.  With five steps the first
-    # represents roughly one fifth of the process.
-    progress = 20
+    # Set progress (out of 100) for step 1.  With six steps this represents
+    # roughly one sixth (about 17 %).
+    progress = 17
     # In the first step there is no previous page in the wizard, but we use
     # None to indicate the back button should be hidden.
     back_url: typing.Optional[str] = None
@@ -8097,9 +8097,9 @@ def new_room_step2():
         return redirect(url_for('new_room_step3'))
 
     # On GET we determine the progress and navigation values for the
-    # template.  With five steps in the wizard this represents the
-    # second step, so progress is approximately 40 %% of the way.
-    progress = 40
+    # template.  With six steps in the wizard this represents the
+    # second step, so progress is approximately 33 %% of the way.
+    progress = 33
     back_url = url_for('new_room_step1')
     # ``next_url`` is not used when the form is posted.  It can remain
     # present in the template for consistency with step 1 but will be
@@ -8316,9 +8316,9 @@ def new_room_step3():
         # Proceed to the next step (photo upload)
         return redirect(url_for('new_room_step4'))
     # Display the amenity selection interface
-    # With five steps in the wizard this represents roughly 60 %% of the
-    # overall progress (step 3 of 5).
-    progress = 60
+    # With six steps in the wizard this represents roughly half of the
+    # overall progress (step 3 of 6).
+    progress = 50
     back_url = url_for('new_room_step2')
     next_url = url_for('new_room_step4')
     selected = session.get('new_listing_amenities', [])
@@ -8415,9 +8415,9 @@ def new_room_step4():
         # After uploading photos, proceed to the description step
         return redirect(url_for('new_room_step5'))
     # On GET display the upload interface
-    # This step is now the fourth of five, so progress is 80%% and
+    # This step is now the fourth of six, so progress is about 67 %% and
     # ``next_url`` points to step 5.
-    progress = 80
+    progress = 67
     back_url = url_for('new_room_step3')
     next_url: typing.Optional[str] = url_for('new_room_step5')
     existing_photos = session.get('new_listing_photos', [])
@@ -8463,12 +8463,13 @@ def new_room_step5():
         # Persist to session
         session['new_listing_main_description'] = main_description
         session['new_listing_guest_notes'] = guest_notes
-        # After descriptions are saved, complete the wizard
-        return redirect(url_for('list_rooms'))
+        # After descriptions are saved, proceed to the details step
+        return redirect(url_for('new_room_step6'))
     # On GET populate form fields from session
-    progress = 100
+    # This is now the fifth of six steps, so progress is about 83 %%.
+    progress = 83
     back_url = url_for('new_room_step4')
-    next_url: typing.Optional[str] = None
+    next_url: typing.Optional[str] = url_for('new_room_step6')
     main_description = session.get('new_listing_main_description', '')
     guest_notes = session.get('new_listing_guest_notes', '')
     return render_template(
@@ -8480,6 +8481,73 @@ def new_room_step5():
         hide_nav=True,
         main_description=main_description,
         guest_notes=guest_notes,
+    )
+
+
+# -----------------------------------------------------------------------------
+# Step 6 of the new listing wizard: additional details
+#
+# This final step collects physical details about the listing: the floor,
+# elevator availability, total/living/kitchen areas and the renovation type.
+# On POST the details are stored in the session and the wizard completes,
+# redirecting to the rooms list.  On GET the previously saved values (if any)
+# are displayed.  Progress is 100 % and the back button returns to step 5.
+@app.route('/rooms/new/step6', methods=['GET', 'POST'])
+@login_required
+@roles_required('owner')
+def new_room_step6():
+    # Ensure prior steps have been completed
+    property_type = session.get('new_listing_property_type')
+    if property_type is None:
+        return redirect(url_for('new_room_step1'))
+    if 'new_listing_address' not in session:
+        return redirect(url_for('new_room_step2'))
+    if 'new_listing_amenities' not in session:
+        return redirect(url_for('new_room_step3'))
+    if 'new_listing_photos' not in session:
+        return redirect(url_for('new_room_step4'))
+    if 'new_listing_main_description' not in session:
+        return redirect(url_for('new_room_step5'))
+    # Handle submission on POST
+    if request.method == 'POST':
+        floor = request.form.get('floor', '').strip()
+        elevator = request.form.get('elevator', '').strip()
+        total_area = request.form.get('total_area', '').strip()
+        living_area = request.form.get('living_area', '').strip()
+        kitchen_area = request.form.get('kitchen_area', '').strip()
+        renovation = request.form.get('renovation', '').strip()
+        # Persist to session
+        session['new_listing_floor'] = floor
+        session['new_listing_has_elevator'] = elevator
+        session['new_listing_total_area'] = total_area
+        session['new_listing_living_area'] = living_area
+        session['new_listing_kitchen_area'] = kitchen_area
+        session['new_listing_renovation'] = renovation
+        # After details are saved, finish the wizard
+        return redirect(url_for('list_rooms'))
+    # On GET populate form fields from session
+    progress = 100
+    back_url = url_for('new_room_step5')
+    next_url: typing.Optional[str] = None
+    floor = session.get('new_listing_floor', '')
+    elevator = session.get('new_listing_has_elevator', '')
+    total_area = session.get('new_listing_total_area', '')
+    living_area = session.get('new_listing_living_area', '')
+    kitchen_area = session.get('new_listing_kitchen_area', '')
+    renovation = session.get('new_listing_renovation', '')
+    return render_template(
+        'new_room_step6.html',
+        property_type=property_type,
+        progress=progress,
+        back_url=back_url,
+        next_url=next_url,
+        hide_nav=True,
+        floor=floor,
+        elevator=elevator,
+        total_area=total_area,
+        living_area=living_area,
+        kitchen_area=kitchen_area,
+        renovation=renovation,
     )
 
 
