@@ -46,14 +46,21 @@
 {% endif %}
 
 <div class="container py-4">
-  {# Page heading for amenities step #}
-  {# Heading removed since only accommodation options remain #}
-  <form method="post" id="amenitiesForm">
+  {# Wrap all of step 3 content in a constrained container so that headings and
+     subheadings align with the left edge of the “Возможности размещения” block.
+     This wrapper centres the content horizontally while keeping a fixed
+     maximum width.  All sections (accommodation options and amenity groups)
+     will inherit this width, preventing their headings from being flush with
+     the page edge. #}
+  <div class="mx-auto" style="max-width: 500px;">
+    {# Page heading for amenities step #}
+    {# Heading removed since only accommodation options remain #}
+    <form method="post" id="amenitiesForm">
     <!-- Accommodation options: rooms, guests, beds, sofas -->
     <div class="mb-5">
-      <h5 class="fw-bold fs-3 text-center text-primary mb-2">Возможности размещения</h5>
-      <p class="text-center text-muted mb-3">Укажите количество комнат, максимальное число гостей, кроватей и диванов</p>
-      <div class="row row-cols-1 g-3 justify-content-center" style="max-width: 500px; margin: 0 auto;">
+      <h5 class="fw-bold fs-3 text-primary mb-2">Возможности размещения</h5>
+      <p class="text-muted mb-3">Укажите количество комнат, максимальное число гостей, кроватей и диванов</p>
+      <div class="row row-cols-1 g-3 justify-content-center">
         <!-- Rooms count -->
         <div class="col">
           <div class="d-flex justify-content-between align-items-center">
@@ -202,8 +209,7 @@
     <div class="mb-5">
       <h5 class="fw-bold fs-3 text-primary mb-1">Удобства</h5>
       <p class="text-muted mb-3">Выберите подходящие варианты</p>
-      <div style="max-width: 500px; margin: 0 auto;">
-        <div class="row row-cols-1 row-cols-sm-2 g-3">
+      <div class="row row-cols-1 row-cols-sm-2 g-3">
         <!-- Интернет -->
         <div class="col">
           <label class="amenity-tile" for="amenity_internet">
@@ -284,15 +290,13 @@
             <span class="label">Кофеварка</span>
           </label>
         </div>
-        </div>
       </div>
     </div>
 
     <div class="mb-5">
       <h5 class="fw-bold fs-3 text-primary mb-1">Безопасность</h5>
       <p class="text-muted mb-3">Выберите подходящие варианты</p>
-      <div style="max-width: 500px; margin: 0 auto;">
-        <div class="row row-cols-1 row-cols-sm-2 g-3">
+      <div class="row row-cols-1 row-cols-sm-2 g-3">
         <!-- Домофон -->
         <div class="col">
           <label class="amenity-tile no-icon" for="amenity_intercom">
@@ -333,15 +337,13 @@
             <span class="label">Рядом есть парковка</span>
           </label>
         </div>
-        </div>
       </div>
     </div>
 
     <div class="mb-5">
       <h5 class="fw-bold fs-3 text-primary mb-1">Ванная комната</h5>
       <p class="text-muted mb-3">Выберите подходящие варианты</p>
-      <div style="max-width: 500px; margin: 0 auto;">
-        <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-3">
+      <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-3">
         <!-- Душевая кабина -->
         <div class="col">
           <label class="amenity-tile no-icon" for="amenity_shower">
@@ -414,15 +416,13 @@
             <span class="label">Гель для душа</span>
           </label>
         </div>
-        </div>
       </div>
     </div>
 
     <div class="mb-5">
       <h5 class="fw-bold fs-3 text-primary mb-1">Кому подойдёт квартира</h5>
       <p class="text-muted mb-3">Выберите подходящие варианты</p>
-      <div style="max-width: 500px; margin: 0 auto;">
-        <div class="row row-cols-1 row-cols-sm-2 g-3">
+      <div class="row row-cols-1 row-cols-sm-2 g-3">
         <!-- Некурящим -->
         <div class="col">
           <label class="amenity-tile no-icon" for="amenity_non_smoking">
@@ -462,9 +462,8 @@
             <span class="icon"><i class="bi bi-paw"></i></span>
             <span class="label">Можно с животными</span>
           </label>
-        </div>
-        </div>
       </div>
+    </div>
     </div>
     <!-- End of amenity selection sections -->
   </form>
@@ -501,5 +500,6 @@
       });
     });
   </script>
-</div>
+    </div> {# Close the .mx-auto wrapper #}
+  </div> {# Close the container .py-4 #}
 {% endblock %}
