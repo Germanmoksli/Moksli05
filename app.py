@@ -8046,7 +8046,7 @@ def new_room_step1():
     selected_type = session.get('new_listing_property_type')
     # Set progress (out of 100) for step 1.  With seven steps this
     # represents roughly one seventh (about 15 %).
-    progress = 15
+    progress = 13
     # In the first step there is no previous page in the wizard, but we use
     # None to indicate the back button should be hidden.
     back_url: typing.Optional[str] = None
@@ -8099,7 +8099,7 @@ def new_room_step2():
     # On GET we determine the progress and navigation values for the
     # template.  With seven steps in the wizard this represents the
     # second step, so progress is approximately 30 %% of the way.
-    progress = 30
+    progress = 25
     back_url = url_for('new_room_step1')
     # ``next_url`` is not used when the form is posted.  It can remain
     # present in the template for consistency with step 1 but will be
@@ -8318,7 +8318,7 @@ def new_room_step3():
     # Display the amenity selection interface
     # With seven steps in the wizard this represents roughly 45 %% of the
     # overall progress (step 3 of 7).
-    progress = 45
+    progress = 38
     back_url = url_for('new_room_step2')
     next_url = url_for('new_room_step4')
     selected = session.get('new_listing_amenities', [])
@@ -8417,7 +8417,7 @@ def new_room_step4():
     # On GET display the upload interface
     # This step is now the fourth of seven, so progress is about 60 %% and
     # ``next_url`` points to step 5.
-    progress = 60
+    progress = 50
     back_url = url_for('new_room_step3')
     next_url: typing.Optional[str] = url_for('new_room_step5')
     existing_photos = session.get('new_listing_photos', [])
@@ -8467,7 +8467,7 @@ def new_room_step5():
         return redirect(url_for('new_room_step6'))
     # On GET populate form fields from session
     # With seven steps this is the fifth, so progress is about 75 %%.
-    progress = 75
+    progress = 63
     back_url = url_for('new_room_step4')
     next_url: typing.Optional[str] = url_for('new_room_step6')
     main_description = session.get('new_listing_main_description', '')
@@ -8527,7 +8527,7 @@ def new_room_step6():
         return redirect(url_for('new_room_step7'))
     # On GET populate form fields from session
     # With seven steps this is the sixth, so progress is roughly 90 %%.
-    progress = 90
+    progress = 75
     back_url = url_for('new_room_step5')
     next_url: typing.Optional[str] = url_for('new_room_step7')
     floor = session.get('new_listing_floor', '')
@@ -8588,10 +8588,11 @@ def new_room_step7():
         # Persist to session
         session['new_listing_base_price'] = base_price
         session['new_listing_weekend_markup'] = weekend_markup
-        # After pricing is saved, finish the wizard
-        return redirect(url_for('list_rooms'))
+        # After pricing is saved, continue to the discounts step
+        return redirect(url_for('new_room_step8'))
     # On GET populate form fields from session
-    progress = 100
+    # Step 7 of an eight-step wizard: ~87 % progress
+    progress = 88
     back_url = url_for('new_room_step6')
     next_url: typing.Optional[str] = None
     base_price = session.get('new_listing_base_price', '')
@@ -8605,6 +8606,56 @@ def new_room_step7():
         hide_nav=True,
         base_price=base_price,
         weekend_markup=weekend_markup,
+    )
+
+# -----------------------------------------------------------------------------
+# Step 8: Discounts
+# This final step of the new listing wizard allows the host to choose optional
+# discounts that will apply to the first few bookings or longer stays.  After
+# saving the selected discounts to the session, the wizard redirects to the
+# list of rooms.  Progress is 100 % and the back button returns to step 7.
+@app.route('/rooms/new/step8', methods=['GET', 'POST'])
+@login_required
+@roles_required('owner')
+def new_room_step8():
+    # Ensure all prior steps have been completed
+    property_type = session.get('new_listing_property_type')
+    if property_type is None:
+        return redirect(url_for('new_room_step1'))
+    if 'new_listing_address' not in session:
+        return redirect(url_for('new_room_step2'))
+    if 'new_listing_amenities' not in session:
+        return redirect(url_for('new_room_step3'))
+    if 'new_listing_photos' not in session:
+        return redirect(url_for('new_room_step4'))
+    if 'new_listing_main_description' not in session:
+        return redirect(url_for('new_room_step5'))
+    if 'new_listing_floor' not in session:
+        return redirect(url_for('new_room_step6'))
+    if 'new_listing_base_price' not in session:
+        return redirect(url_for('new_room_step7'))
+    # Handle submission on POST
+    if request.method == 'POST':
+        selected = request.form.getlist('discounts')
+        try:
+            discounts = [int(x) for x in selected]
+        except Exception:
+            discounts = []
+        # Persist selected discount percentages to the session
+        session['new_listing_discounts'] = discounts
+        # Final step: redirect to list of rooms
+        return redirect(url_for('list_rooms'))
+    # On GET populate default values
+    progress = 100
+    back_url = url_for('new_room_step7')
+    discounts = session.get('new_listing_discounts', [])
+    return render_template(
+        'new_room_step8.html',
+        property_type=property_type,
+        progress=progress,
+        back_url=back_url,
+        discounts=discounts,
+        hide_nav=True,
     )
 
 
