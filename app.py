@@ -8409,10 +8409,11 @@ def new_room_step4():
             except Exception:
                 continue
         session['new_listing_photos'] = saved_filenames
-        # After uploading photos, complete the wizard
-        return redirect(url_for('list_rooms'))
+        # After uploading photos, proceed to the next step (descriptions)
+        return redirect(url_for('new_room_step5'))
     # On GET display the upload interface
-    progress = 100
+    # For a nine‑step wizard, step 4 corresponds to roughly 44%% progress
+    progress = 44
     back_url = url_for('new_room_step3')
     next_url: typing.Optional[str] = None
     existing_photos = session.get('new_listing_photos', [])
