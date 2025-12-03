@@ -8121,6 +8121,10 @@ def new_room_step2():
         encoded_address = urllib.parse.quote_plus(address) if address else ''
     except Exception:
         encoded_address = ''
+    # Pass the Google Maps API key to the template if it is available in the
+    # environment.  This allows step 2 to load the Maps JavaScript API with
+    # Places and Geometry libraries for autocompletion and interactive maps.
+    google_maps_api_key = os.environ.get("GOOGLE_MAPS_API_KEY")
     return render_template(
         'new_room_step2.html',
         property_type=property_type,
@@ -8134,6 +8138,7 @@ def new_room_step2():
         house_number=house_number,
         address=address,
         encoded_address=encoded_address,
+        google_maps_api_key=google_maps_api_key,
     )
 
 

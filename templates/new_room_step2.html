@@ -66,38 +66,131 @@
       <div class="mb-4" style="max-width: 700px; margin: 0 auto;">
         {# Убрали заголовок "Карта". Скругленные углы и тень добавлены на контейнер ratio #}
         <div class="ratio rounded shadow" style="width: 100%; padding-top: 56.25%; position: relative; overflow: hidden;">
-          <iframe id="addressMap"
-                  src="https://maps.google.com/maps?q={{ encoded_address }}&output=embed&markers=color:0x0d6efd"
-                  style="border:0; position: absolute; top: 0; left: 0; width: 100%; height: 100%;" allowfullscreen loading="lazy"></iframe>
+          {# Interactive Google Map will be rendered in this div by the JavaScript API. The absolute positioning
+             ensures it fills the parent ratio container just like the previous iframe. #}
+          <div id="addressMap" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></div>
         </div>
       </div>
       {# Панель навигации перенесена в верхнюю часть страницы; нижняя навигация не нужна #}
     </form>
-    <!-- JavaScript to update the map when the user changes any address field -->
+    {# Include Google Maps JavaScript API with Places and Geometry libraries if an API key is available.
+       The callback initialises the map and autocomplete fields. #}
+    {% if google_maps_api_key %}
+    <script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&libraries=places,geometry&callback=initAddressMap" async defer></script>
+    {% endif %}
     <script>
-      function updateMap() {
-        const country = document.getElementById('country').value.trim();
-        const city = document.getElementById('city').value.trim();
-        const street = document.getElementById('street').value.trim();
-        const house = document.getElementById('house_number').value.trim();
-        const parts = [];
-        if (country) parts.push(country);
-        if (city) parts.push(city);
-        if (street) parts.push(street);
-        if (house) parts.push(house);
-        const query = encodeURIComponent(parts.join(', '));
-        const iframe = document.getElementById('addressMap');
-        iframe.src = 'https://maps.google.com/maps?q=' + query + '&output=embed';
-      }
-      document.addEventListener('DOMContentLoaded', function() {
-        ['country','city','street','house_number'].forEach(function(id) {
-          const el = document.getElementById(id);
-          if (el) {
-            el.addEventListener('change', updateMap);
-            el.addEventListener('input', updateMap);
+      // Initialise Google Map with place autocompletion for country, city and street.
+      function initAddressMap() {
+        // Default location (Almaty as a fallback)
+        var defaultLatLng = { lat: 43.238949, lng: 76.889709 };
+        var mapElement = document.getElementById('addressMap');
+        if (!mapElement) return;
+        var map = new google.maps.Map(mapElement, { center: defaultLatLng, zoom: 4 });
+        var marker = new google.maps.Marker({ map: map, position: defaultLatLng, draggable: true });
+        var circle = null;
+        var selectedLatLng = null;
+        var geocoder = new google.maps.Geocoder();
+        var countryInput = document.getElementById('country');
+        var cityInput = document.getElementById('city');
+        var streetInput = document.getElementById('street');
+        var houseInput = document.getElementById('house_number');
+        var selectedCountryCode = null;
+        var selectedCityViewport = null;
+        // Initialise autocomplete for each field.  City and street autocompletes are declared
+        // before the country autocomplete so that they can be referenced when updating
+        // component restrictions.
+        var cityAutocomplete = new google.maps.places.Autocomplete(cityInput, { types: ['(cities)'] });
+        var streetAutocomplete = new google.maps.places.Autocomplete(streetInput, { types: ['address'] });
+        var countryAutocomplete = new google.maps.places.Autocomplete(countryInput, { types: ['country'] });
+
+        // Country autocomplete (suggest only countries)
+        countryAutocomplete.addListener('place_changed', function() {
+          var place = countryAutocomplete.getPlace();
+          selectedCountryCode = null;
+          if (place && place.address_components) {
+            place.address_components.forEach(function(comp) {
+              if (comp.types.indexOf('country') > -1) {
+                selectedCountryCode = comp.short_name;
+              }
+            });
+          }
+          // Update component restrictions on city and street autocompletes
+          if (selectedCountryCode) {
+            cityAutocomplete.setComponentRestrictions({ country: selectedCountryCode });
+            streetAutocomplete.setComponentRestrictions({ country: selectedCountryCode });
+          } else {
+            cityAutocomplete.setComponentRestrictions({});
+            streetAutocomplete.setComponentRestrictions({});
+          }
+          // Clear city and street when country changes
+          cityInput.value = '';
+          streetInput.value = '';
+          // Recompute map position
+          geocodeAddress();
+        });
+        // City autocomplete (suggest localities)
+        cityAutocomplete.addListener('place_changed', function() {
+          var place = cityAutocomplete.getPlace();
+          if (place && place.geometry && place.geometry.viewport) {
+            selectedCityViewport = place.geometry.viewport;
+            streetAutocomplete.setBounds(selectedCityViewport);
+            streetAutocomplete.setOptions({ strictBounds: true });
+          }
+          // Clear street when city changes
+          streetInput.value = '';
+          geocodeAddress();
+        });
+        // Street autocomplete (address suggestions)
+        streetAutocomplete.addListener('place_changed', function() {
+          geocodeAddress();
+        });
+        // Update map when house number changes
+        houseInput.addEventListener('change', geocodeAddress);
+        // Core geocoding function: builds address from inputs and centres map
+        function geocodeAddress() {
+          var parts = [];
+          var houseVal = houseInput.value.trim();
+          var streetVal = streetInput.value.trim();
+          var cityVal = cityInput.value.trim();
+          var countryVal = countryInput.value.trim();
+          if (houseVal) parts.push(houseVal);
+          if (streetVal) parts.push(streetVal);
+          if (cityVal) parts.push(cityVal);
+          if (countryVal) parts.push(countryVal);
+          var address = parts.join(', ');
+          if (!address) return;
+          var geocodeOptions = { address: address };
+          if (selectedCountryCode) {
+            geocodeOptions.componentRestrictions = { country: selectedCountryCode };
+          }
+          geocoder.geocode(geocodeOptions, function(results, status) {
+            if (status === 'OK' && results[0] && results[0].geometry) {
+              var loc = results[0].geometry.location;
+              selectedLatLng = loc;
+              marker.setPosition(loc);
+              map.setCenter(loc);
+              map.setZoom(16);
+              var radius = 200; // meters
+              if (circle) circle.setMap(null);
+              circle = new google.maps.Circle({ map: map, center: loc, radius: radius, fillOpacity: 0, strokeOpacity: 0 });
+            }
+          });
+        }
+        // Restrict marker dragging within radius of selected location
+        google.maps.event.addListener(marker, 'dragend', function() {
+          if (!selectedLatLng || !circle) return;
+          var current = marker.getPosition();
+          var distance = google.maps.geometry.spherical.computeDistanceBetween(current, selectedLatLng);
+          var maxDistance = circle.getRadius();
+          if (distance > maxDistance) {
+            var heading = google.maps.geometry.spherical.computeHeading(selectedLatLng, current);
+            var newPos = google.maps.geometry.spherical.computeOffset(selectedLatLng, maxDistance, heading);
+            marker.setPosition(newPos);
           }
         });
-      });
+        // Initialise by geocoding the existing values (if any)
+        geocodeAddress();
+      }
     </script>
   {% else %}
     <p>Тип жилья не выбран. Пожалуйста, начните процесс создания объявления заново.</p>
