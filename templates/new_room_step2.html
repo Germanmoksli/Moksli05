@@ -39,7 +39,7 @@
 <div class="container py-4">
   {# Прогресс бар перемещён в верхнюю панель #}
   <!-- Заголовок выравнен по центру, увеличен и выделен жирным -->
-  <h2 class="mb-4 text-primary fw-bold fs-2 text-center">Где находится объект?</h2>
+  <h2 class="fw-bold fs-2 mb-4 text-start">Где находится объект?</h2>
   {% if property_type %}
     {# Убрали подзаголовок "Вы выбрали: ..."; только форма адреса #}
     <form method="post" id="addressForm">
@@ -75,19 +75,16 @@
     </form>
     {# Include Google Maps JavaScript API with Places and Geometry libraries if an API key is available.
        The callback initialises the map and autocomplete fields. #}
+    {% if google_maps_api_key %}
+    <script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&libraries=places,geometry&callback=initAddressMap" async defer></script>
+    {% endif %}
     <script>
-      // Initialize Google Map with place autocompletion for country, city and street.
-      // We assign the function to window.initAddressMap so that it is available
-      // when the Google Maps API script (with the callback parameter) loads.  Without
-      // attaching to the window object, the asynchronous script may attempt to
-      // invoke initAddressMap before this script has been parsed, leading to
-      // "undefined" errors and a blank map.
+      // Initialise Google Map with place autocompletion for country, city and street.
       function initAddressMap() {
         // Default location (Almaty as a fallback)
         var defaultLatLng = { lat: 43.238949, lng: 76.889709 };
         var mapElement = document.getElementById('addressMap');
         if (!mapElement) return;
-        // Create map and marker
         var map = new google.maps.Map(mapElement, { center: defaultLatLng, zoom: 4 });
         var marker = new google.maps.Marker({ map: map, position: defaultLatLng, draggable: true });
         var circle = null;
@@ -194,15 +191,11 @@
         // Initialise by geocoding the existing values (if any)
         geocodeAddress();
       }
-      // Expose the function globally for the Google Maps callback.  Without this,
-      // the callback parameter in the Maps script tag will not find the
-      // function, because this script may be parsed after the Maps script
-      // finishes loading.
+      // Expose initAddressMap on the global window object so that the
+      // Google Maps API callback can locate it when the external script loads.
       window.initAddressMap = initAddressMap;
+      }
     </script>
-    {% if google_maps_api_key %}
-    <script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&libraries=places,geometry&callback=initAddressMap" async defer></script>
-    {% endif %}
   {% else %}
     <p>Тип жилья не выбран. Пожалуйста, начните процесс создания объявления заново.</p>
     <a href="{{ url_for('new_room_step1') }}" class="btn btn-primary mt-3">Вернуться к выбору</a>
