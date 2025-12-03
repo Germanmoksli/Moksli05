@@ -52,21 +52,21 @@
     <!-- Heading for details step (renamed) -->
     <h2 class="mb-4 text-primary fw-bold fs-2 text-center">Дополнительно</h2>
     <form method="post" id="detailsForm">
-      <!-- Row for floor and elevator: align elevator controls to the right of the floor field -->
-      <div class="mb-3 row g-2 align-items-end">
+      <!-- Row for floor and elevator: align elevator controls horizontally with the floor field -->
+      <div class="mb-3 row g-2 align-items-center">
         <!-- Floor input -->
         <div class="col-12 col-md-6">
           <label for="floor" class="form-label fw-bold">Этаж</label>
           <input type="number" class="form-control" id="floor" name="floor" min="1" step="1" value="{{ floor }}" required>
         </div>
         <!-- Elevator radio group aligned to the right -->
-        <div class="col-12 col-md-6 d-flex flex-column flex-md-row align-items-md-center justify-content-md-end">
-          <span class="form-label fw-bold me-2">Есть лифт?</span>
-          <div class="form-check form-check-inline">
+        <div class="col-12 col-md-6 d-flex align-items-center justify-content-md-end">
+          <label for="elevator_yes" class="form-label fw-bold me-2 mb-0">Есть лифт?</label>
+          <div class="form-check form-check-inline mb-0">
             <input class="form-check-input" type="radio" id="elevator_yes" name="elevator" value="yes" {% if elevator == 'yes' %}checked{% endif %}>
             <label class="form-check-label" for="elevator_yes">Да</label>
           </div>
-          <div class="form-check form-check-inline">
+          <div class="form-check form-check-inline mb-0">
             <input class="form-check-input" type="radio" id="elevator_no" name="elevator" value="no" {% if elevator == 'no' %}checked{% endif %}>
             <label class="form-check-label" for="elevator_no">Нет</label>
           </div>
