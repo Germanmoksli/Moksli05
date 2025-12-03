@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{#
+  Step 7 of the new listing wizard: pricing.  This page collects the base
+  nightly price and an optional percentage markup for weekends and
+  holidays.  The owner enters the base price (in Tenge) and adjusts a
+  slider to set a markup.  The weekend price is calculated and displayed
+  dynamically based on the base price and selected markup.  A unified
+  navigation bar appears at the top with cancel/draft actions, a
+  progress bar and back/finish buttons.
+#}
+
+{% block title %}Новое объявление – Шаг 7{% endblock %}
+
+{% block content %}
+{% if hide_nav %}
+  <!-- Top navigation bar for pricing step -->
+  <div class="container-fluid bg-light py-2 mb-3" style="border: none;">
+    <div class="d-flex align-items-center justify-content-between">
+      <!-- Left group: cancel and save draft -->
+      <div class="d-flex align-items-center gap-2 me-3">
+        <a href="{{ url_for('cancel_new_room') }}" class="d-flex align-items-center justify-content-center rounded-circle"
+           style="width: 40px; height: 40px; background-color: #f1f3f5; text-decoration: none;">
+          <i class="bi bi-x-lg fs-4 fw-bold text-primary"></i>
+        </a>
+        <form action="{{ url_for('save_new_room_draft') }}" method="post" class="m-0">
+          <button type="submit"
+                  class="btn fw-bold text-primary d-flex align-items-center justify-content-center"
+                  style="background-color: #f1f3f5; border: none; border-radius: 0.375rem; height: 40px; padding: 0 1rem;">
+            В черновик
+          </button>
+        </form>
+      </div>
+      <!-- Progress bar -->
+      <div class="progress flex-grow-1 mx-3 border-0" style="height: 6px; border: none;">
+        <div class="progress-bar bg-primary" role="progressbar" style="width: {{ progress }}%;"
+             aria-valuenow="{{ progress }}" aria-valuemin="0" aria-valuemax="100"></div>
+      </div>
+      <!-- Right group: back and finish buttons -->
+      <div class="d-flex align-items-center gap-2 ms-3">
+        <a href="{{ back_url }}" class="btn btn-link d-flex align-items-center justify-content-center"
+           style="height: 40px;">Назад</a>
+        <button type="submit" form="pricingForm" class="btn btn-primary d-flex align-items-center justify-content-center"
+                style="height: 40px;">Завершить</button>
+      </div>
+    </div>
+  </div>
+{% endif %}
+
+<div class="container py-4">
+  <!-- Constrained container to align with previous steps -->
+  <div class="mx-auto" style="max-width: 700px;">
+    <!-- Base price section -->
+    <h2 class="fw-bold fs-2 text-center mb-2">Установите базовую цену на будние дни</h2>
+    <p class="text-center text-muted mb-4">Её можно изменить в любое время.</p>
+    <form method="post" id="pricingForm">
+      <!-- Base price input displayed in large format -->
+      <div class="d-flex justify-content-center align-items-baseline mb-4">
+        <span class="display-3 fw-bold me-2">₸</span>
+        <input type="number" class="form-control p-0 border-0 display-3 fw-bold text-center" id="base_price" name="base_price" min="0" step="1" value="{{ base_price }}" placeholder="0" style="max-width: 200px; outline: none;" required>
+      </div>
+      <!-- Weekend/holiday markup section -->
+      <div class="mt-5">
+        <h3 class="fw-bold fs-4 text-center mb-2">Цена на выходные и праздничные дни</h3>
+        <p class="text-center text-muted mb-3">Укажите процентную надбавку относительно базовой цены.</p>
+        <!-- Display calculated weekend price -->
+        <div class="d-flex justify-content-center align-items-baseline mb-2">
+          <span class="display-4 fw-bold me-2">₸</span>
+          <span id="weekend_price" class="display-4 fw-bold">0</span>
+        </div>
+        <!-- Display percentage label -->
+        <div class="text-center mb-3">
+          <span class="badge bg-light text-dark fw-semibold" style="font-size: 1rem;">Надбавка: <span id="weekendPercent">0</span>%</span>
+        </div>
+        <!-- Slider for weekend markup -->
+        <div class="d-flex align-items-center justify-content-center">
+          <input type="range" class="form-range" id="weekendMarkup" name="weekend_markup" min="0" max="100" step="1" value="{{ weekend_markup or 0 }}" style="max-width: 400px;">
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+<!-- Script to compute weekend price and update percentage display -->
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const baseInput = document.getElementById('base_price');
+    const markupRange = document.getElementById('weekendMarkup');
+    const weekendPriceSpan = document.getElementById('weekend_price');
+    const weekendPercentSpan = document.getElementById('weekendPercent');
+    function updateWeekend() {
+      const base = parseFloat(baseInput.value) || 0;
+      const markup = parseFloat(markupRange.value) || 0;
+      const weekend = Math.round(base * (1 + markup / 100));
+      weekendPriceSpan.textContent = weekend.toLocaleString('ru-RU');
+      weekendPercentSpan.textContent = markup;
+    }
+    baseInput.addEventListener('input', updateWeekend);
+    markupRange.addEventListener('input', updateWeekend);
+    // Initialize values on load
+    updateWeekend();
+  });
+</script>
+{% endblock %}
