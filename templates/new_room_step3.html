@@ -50,8 +50,8 @@
   {# Heading removed since only accommodation options remain #}
   <form method="post" id="amenitiesForm">
     <!-- Accommodation options: rooms, guests, beds, sofas -->
-    <div class="mb-4">
-      <h5 class="fw-bold fs-4 text-center text-primary mb-2">Возможности размещения</h5>
+    <div class="mb-5">
+      <h5 class="fw-bold fs-3 text-center text-primary mb-2">Возможности размещения</h5>
       <p class="text-center text-muted mb-3">Укажите количество комнат, максимальное число гостей, кроватей и диванов</p>
       <div class="row row-cols-1 g-3 justify-content-center" style="max-width: 500px; margin: 0 auto;">
         <!-- Rooms count -->
@@ -183,13 +183,27 @@
         width: 1rem;
         height: 1rem;
       }
+
+      /* When an amenity tile has no icon (used in security, bathroom and suitability sections),
+         arrange its contents horizontally and hide the empty icon placeholder. */
+      .amenity-tile.no-icon {
+        flex-direction: row;
+        align-items: center;
+      }
+      .amenity-tile.no-icon .icon {
+        display: none;
+      }
+      .amenity-tile.no-icon .label {
+        margin-left: 0.5rem;
+      }
     </style>
 
     <!-- Amenity selection sections -->
-    <div class="mb-4">
-      <h5 class="fw-bold fs-4 text-primary mb-1">Удобства</h5>
+    <div class="mb-5">
+      <h5 class="fw-bold fs-3 text-primary mb-1">Удобства</h5>
       <p class="text-muted mb-3">Выберите подходящие варианты</p>
-      <div class="row row-cols-1 row-cols-sm-2 g-3">
+      <div style="max-width: 500px; margin: 0 auto;">
+        <div class="row row-cols-1 row-cols-sm-2 g-3">
         <!-- Интернет -->
         <div class="col">
           <label class="amenity-tile" for="amenity_internet">
@@ -270,16 +284,18 @@
             <span class="label">Кофеварка</span>
           </label>
         </div>
+        </div>
       </div>
     </div>
 
-    <div class="mb-4">
-      <h5 class="fw-bold fs-4 text-primary mb-1">Безопасность</h5>
+    <div class="mb-5">
+      <h5 class="fw-bold fs-3 text-primary mb-1">Безопасность</h5>
       <p class="text-muted mb-3">Выберите подходящие варианты</p>
-      <div class="row row-cols-1 row-cols-sm-2 g-3">
+      <div style="max-width: 500px; margin: 0 auto;">
+        <div class="row row-cols-1 row-cols-sm-2 g-3">
         <!-- Домофон -->
         <div class="col">
-          <label class="amenity-tile" for="amenity_intercom">
+          <label class="amenity-tile no-icon" for="amenity_intercom">
             <input type="checkbox" id="amenity_intercom" name="amenities" value="intercom" {% if 'intercom' in selected %}checked{% endif %}>
             <span class="icon"><i class="bi bi-door-closed"></i></span>
             <span class="label">Домофон</span>
@@ -287,7 +303,7 @@
         </div>
         <!-- Видеодомофон -->
         <div class="col">
-          <label class="amenity-tile" for="amenity_video_intercom">
+          <label class="amenity-tile no-icon" for="amenity_video_intercom">
             <input type="checkbox" id="amenity_video_intercom" name="amenities" value="video_intercom" {% if 'video_intercom' in selected %}checked{% endif %}>
             <span class="icon"><i class="bi bi-camera-video"></i></span>
             <span class="label">Видеодомофон</span>
@@ -295,7 +311,7 @@
         </div>
         <!-- Электронные замки -->
         <div class="col">
-          <label class="amenity-tile" for="amenity_electronic_locks">
+          <label class="amenity-tile no-icon" for="amenity_electronic_locks">
             <input type="checkbox" id="amenity_electronic_locks" name="amenities" value="electronic_locks" {% if 'electronic_locks' in selected %}checked{% endif %}>
             <span class="icon"><i class="bi bi-lock"></i></span>
             <span class="label">Электронные замки</span>
@@ -303,7 +319,7 @@
         </div>
         <!-- Паркинг -->
         <div class="col">
-          <label class="amenity-tile" for="amenity_parking">
+          <label class="amenity-tile no-icon" for="amenity_parking">
             <input type="checkbox" id="amenity_parking" name="amenities" value="parking" {% if 'parking' in selected %}checked{% endif %}>
             <span class="icon"><i class="bi bi-car-front"></i></span>
             <span class="label">Паркинг</span>
@@ -311,22 +327,24 @@
         </div>
         <!-- Рядом есть парковка -->
         <div class="col">
-          <label class="amenity-tile" for="amenity_parking_nearby">
+          <label class="amenity-tile no-icon" for="amenity_parking_nearby">
             <input type="checkbox" id="amenity_parking_nearby" name="amenities" value="parking_nearby" {% if 'parking_nearby' in selected %}checked{% endif %}>
             <span class="icon"><i class="bi bi-car-front"></i></span>
             <span class="label">Рядом есть парковка</span>
           </label>
         </div>
+        </div>
       </div>
     </div>
 
-    <div class="mb-4">
-      <h5 class="fw-bold fs-4 text-primary mb-1">Ванная комната</h5>
+    <div class="mb-5">
+      <h5 class="fw-bold fs-3 text-primary mb-1">Ванная комната</h5>
       <p class="text-muted mb-3">Выберите подходящие варианты</p>
-      <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-3">
+      <div style="max-width: 500px; margin: 0 auto;">
+        <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-3">
         <!-- Душевая кабина -->
         <div class="col">
-          <label class="amenity-tile" for="amenity_shower">
+          <label class="amenity-tile no-icon" for="amenity_shower">
             <input type="checkbox" id="amenity_shower" name="amenities" value="shower" {% if 'shower' in selected %}checked{% endif %}>
             <span class="icon"><i class="bi bi-shower"></i></span>
             <span class="label">Душевая кабина</span>
@@ -334,7 +352,7 @@
         </div>
         <!-- Ванна -->
         <div class="col">
-          <label class="amenity-tile" for="amenity_bath">
+          <label class="amenity-tile no-icon" for="amenity_bath">
             <input type="checkbox" id="amenity_bath" name="amenities" value="bath" {% if 'bath' in selected %}checked{% endif %}>
             <span class="icon"><i class="bi bi-droplet"></i></span>
             <span class="label">Ванна</span>
@@ -342,7 +360,7 @@
         </div>
         <!-- Джакузи -->
         <div class="col">
-          <label class="amenity-tile" for="amenity_jacuzzi">
+          <label class="amenity-tile no-icon" for="amenity_jacuzzi">
             <input type="checkbox" id="amenity_jacuzzi" name="amenities" value="jacuzzi" {% if 'jacuzzi' in selected %}checked{% endif %}>
             <span class="icon"><i class="bi bi-droplet-half"></i></span>
             <span class="label">Джакузи</span>
@@ -350,7 +368,7 @@
         </div>
         <!-- Полотенца -->
         <div class="col">
-          <label class="amenity-tile" for="amenity_towels">
+          <label class="amenity-tile no-icon" for="amenity_towels">
             <input type="checkbox" id="amenity_towels" name="amenities" value="towels" {% if 'towels' in selected %}checked{% endif %}>
             <span class="icon"><i class="bi bi-emoji-smile"></i></span>
             <span class="label">Полотенца</span>
@@ -358,7 +376,7 @@
         </div>
         <!-- Халат -->
         <div class="col">
-          <label class="amenity-tile" for="amenity_robe">
+          <label class="amenity-tile no-icon" for="amenity_robe">
             <input type="checkbox" id="amenity_robe" name="amenities" value="bathrobe" {% if 'bathrobe' in selected %}checked{% endif %}>
             <span class="icon"><i class="bi bi-person"></i></span>
             <span class="label">Халат</span>
@@ -366,7 +384,7 @@
         </div>
         <!-- Тапочки -->
         <div class="col">
-          <label class="amenity-tile" for="amenity_slippers">
+          <label class="amenity-tile no-icon" for="amenity_slippers">
             <input type="checkbox" id="amenity_slippers" name="amenities" value="slippers" {% if 'slippers' in selected %}checked{% endif %}>
             <span class="icon"><i class="bi bi-handbag"></i></span>
             <span class="label">Тапочки</span>
@@ -374,7 +392,7 @@
         </div>
         <!-- Фен -->
         <div class="col">
-          <label class="amenity-tile" for="amenity_hairdryer">
+          <label class="amenity-tile no-icon" for="amenity_hairdryer">
             <input type="checkbox" id="amenity_hairdryer" name="amenities" value="hairdryer" {% if 'hairdryer' in selected %}checked{% endif %}>
             <span class="icon"><i class="bi bi-wind"></i></span>
             <span class="label">Фен</span>
@@ -382,7 +400,7 @@
         </div>
         <!-- Шампунь -->
         <div class="col">
-          <label class="amenity-tile" for="amenity_shampoo">
+          <label class="amenity-tile no-icon" for="amenity_shampoo">
             <input type="checkbox" id="amenity_shampoo" name="amenities" value="shampoo" {% if 'shampoo' in selected %}checked{% endif %}>
             <span class="icon"><i class="bi bi-droplet-half"></i></span>
             <span class="label">Шампунь</span>
@@ -390,22 +408,24 @@
         </div>
         <!-- Гель для душа -->
         <div class="col">
-          <label class="amenity-tile" for="amenity_shower_gel">
+          <label class="amenity-tile no-icon" for="amenity_shower_gel">
             <input type="checkbox" id="amenity_shower_gel" name="amenities" value="shower_gel" {% if 'shower_gel' in selected %}checked{% endif %}>
             <span class="icon"><i class="bi bi-droplet-fill"></i></span>
             <span class="label">Гель для душа</span>
           </label>
         </div>
+        </div>
       </div>
     </div>
 
-    <div class="mb-4">
-      <h5 class="fw-bold fs-4 text-primary mb-1">Кому подойдёт квартира</h5>
+    <div class="mb-5">
+      <h5 class="fw-bold fs-3 text-primary mb-1">Кому подойдёт квартира</h5>
       <p class="text-muted mb-3">Выберите подходящие варианты</p>
-      <div class="row row-cols-1 row-cols-sm-2 g-3">
+      <div style="max-width: 500px; margin: 0 auto;">
+        <div class="row row-cols-1 row-cols-sm-2 g-3">
         <!-- Некурящим -->
         <div class="col">
-          <label class="amenity-tile" for="amenity_non_smoking">
+          <label class="amenity-tile no-icon" for="amenity_non_smoking">
             <input type="checkbox" id="amenity_non_smoking" name="amenities" value="non_smoking" {% if 'non_smoking' in selected %}checked{% endif %}>
             <span class="icon"><i class="bi bi-slash-circle"></i></span>
             <span class="label">Некурящим</span>
@@ -413,7 +433,7 @@
         </div>
         <!-- Для вечеринок -->
         <div class="col">
-          <label class="amenity-tile" for="amenity_for_parties">
+          <label class="amenity-tile no-icon" for="amenity_for_parties">
             <input type="checkbox" id="amenity_for_parties" name="amenities" value="for_parties" {% if 'for_parties' in selected %}checked{% endif %}>
             <span class="icon"><i class="bi bi-music-note-beamed"></i></span>
             <span class="label">Для вечеринок</span>
@@ -421,7 +441,7 @@
         </div>
         <!-- Могу сдать на ночь -->
         <div class="col">
-          <label class="amenity-tile" for="amenity_nightly_rental">
+          <label class="amenity-tile no-icon" for="amenity_nightly_rental">
             <input type="checkbox" id="amenity_nightly_rental" name="amenities" value="nightly_rental" {% if 'nightly_rental' in selected %}checked{% endif %}>
             <span class="icon"><i class="bi bi-moon"></i></span>
             <span class="label">Могу сдать на ночь</span>
@@ -429,7 +449,7 @@
         </div>
         <!-- Можно с детьми -->
         <div class="col">
-          <label class="amenity-tile" for="amenity_with_children">
+          <label class="amenity-tile no-icon" for="amenity_with_children">
             <input type="checkbox" id="amenity_with_children" name="amenities" value="with_children" {% if 'with_children' in selected %}checked{% endif %}>
             <span class="icon"><i class="bi bi-people"></i></span>
             <span class="label">Можно с детьми</span>
@@ -437,11 +457,12 @@
         </div>
         <!-- Можно с животными -->
         <div class="col">
-          <label class="amenity-tile" for="amenity_pet_friendly">
+          <label class="amenity-tile no-icon" for="amenity_pet_friendly">
             <input type="checkbox" id="amenity_pet_friendly" name="amenities" value="pet_friendly" {% if 'pet_friendly' in selected %}checked{% endif %}>
             <span class="icon"><i class="bi bi-paw"></i></span>
             <span class="label">Можно с животными</span>
           </label>
+        </div>
         </div>
       </div>
     </div>
