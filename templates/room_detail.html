@@ -30,7 +30,14 @@
               {% if room['price_per_night'] %}
               <h3 class="fw-bold text-success mb-3">{{ room['price_per_night'] }} ₸/сутки</h3>
               {% endif %}
-              <form method="post" action="{{ url_for('booking_form') if room.get('id') else '#' }}">
+              {#
+              The original design attempted to call a `booking_form` route for submitting
+              booking requests. However, no such endpoint currently exists in the
+              Flask application. To avoid runtime errors (500 due to BuildError),
+              we set the form action to a placeholder (`#`). In the future,
+              this can be updated to point to an actual booking handler or modal.
+              #}
+              <form method="post" action="#">
                 <div class="mb-2">
                   <label for="checkin_date" class="form-label">Заезд</label>
                   <input type="date" class="form-control" id="checkin_date" name="checkin_date">
