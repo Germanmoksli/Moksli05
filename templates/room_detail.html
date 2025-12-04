@@ -33,35 +33,30 @@
           </div>
           {% endif %}
 
-          <!-- Блок с ценой и бронированием размещён под галереей. Сокращён до половины ширины контейнера -->
-          <div class="card shadow-sm mb-3 w-50">
+          <!-- Блок с ценой и бронированием размещён под галереей. Сокращён до меньшей ширины -->
+          <div class="card shadow-sm mb-3" style="max-width: 450px;">
             <div class="card-body">
+            {#
+            Отображаем форму бронирования. Поля даты выровнены в один ряд и помещены
+            на место бывшей цены. Метка цены перенесена ниже полей ввода и
+            отображается жирным чёрным текстом. Кнопка бронирования использует
+            синий контур и белый фон. Кнопка звонка владельцу удалена.
+            #}
+            <form method="post" action="#">
+              <div class="d-flex gap-2 mb-2">
+                <input type="date" class="form-control" id="checkin_date" name="checkin_date" placeholder="Заезд">
+                <input type="date" class="form-control" id="checkout_date" name="checkout_date" placeholder="Выезд">
+              </div>
               {% if room['price_per_night'] %}
-              <h3 class="fw-bold text-success mb-3">{{ room['price_per_night'] }} ₸/сутки</h3>
+              <div class="mb-3">
+                <h4 class="fw-bold text-dark mb-0">{{ room['price_per_night'] }} ₸/сутки</h4>
+              </div>
               {% endif %}
-              {#
-              Форма не отправляется на сервер, поскольку маршрут бронирования
-              ещё не реализован. Используйте placeholder (#) в качестве
-              действия. При необходимости замените на url_for('add_booking')
-              или другой маршрут позже.
-              #}
-              <form method="post" action="#">
-                <div class="mb-2">
-                  <label for="checkin_date" class="form-label">Заезд</label>
-                  <input type="date" class="form-control" id="checkin_date" name="checkin_date">
-                </div>
-                <div class="mb-3">
-                  <label for="checkout_date" class="form-label">Выезд</label>
-                  <input type="date" class="form-control" id="checkout_date" name="checkout_date">
-                </div>
-                <button type="submit" class="btn btn-primary w-100">Забронировать</button>
-              </form>
-              {% if room['owner_phone'] %}
-              <a href="tel:{{ room['owner_phone'] }}" class="btn btn-outline-secondary w-100 mt-3">Позвонить владельцу</a>
-              {% endif %}
-              {% if room['owner_messenger'] %}
-              <a href="{{ room['owner_messenger'] }}" class="btn btn-outline-secondary w-100 mt-2">Написать владельцу</a>
-              {% endif %}
+              <button type="submit" class="btn btn-outline-primary w-100">Забронировать</button>
+            </form>
+            {% if room['owner_messenger'] %}
+            <a href="{{ room['owner_messenger'] }}" class="btn btn-outline-secondary w-100 mt-2">Написать владельцу</a>
+            {% endif %}
             </div>
           </div>
         </div>
