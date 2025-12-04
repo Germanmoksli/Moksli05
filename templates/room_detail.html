@@ -58,24 +58,25 @@
             <a href="{{ room['owner_messenger'] }}" class="btn btn-outline-secondary w-100 mt-2">Написать владельцу</a>
             {% endif %}
             </div>
+
           </div>
+          {% if room['owner_name'] %}
+          <div class="card shadow-sm mb-3" style="max-width: 450px;">
+            <div class="card-body d-flex align-items-start">
+              <div class="me-3">
+                <i class="bi bi-person-circle" style="font-size: 2.5rem;"></i>
+              </div>
+              <div>
+                <h5 class="fw-bold mb-1">{{ room['owner_name'] }}</h5>
+                {% if room.get('owner_experience') %}<p class="mb-1">Стаж: {{ room['owner_experience'] }} лет</p>{% endif %}
+                {% if room.get('owner_comment') %}<p class="mb-0">{{ room['owner_comment'] }}</p>{% endif %}
+              </div>
+            </div>
+          </div>
+          {% endif %}
         </div>
 
-        <!-- Информация о владельце: располагается под блоком бронирования и имеет ту же ширину -->
-        {% if room['owner_name'] %}
-        <div class="card shadow-sm mb-3" style="max-width: 450px;">
-          <div class="card-body d-flex align-items-start">
-            <div class="me-3">
-              <i class="bi bi-person-circle" style="font-size: 2.5rem;"></i>
-            </div>
-            <div>
-              <h5 class="fw-bold mb-1">{{ room['owner_name'] }}</h5>
-              {% if room.get('owner_experience') %}<p class="mb-1">Стаж: {{ room['owner_experience'] }} лет</p>{% endif %}
-              {% if room.get('owner_comment') %}<p class="mb-0">{{ room['owner_comment'] }}</p>{% endif %}
-            </div>
-          </div>
-        </div>
-        {% endif %}
+        
 
         {#
         We removed the separate right-hand column that contained the pricing/booking card.
