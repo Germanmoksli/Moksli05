@@ -8,12 +8,12 @@
     <!-- Левая колонка: галерея и дополнительные сведения -->
     <div class="col-lg-8">
       <div class="row">
-        <div class="col-12 col-lg-8 mb-3 mx-auto">
+        <div class="col-12 col-lg-8 mb-3 mx-auto" style="max-width: 1000px;">
           {% if photos and photos|length > 0 %}
           <!-- Галерея: крупное изображение и миниатюры -->
           <div class="mb-3">
             <div class="position-relative mb-2">
-              <img id="mainImage" src="{{ photos[0] }}" class="img-fluid rounded shadow-sm w-100" alt="Фото квартиры" style="height: 450px; object-fit: cover;" onclick="openGalleryModal(currentPhotoIndex)">
+              <img id="mainImage" src="{{ photos[0] }}" class="img-fluid rounded shadow-sm w-100" alt="Фото квартиры" style="height: 500px; object-fit: cover;" onclick="openGalleryModal(currentPhotoIndex)">
               <!-- Стрелка влево -->
               <button type="button" class="btn btn-light position-absolute top-50 start-0 translate-middle-y" style="opacity: 0.7;" onclick="prevPhoto()">
                 <i class="bi bi-chevron-left"></i>
@@ -26,7 +26,7 @@
             <div class="d-flex flex-nowrap overflow-auto gap-2" style="white-space: nowrap;">
               {% for photo_src in photos %}
               <img src="{{ photo_src }}" class="img-thumbnail" alt="Фото квартиры"
-                   style="width: 100px; height: 70px; object-fit: cover; cursor: pointer; flex: 0 0 auto;"
+                   style="width: 120px; height: 80px; object-fit: cover; cursor: pointer; flex: 0 0 auto;"
                    onclick="openGalleryModal({{ loop.index0 }})">
               {% endfor %}
             </div>
@@ -182,7 +182,7 @@
       </div>
       <div id="modalThumbnails" class="d-flex flex-nowrap overflow-auto gap-2 mt-3 w-100 justify-content-center" style="max-width: 800px;">
         {% for photo_src in photos %}
-        <img src="{{ photo_src }}" class="img-thumbnail" style="width: 80px; height: 60px; object-fit: cover; cursor: pointer; flex: 0 0 auto;" onclick="showPhoto({{ loop.index0 }}, true)">
+        <img src="{{ photo_src }}" class="img-thumbnail" style="width: 100px; height: 75px; object-fit: cover; cursor: pointer; flex: 0 0 auto;" onclick="showPhoto({{ loop.index0 }}, true)">
         {% endfor %}
       </div>
     </div>
