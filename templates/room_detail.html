@@ -8,16 +8,26 @@
     <!-- Левая колонка: галерея и дополнительные сведения -->
     <div class="col-lg-8">
       <div class="row">
-        <div class="col-12 col-lg-8 mb-3">
+        <div class="col-12 col-lg-8 mb-3 mx-auto">
           {% if photos and photos|length > 0 %}
           <!-- Галерея: крупное изображение и миниатюры -->
           <div class="mb-3">
-            <img id="mainImage" src="{{ photos[0] }}" class="img-fluid rounded shadow-sm w-100 mb-2" alt="Фото квартиры" style="height: 450px; object-fit: cover;">
-            <div class="d-flex flex-wrap gap-2">
+            <div class="position-relative mb-2">
+              <img id="mainImage" src="{{ photos[0] }}" class="img-fluid rounded shadow-sm w-100" alt="Фото квартиры" style="height: 450px; object-fit: cover;" onclick="openGalleryModal(currentPhotoIndex)">
+              <!-- Стрелка влево -->
+              <button type="button" class="btn btn-light position-absolute top-50 start-0 translate-middle-y" style="opacity: 0.7;" onclick="prevPhoto()">
+                <i class="bi bi-chevron-left"></i>
+              </button>
+              <!-- Стрелка вправо -->
+              <button type="button" class="btn btn-light position-absolute top-50 end-0 translate-middle-y" style="opacity: 0.7;" onclick="nextPhoto()">
+                <i class="bi bi-chevron-right"></i>
+              </button>
+            </div>
+            <div class="d-flex flex-nowrap overflow-auto gap-2" style="white-space: nowrap;">
               {% for photo_src in photos %}
               <img src="{{ photo_src }}" class="img-thumbnail" alt="Фото квартиры"
-                   style="width: 100px; height: 70px; object-fit: cover; cursor: pointer;"
-                   onclick="document.getElementById('mainImage').src='{{ photo_src }}'">
+                   style="width: 100px; height: 70px; object-fit: cover; cursor: pointer; flex: 0 0 auto;"
+                   onclick="openGalleryModal({{ loop.index0 }})">
               {% endfor %}
             </div>
           </div>
@@ -105,19 +115,8 @@
         </div>
       </div>
       {% endif %}
-      <!-- Описание от владельца -->
-      {% if room['description'] %}
-      <div class="card shadow-sm mb-3">
-        <div class="card-body">
-          <h5 class="fw-bold mb-3">Описание от владельца</h5>
-          <p class="mb-0">{{ room['description'] }}</p>
-        </div>
-      </div>
-      {% endif %}
-    </div>
-    <!-- Правая колонка: информация, карта и отзывы -->
-    <div class="col-lg-4">
-      <!-- Информация о доме -->
+
+      <!-- Дополнительные сведения: Информация о доме, карта и последние отзывы -->
       <div class="card shadow-sm mb-3">
         <div class="card-body">
           <h5 class="fw-bold mb-3">Информация о доме</h5>
@@ -127,7 +126,6 @@
           <p class="mb-0"><strong>Адрес:</strong> {{ room['country'] or '' }}{% if room['city'] %}, {{ room['city'] }}{% endif %}{% if room['street'] %}, {{ room['street'] }}{% endif %}{% if room['house_number'] %}, {{ room['house_number'] }}{% endif %}</p>
         </div>
       </div>
-      <!-- Карта -->
       {% if room['latitude'] and room['longitude'] %}
       <div class="card shadow-sm mb-3">
         <div class="card-body">
@@ -136,7 +134,6 @@
         </div>
       </div>
       {% endif %}
-      <!-- Последние отзывы -->
       <div class="card shadow-sm">
         <div class="card-body">
           <h5 class="fw-bold mb-3">Последние отзывы</h5>
@@ -153,12 +150,91 @@
           {% endif %}
         </div>
       </div>
+      <!-- Описание от владельца -->
+      {% if room['description'] %}
+      <div class="card shadow-sm mb-3">
+        <div class="card-body">
+          <h5 class="fw-bold mb-3">Описание от владельца</h5>
+          <p class="mb-0">{{ room['description'] }}</p>
+        </div>
+      </div>
+      {% endif %}
     </div>
+    {# Правая колонка удалена. Информация о доме, карта и отзывы будут показаны под галереей в основной колонке. #}
   </div>
   <!-- Кнопка возврата -->
   <div class="mt-4">
     <a href="{{ url_for('public_listings') }}" class="btn btn-outline-secondary">&larr; Назад в каталог</a>
   </div>
+
+  <!-- Модальная галерея -->
+  <div id="galleryModal" class="d-none" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1050;">
+    <div class="container h-100 d-flex flex-column justify-content-center align-items-center">
+      <div class="position-relative w-100" style="max-width: 800px;">
+        <img id="modalMainImage" src="" class="img-fluid rounded" style="width: 100%; max-height: 80vh; object-fit: contain;" alt="Фото">
+        <button type="button" class="btn btn-light position-absolute top-50 start-0 translate-middle-y" style="opacity: 0.7;" onclick="prevPhoto(true)">
+          <i class="bi bi-chevron-left"></i>
+        </button>
+        <button type="button" class="btn btn-light position-absolute top-50 end-0 translate-middle-y" style="opacity: 0.7;" onclick="nextPhoto(true)">
+          <i class="bi bi-chevron-right"></i>
+        </button>
+        <button type="button" class="btn btn-light position-absolute top-0 end-0 m-2" onclick="closeGalleryModal()">×</button>
+      </div>
+      <div id="modalThumbnails" class="d-flex flex-nowrap overflow-auto gap-2 mt-3 w-100 justify-content-center" style="max-width: 800px;">
+        {% for photo_src in photos %}
+        <img src="{{ photo_src }}" class="img-thumbnail" style="width: 80px; height: 60px; object-fit: cover; cursor: pointer; flex: 0 0 auto;" onclick="showPhoto({{ loop.index0 }}, true)">
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Prepare photos array for JavaScript
+    var photos = [
+      {% for photo_src in photos %}
+        "{{ photo_src }}"{% if not loop.last %}, {% endif %}
+      {% endfor %}
+    ];
+    var currentPhotoIndex = 0;
+    function showPhoto(index, inModal) {
+      currentPhotoIndex = index;
+      var mainImage = document.getElementById('mainImage');
+      var modalMainImage = document.getElementById('modalMainImage');
+      var src = photos[index];
+      if (!inModal && mainImage) {
+        mainImage.src = src;
+      }
+      if (modalMainImage) {
+        modalMainImage.src = src;
+      }
+      // Scroll thumbnail into view
+      var thumbsContainer = document.querySelector('.d-flex.flex-nowrap.overflow-auto.gap-2');
+      if (thumbsContainer && thumbsContainer.children[index]) {
+        thumbsContainer.children[index].scrollIntoView({inline: 'center', behavior: 'smooth'});
+      }
+      var modalThumbs = document.getElementById('modalThumbnails');
+      if (modalThumbs && modalThumbs.children[index]) {
+        modalThumbs.children[index].scrollIntoView({inline: 'center', behavior: 'smooth'});
+      }
+    }
+    function nextPhoto(inModal) {
+      currentPhotoIndex = (currentPhotoIndex + 1) % photos.length;
+      showPhoto(currentPhotoIndex, inModal);
+    }
+    function prevPhoto(inModal) {
+      currentPhotoIndex = (currentPhotoIndex - 1 + photos.length) % photos.length;
+      showPhoto(currentPhotoIndex, inModal);
+    }
+    function openGalleryModal(index) {
+      showPhoto(index || 0, true);
+      var modal = document.getElementById('galleryModal');
+      if (modal) modal.classList.remove('d-none');
+    }
+    function closeGalleryModal() {
+      var modal = document.getElementById('galleryModal');
+      if (modal) modal.classList.add('d-none');
+    }
+  </script>
 </div>
 {% if room['latitude'] and room['longitude'] %}
 <script>
