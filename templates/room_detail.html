@@ -4,11 +4,11 @@
 <div class="container py-4">
   <!-- Название объекта -->
   <h1 class="fw-bold fs-2 mb-4">{{ room['room_number'] }}</h1>
-  <div class="row">
+  <div class="row justify-content-center">
     <!-- Левая колонка: галерея и дополнительные сведения -->
-    <div class="col-lg-8">
+    <div class="col-lg-10">
       <div class="row">
-        <div class="col-12 col-lg-8 mb-3 mx-auto" style="max-width: 1000px;">
+        <div class="col-12 mb-3 mx-auto" style="max-width: 1200px;">
           {% if photos and photos|length > 0 %}
           <!-- Галерея: крупное изображение и миниатюры -->
           <div class="mb-3">
