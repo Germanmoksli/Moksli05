@@ -22,20 +22,18 @@
             </div>
           </div>
           {% endif %}
-        </div>
-        <div class="col-12 col-lg-4 mb-3">
-          <!-- Плавающий блок с ценой и бронированием -->
-          <div class="card shadow-sm">
+
+          <!-- Блок с ценой и бронированием размещён под галереей -->
+          <div class="card shadow-sm mb-3">
             <div class="card-body">
               {% if room['price_per_night'] %}
               <h3 class="fw-bold text-success mb-3">{{ room['price_per_night'] }} ₸/сутки</h3>
               {% endif %}
               {#
-              The original design attempted to call a `booking_form` route for submitting
-              booking requests. However, no such endpoint currently exists in the
-              Flask application. To avoid runtime errors (500 due to BuildError),
-              we set the form action to a placeholder (`#`). In the future,
-              this can be updated to point to an actual booking handler or modal.
+              Форма не отправляется на сервер, поскольку маршрут бронирования
+              ещё не реализован. Используйте placeholder (#) в качестве
+              действия. При необходимости замените на url_for('add_booking')
+              или другой маршрут позже.
               #}
               <form method="post" action="#">
                 <div class="mb-2">
@@ -57,6 +55,12 @@
             </div>
           </div>
         </div>
+        {#
+        We removed the separate right-hand column that contained the pricing/booking card.
+        Instead, the pricing and booking information will be displayed below the photo
+        gallery within the main (left) column.  The markup previously contained in
+        the removed column is inserted after the gallery below.
+        #}
       </div>
       <!-- Отзывы и рейтинг -->
       <div class="card shadow-sm mb-3">
