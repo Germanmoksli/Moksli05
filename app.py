@@ -7898,11 +7898,38 @@ def public_listings():
         query = base_query + " AND " + " AND ".join(conditions)
     else:
         query = base_query
+    # Execute the query and gracefully handle missing columns.  On
+    # older schemas the ``room_photos`` table may lack the ``image_data``
+    # column; selecting it will raise an error.  Attempt the full
+    # query first.  If it fails, build a fallback query that omits
+    # ``photo_image_data`` and retry.  As a last resort, select only
+    # published rooms without any photo data.
     try:
         rows = conn.execute(query, params).fetchall()
     except Exception:
-        # Fallback: без фильтров
-        rows = conn.execute(base_query).fetchall()
+        # Build a query without selecting image_data.  Retain the same
+        # filtering conditions so that location/date filters continue to
+        # apply.  This fallback selects only the file_name of the first
+        # photo which allows constructing a URL to the uploaded file when
+        # base64 data is unavailable.
+        base_query_noimg = (
+            "SELECT rooms.*, "
+            "(SELECT file_name FROM room_photos WHERE room_id = rooms.id ORDER BY id LIMIT 1) AS photo_file_name "
+            "FROM rooms WHERE is_published = TRUE"
+        )
+        query_noimg = base_query_noimg
+        if conditions:
+            query_noimg += " AND " + " AND ".join(conditions)
+        try:
+            rows = conn.execute(query_noimg, params).fetchall()
+        except Exception:
+            # Final fallback: fetch only the rooms.  This may happen if
+            # ``room_photos`` table is missing entirely.  Without any
+            # photo information the UI will simply omit images.
+            try:
+                rows = conn.execute("SELECT * FROM rooms WHERE is_published = TRUE").fetchall()
+            except Exception:
+                rows = []
     # Build a list of dict-like rooms and compute a photo_src for each entry.
     rooms = []
     for row in rows:
@@ -8031,11 +8058,25 @@ def view_room_public(room_id: int):
                     room[key] = room_row[key]
                 except Exception:
                     pass
-    # Load all photos for the room; fetch both filename and base64 data.
-    photo_rows = conn.execute(
-        "SELECT file_name, image_data FROM room_photos WHERE room_id = ? ORDER BY id",
-        (room_id,)
-    ).fetchall()
+    # Load all photos for the room.  Prefer selecting both filename and
+    # base64 data from the ``room_photos`` table.  If the ``image_data``
+    # column does not exist (legacy deployments), fall back to selecting
+    # only the filename.  If even that fails (e.g. missing table), use
+    # an empty list so that the gallery displays no images instead of
+    # crashing.
+    try:
+        photo_rows = conn.execute(
+            "SELECT file_name, image_data FROM room_photos WHERE room_id = ? ORDER BY id",
+            (room_id,)
+        ).fetchall()
+    except Exception:
+        try:
+            photo_rows = conn.execute(
+                "SELECT file_name FROM room_photos WHERE room_id = ? ORDER BY id",
+                (room_id,)
+            ).fetchall()
+        except Exception:
+            photo_rows = []
     photos: list[str] = []
     for r in photo_rows:
         # Extract filename and image_data from the row.  Dict-like access
