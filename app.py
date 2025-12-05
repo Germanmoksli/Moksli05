@@ -3652,13 +3652,19 @@ def ensure_rooms_additional_columns(conn) -> None:
                     conn.execute(f"ALTER TABLE rooms ADD COLUMN {col} {coltype}")
                 except Exception:
                     pass
-        # Ensure room_photos table exists
+        # Ensure room_photos table exists.  Create it with an image_data column
+        # for base64‑encoded photo data so that newly created databases
+        # automatically include this column.  Older deployments may lack
+        # image_data; the ensure_room_photos_image_data_column helper will
+        # attempt to add it when needed.  Including image_data here avoids
+        # missing column errors on fresh installations.
         try:
             conn.execute(
                 "CREATE TABLE IF NOT EXISTS room_photos ("
                 "id SERIAL PRIMARY KEY,"
                 "room_id INTEGER NOT NULL,"
                 "file_name TEXT NOT NULL,"
+                "image_data TEXT,"
                 "FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE"
                 ")"
             )
@@ -4004,8 +4010,18 @@ def add_room():
                             (new_room_id, fname, img_data),
                         )
                     except Exception:
-                        # Ignore errors inserting individual photo rows
-                        continue
+                        # If the insert fails (for example if the image_data column
+                        # does not exist), fall back to inserting only the
+                        # mandatory columns room_id and file_name.  If this
+                        # second insert fails we simply skip the photo.
+                        try:
+                            conn.execute(
+                                "INSERT INTO room_photos (room_id, file_name) VALUES (?, ?)",
+                                (new_room_id, fname),
+                            )
+                        except Exception:
+                            # Ignore errors inserting individual photo rows
+                            pass
             # Commit the transaction if supported
             try:
                 conn.commit()
@@ -4205,14 +4221,23 @@ def edit_room(room_id: int):
                                     file.save(os.path.join(UPLOAD_ROOMS_FOLDER, unique_name))
                             except Exception:
                                 pass
-                            # Сохраним запись в базе
+                            # Save the photo record in the database.  Attempt to
+                            # insert the image data; if the image_data column
+                            # does not exist or another error occurs, fall back
+                            # to inserting only room_id and file_name.
                             try:
                                 conn.execute(
                                     "INSERT INTO room_photos (room_id, file_name, image_data) VALUES (?, ?, ?)",
                                     (room_id, unique_name, image_data_str),
                                 )
                             except Exception:
-                                pass
+                                try:
+                                    conn.execute(
+                                        "INSERT INTO room_photos (room_id, file_name) VALUES (?, ?)",
+                                        (room_id, unique_name),
+                                    )
+                                except Exception:
+                                    pass
         except Exception as e:
             try:
                 conn.rollback()
