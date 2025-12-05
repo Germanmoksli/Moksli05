@@ -9009,14 +9009,31 @@ def new_room_step9():
                 photo_files = session.get('new_listing_photos', [])
                 if new_room_id and photo_files:
                     for fname in photo_files:
+                        # Attempt to insert with the image_data column.  If the column
+                        # does not exist (older schema), fall back to inserting only
+                        # room_id and file_name.  Each insertion is wrapped in its own
+                        # try/except to avoid aborting the entire loop on a single
+                        # failure.
+                        inserted = False
                         try:
                             conn.execute(
                                 "INSERT INTO room_photos (room_id, file_name, image_data) VALUES (?, ?, ?)",
                                 (new_room_id, fname, None),
                             )
+                            inserted = True
                         except Exception:
-                            # Ignore errors inserting individual photos
-                            continue
+                            # Fallback: try inserting without the image_data column
+                            try:
+                                conn.execute(
+                                    "INSERT INTO room_photos (room_id, file_name) VALUES (?, ?)",
+                                    (new_room_id, fname),
+                                )
+                                inserted = True
+                            except Exception:
+                                # Give up on this photo
+                                inserted = False
+                        # Continue to next photo regardless of success
+                        continue
                 try:
                     conn.commit()
                 except Exception:
