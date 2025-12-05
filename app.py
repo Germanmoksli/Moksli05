@@ -1475,50 +1475,99 @@ def require_login():
 # variables are used in the sidebar to display account info.
 @app.context_processor
 def inject_current_user():
+    """
+    Provide the currently logged‑in user's information to all templates.
+
+    In addition to the username, display name and role, this helper also
+    exposes a ``user_photo`` value that can be either a relative path
+    under the ``static`` folder or a data URI (``data:image/...;base64,...``).
+    When a data URI is returned, templates should use it directly in the
+    ``src`` attribute without wrapping it in ``url_for``.  The logic
+    prefers any session overrides set after uploading a new avatar and
+    falls back to the database values.  If a file path no longer exists
+    on disk, stale overrides are cleared and the stored base64 data is
+    used instead.
+    """
     if session.get('user_id'):
         conn = get_db_connection()
-        # Ensure the photo column exists before querying
-        ensure_photo_column(conn)
-        # Use a positional placeholder rather than the erroneous "%?".  The
-        # SQLite API accepts "?" which our PostgreSQL compatibility layer
-        # automatically converts into "%s" for psycopg2.  Without this
-        # change psycopg2 would interpret "%?" as a literal percent sign
-        # followed by an unknown placeholder and raise a syntax error.
-        user = conn.execute(
-            'SELECT id, username, role, name, photo FROM users WHERE id = ?',
-            (session['user_id'],)
-        ).fetchone()
+        # Ensure the users table has both photo and profile‑related columns.
+        try:
+            ensure_photo_column(conn)
+        except Exception:
+            pass
+        try:
+            ensure_profile_columns(conn)
+        except Exception:
+            pass
+        user = None
+        # Try selecting the photo_data column; fall back to selecting without it if
+        # the column does not yet exist.  Because ensure_profile_columns may
+        # create the column, this should succeed on the second attempt.
+        try:
+            user = conn.execute(
+                'SELECT id, username, role, name, photo, photo_data FROM users WHERE id = ?',
+                (session['user_id'],)
+            ).fetchone()
+        except Exception:
+            try:
+                user = conn.execute(
+                    'SELECT id, username, role, name, photo FROM users WHERE id = ?',
+                    (session['user_id'],)
+                ).fetchone()
+            except Exception:
+                user = None
         conn.close()
         if user:
-            # Determine the path to the user's profile photo.  Prefer any override
-            # stored in the session (e.g. after uploading a new photo) and fall
-            # back to the value stored in the database.  If the file does not
-            # exist on disk, clear the session override and treat as no photo.
-            photo_path = session.get('user_photo') or user['photo']
-            if photo_path:
-                try:
-                    file_path = os.path.join(app.static_folder, photo_path)
-                    if not os.path.exists(file_path):
-                        # Remove stale session value if present and reset path
+            photo_string = None
+            # Session override: base64 data set after a successful upload
+            base64_override = session.get('user_photo_data')
+            if base64_override:
+                photo_string = f"data:image/jpeg;base64,{base64_override}"
+            else:
+                # Session override: file path set by legacy upload logic
+                photo_path = session.get('user_photo') or user.get('photo')
+                if photo_path:
+                    try:
+                        file_path = os.path.join(app.static_folder, photo_path)
+                        if os.path.exists(file_path):
+                            photo_string = photo_path
+                        else:
+                            # Remove stale overrides if the file is missing
+                            try:
+                                session.pop('user_photo', None)
+                            except Exception:
+                                pass
+                            try:
+                                session.pop('user_photo_data', None)
+                            except Exception:
+                                pass
+                            photo_string = None
+                    except Exception:
+                        # On any error when checking the file, clear overrides
                         try:
                             session.pop('user_photo', None)
                         except Exception:
                             pass
-                        photo_path = None
-                except Exception:
-                    # On any error determining the file path, clear and ignore
+                        try:
+                            session.pop('user_photo_data', None)
+                        except Exception:
+                            pass
+                        photo_string = None
+                # Fallback: use stored base64 data from the database
+                if not photo_string:
                     try:
-                        session.pop('user_photo', None)
+                        photo_data_value = user.get('photo_data')  # type: ignore[attr-defined]
                     except Exception:
-                        pass
-                    photo_path = None
+                        photo_data_value = None
+                    if photo_data_value:
+                        photo_string = f"data:image/jpeg;base64,{photo_data_value}"
             return dict(
                 current_username=user['username'],
                 current_user_name=user['name'],
                 current_user_role=user['role'],
-                user_photo=photo_path
+                user_photo=photo_string
             )
-    # If not logged in or user not found, return empty context
+    # If no user is logged in, return an empty context
     return {}
 
 
@@ -1645,6 +1694,24 @@ def inject_notification_counts():
         conn.close()
     return dict(unread_message_count=unread_message_count,
                 pending_request_count=pending_request_count)
+
+
+# -----------------------------------------------------------------------------
+# Context processor: Google Maps API key
+#
+# Expose a ``google_maps_api_key`` variable to all templates.  This helper
+# reads the ``GOOGLE_MAPS_API_KEY`` environment variable (if defined) and
+# provides it automatically to every template.  Templates that require
+# loading the Google Maps JavaScript API (e.g. address autocompletion or
+# maps display) can use this variable to construct the appropriate script
+# URL.  Individual views may override this value by passing a different
+# ``google_maps_api_key`` into ``render_template``.  If the environment
+# variable is absent or empty, the value will be ``None`` and templates
+# should avoid including the API script.
+@app.context_processor
+def inject_google_maps_api_key() -> dict[str, typing.Any]:
+    key: typing.Optional[str] = os.environ.get('GOOGLE_MAPS_API_KEY')
+    return { 'google_maps_api_key': key }
 
 
 # Route: register a new user (owner). This view presents a form to
@@ -2557,6 +2624,11 @@ def ensure_profile_columns(conn: sqlite3.Connection) -> None:
         # Store additional profile questions/answers as JSON (TEXT).  This allows
         # arbitrary key/value pairs without modifying the schema for each new field.
         'profile_data': 'TEXT',
+        # Base64‑encoded avatar image data.  We store user avatars directly in
+        # the database to avoid reliance on the local filesystem, which may be
+        # read‑only on some deployment environments (e.g. Render).  See
+        # account() and inject_current_user() for how this column is used.
+        'photo_data': 'TEXT',
     }
     for col, col_type in desired_columns.items():
         try:
@@ -7359,7 +7431,9 @@ def account():
     conn = get_db_connection()
     # Ensure the photo column exists on the users table before any updates
     ensure_photo_column(conn)
-    # Ensure additional profile columns (birth_date, zodiac_sign, city, about_me)
+    # Ensure additional profile columns (birth_date, zodiac_sign, city, about_me,
+    # profile_data and photo_data) exist on the users table.  This call
+    # adds the ``photo_data`` column which stores base64‑encoded avatars.
     ensure_profile_columns(conn)
     # Always fetch the current user record up front so that both GET and POST
     # branches have access to the existing contact_info and photo.  Avoid
@@ -7393,39 +7467,82 @@ def account():
         else:
             contact = user_row['contact_info'] if user_row else None
 
-        # Handle a newly uploaded profile photo, if provided.  When a user selects
-        # a file via the hidden photo input, it will be present in
+        # Handle a newly uploaded profile photo, if provided.  When a user
+        # selects a file via the hidden photo input, it will be present in
         # ``request.files['photo']``.  Save the file into the ``static/uploads``
-        # directory with a unique name and remember the relative path.  Store
-        # the path in the session so that it is immediately available after
-        # redirecting back to the profile page.  If no file is uploaded, the
-        # existing photo is preserved.
+        # directory when possible and capture the base64‑encoded contents into
+        # ``photo_data_str``.  Storing the image data in the database
+        # ensures that avatars persist even on read‑only filesystems such as
+        # Render.  After processing, set session overrides so that the new
+        # avatar is displayed immediately.
         photo_file = None
         try:
             photo_file = request.files.get('photo')
         except Exception:
             photo_file = None
         photo_path: str | None = None
+        photo_data_str: str | None = None
         if photo_file and getattr(photo_file, 'filename', ''):
             filename = secure_filename(photo_file.filename)
             if filename:
                 # Prefix the filename with a UUID to reduce the chance of
                 # collisions.  Use hex to avoid invalid characters.
                 unique_name = f"{uuid.uuid4().hex}_{filename}"
+                # Attempt to create the uploads directory under static.  If the
+                # filesystem is read‑only (e.g. on Render) this may fail; we
+                # ignore the exception and proceed to store the avatar only in
+                # the database.
                 upload_folder = os.path.join(app.static_folder, 'uploads')
                 try:
                     os.makedirs(upload_folder, exist_ok=True)
                 except Exception:
                     pass
+                # Attempt to save the uploaded file to disk.  If writing
+                # fails, ``photo_path`` will remain None and we will rely
+                # solely on the base64 data.
                 save_path = os.path.join(upload_folder, unique_name)
                 try:
                     photo_file.save(save_path)
                     photo_path = f"uploads/{unique_name}"
-                    # Store the path in the session so templates can show the
-                    # updated avatar immediately without reloading from the DB.
-                    session['user_photo'] = photo_path
                 except Exception:
                     photo_path = None
+                # Always read the file contents into memory so that we can
+                # encode it into base64.  If reading fails for any reason
+                # then ``photo_data_str`` will remain None.
+                try:
+                    file_bytes = photo_file.read()
+                    # Reset file pointer for any further operations (not
+                    # strictly necessary here but safe to perform).
+                    try:
+                        photo_file.seek(0)
+                    except Exception:
+                        try:
+                            photo_file.stream.seek(0)
+                        except Exception:
+                            pass
+                    if file_bytes:
+                        try:
+                            photo_data_str = base64.b64encode(file_bytes).decode('utf-8')
+                        except Exception:
+                            photo_data_str = None
+                except Exception:
+                    photo_data_str = None
+                # Set session overrides for immediate display.  If we have a
+                # base64 string, prefer that; otherwise fall back to the
+                # saved file path.  Clear any previous overrides so
+                # ``inject_current_user`` picks up the correct value.
+                try:
+                    session.pop('user_photo', None)
+                except Exception:
+                    pass
+                try:
+                    session.pop('user_photo_data', None)
+                except Exception:
+                    pass
+                if photo_data_str:
+                    session['user_photo_data'] = photo_data_str
+                elif photo_path:
+                    session['user_photo'] = photo_path
 
         # Extract additional profile fields from the form.  Empty strings are
         # converted to None so that NULL is stored instead of an empty string.
@@ -7481,16 +7598,20 @@ def account():
         # explicitly so changes persist.  On any exception, roll back the
         # transaction, close the connection and surface an error message to the user.
         try:
-            # Perform the update.  If a new photo was uploaded, update the
-            # ``photo`` column as well; otherwise leave it unchanged.  Use
-            # separate SQL statements to ensure the parameter order matches
-            # the placeholders.
-            if photo_path:
+            if photo_data_str is not None or photo_path is not None:
+                # If we have new photo data or a new path, update both
+                # ``photo`` and ``photo_data`` columns.  If either value is
+                # None, the existing value in the database will be replaced
+                # with NULL.  Use the provided values from the upload or
+                # fallback to the existing values from user_row.
+                current_photo_path = photo_path if photo_path is not None else (user_row['photo'] if user_row else None)
+                current_photo_data = photo_data_str if photo_data_str is not None else (user_row['photo_data'] if user_row else None)
                 conn.execute(
-                    'UPDATE users SET name=?, contact_info=?, birth_date=?, zodiac_sign=?, city=?, about_me=?, profile_data=?, photo=? WHERE id=?',
-                    (full_name, contact, birth_date, zodiac_sign, city_val, about_me_val, profile_json, photo_path, user_id)
+                    'UPDATE users SET name=?, contact_info=?, birth_date=?, zodiac_sign=?, city=?, about_me=?, profile_data=?, photo=?, photo_data=? WHERE id=?',
+                    (full_name, contact, birth_date, zodiac_sign, city_val, about_me_val, profile_json, current_photo_path, current_photo_data, user_id)
                 )
             else:
+                # No new photo uploaded; only update other profile fields.
                 conn.execute(
                     'UPDATE users SET name=?, contact_info=?, birth_date=?, zodiac_sign=?, city=?, about_me=?, profile_data=? WHERE id=?',
                     (full_name, contact, birth_date, zodiac_sign, city_val, about_me_val, profile_json, user_id)
@@ -8420,6 +8541,13 @@ def new_room_step4():
                     ordered_files.append(f)
             files = ordered_files
         saved_filenames: list[str] = []
+        # For each uploaded file, we save it to disk when possible and also
+        # capture its base64‑encoded contents.  The base64 strings are stored
+        # in the session under ``new_listing_photo_data`` keyed by the unique
+        # filename.  This allows us to persist images even on platforms where
+        # the filesystem is read‑only (e.g. Render) by later writing the
+        # image data into the database at publish time.
+        photo_data_map: dict[str, str] = {}
         for file in files:
             if not file or file.filename == '':
                 continue
@@ -8428,12 +8556,55 @@ def new_room_step4():
             if ext not in {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'}:
                 continue
             unique_name = f"{uuid.uuid4().hex}{ext}"
+            # Attempt to save to disk
+            saved = False
             try:
                 file.save(os.path.join(UPLOAD_ROOMS_FOLDER, unique_name))
-                saved_filenames.append(unique_name)
+                saved = True
             except Exception:
-                continue
+                saved = False
+            # Always attempt to read file bytes to store base64 data
+            try:
+                # Read contents from the uploaded file.  If saving to disk
+                # succeeded, this reads from the same file object; if saving
+                # failed, we still have the in-memory stream.
+                file_bytes = None
+                try:
+                    file_bytes = file.read()
+                except Exception:
+                    file_bytes = None
+                # Reset pointer for any potential further reads
+                try:
+                    file.seek(0)
+                except Exception:
+                    try:
+                        file.stream.seek(0)
+                    except Exception:
+                        pass
+                if file_bytes:
+                    try:
+                        data_str = base64.b64encode(file_bytes).decode('utf-8')
+                        photo_data_map[unique_name] = data_str
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+            saved_filenames.append(unique_name)
+        # Persist filenames and base64 data in the session
         session['new_listing_photos'] = saved_filenames
+        # Store the mapping of filename to base64 only if it is non‑empty.  This
+        # mapping will be used in new_room_step9 when inserting into
+        # ``room_photos`` with ``image_data`` values.
+        if photo_data_map:
+            try:
+                existing_map = session.get('new_listing_photo_data', {})
+                if not isinstance(existing_map, dict):
+                    existing_map = {}
+                # Merge with existing data to retain previously uploaded files
+                existing_map.update(photo_data_map)
+                session['new_listing_photo_data'] = existing_map
+            except Exception:
+                session['new_listing_photo_data'] = photo_data_map
         # After uploading photos, proceed to the next step (descriptions)
         return redirect(url_for('new_room_step5'))
     # On GET display the upload interface
@@ -9030,20 +9201,28 @@ def new_room_step9():
                                 new_room_id = new_id_row[0]
                             except Exception:
                                 new_room_id = None
-                # Insert photos for the new room if available
+                # Insert photos for the new room if available.  Retrieve any
+                # base64‑encoded image data stored in the session from the
+                # upload step.  ``photo_data_map`` is a mapping from
+                # filename to a base64 string (without the data URI prefix).  If a
+                # mapping entry exists for the current filename, it will be
+                # inserted into the ``image_data`` column; otherwise, NULL is
+                # inserted.  If the ``image_data`` column does not exist,
+                # insertion falls back to including only room_id and file_name.
                 photo_files = session.get('new_listing_photos', [])
+                photo_data_map = session.get('new_listing_photo_data', {})
                 if new_room_id and photo_files:
                     for fname in photo_files:
-                        # Attempt to insert with the image_data column.  If the column
-                        # does not exist (older schema), fall back to inserting only
-                        # room_id and file_name.  Each insertion is wrapped in its own
-                        # try/except to avoid aborting the entire loop on a single
-                        # failure.
+                        # Determine the base64 data for this filename, if any
+                        try:
+                            img_data_value = photo_data_map.get(fname)
+                        except Exception:
+                            img_data_value = None
                         inserted = False
                         try:
                             conn.execute(
                                 "INSERT INTO room_photos (room_id, file_name, image_data) VALUES (?, ?, ?)",
-                                (new_room_id, fname, None),
+                                (new_room_id, fname, img_data_value),
                             )
                             inserted = True
                         except Exception:

@@ -86,13 +86,18 @@ def create_tables(connection) -> None:
             role TEXT NOT NULL,
             name TEXT,
             contact_info TEXT,
-            -- Optional profile fields: avatar photo, birth date, zodiac sign,
-            -- city of residence and a short bio.  These columns may be NULL.
+            -- Optional profile fields: avatar photo, base64 avatar data, birth date,
+            -- zodiac sign, city of residence and a short bio.  These columns may be NULL.
             photo TEXT,
             birth_date DATE,
             zodiac_sign TEXT,
             city TEXT,
-            about_me TEXT
+            about_me TEXT,
+            -- JSON encoded dynamic profile fields (e.g. interests).  When NULL the
+            -- profile has no additional data.
+            profile_data TEXT,
+            -- Base64 encoded avatar data for persistent storage on read‑only file systems.
+            photo_data TEXT
         );
         """
     )
@@ -231,6 +236,10 @@ def create_tables(connection) -> None:
             id SERIAL PRIMARY KEY,
             room_id INTEGER NOT NULL,
             file_name TEXT NOT NULL,
+            -- Base64 encoded photo data.  When present, this takes precedence over
+            -- file_name when serving images.  This column may be NULL for older
+            -- deployments or when the image is stored solely on disk.
+            image_data TEXT,
             FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
         );
         """

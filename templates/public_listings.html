@@ -325,7 +325,11 @@
                        placeholder с первой буквой имени.  user_photo передаётся через
                        context_processor из app.py. #}
                     {% if user_photo %}
-                      <img src="{{ url_for('static', filename=user_photo) }}" alt="avatar" class="rounded-circle me-2" width="40" height="40" style="object-fit: cover;">
+                      {% if user_photo.startswith('data:') %}
+                        <img src="{{ user_photo }}" alt="avatar" class="rounded-circle me-2" width="40" height="40" style="object-fit: cover;">
+                      {% else %}
+                        <img src="{{ url_for('static', filename=user_photo) }}" alt="avatar" class="rounded-circle me-2" width="40" height="40" style="object-fit: cover;">
+                      {% endif %}
                     {% else %}
                       {% set _name = current_user_name if current_user_name else current_username %}
                       <div class="avatar-placeholder me-2" style="width: 40px; height: 40px;">
@@ -393,7 +397,11 @@
                 <div class="dropdown">
                   <a href="#" class="d-flex align-items-center text-decoration-none dropdown-toggle" id="ownerMenu" data-bs-toggle="dropdown" aria-expanded="false">
                     {% if user_photo %}
-                      <img src="{{ url_for('static', filename=user_photo) }}" alt="avatar" class="rounded-circle me-2" width="32" height="32" style="object-fit: cover;">
+                      {% if user_photo.startswith('data:') %}
+                        <img src="{{ user_photo }}" alt="avatar" class="rounded-circle me-2" width="32" height="32" style="object-fit: cover;">
+                      {% else %}
+                        <img src="{{ url_for('static', filename=user_photo) }}" alt="avatar" class="rounded-circle me-2" width="32" height="32" style="object-fit: cover;">
+                      {% endif %}
                     {% else %}
                       {% set _name = current_user_name if current_user_name else current_username %}
                       <div class="avatar-placeholder me-2" style="width: 32px; height: 32px;">
@@ -418,7 +426,11 @@
               {% else %}
                 <!-- Для менеджеров: аватар, имя и ссылка Выход -->
                 {% if user_photo %}
-                  <img src="{{ url_for('static', filename=user_photo) }}" alt="avatar" class="rounded-circle me-2" width="32" height="32" style="object-fit: cover;">
+                  {% if user_photo.startswith('data:') %}
+                    <img src="{{ user_photo }}" alt="avatar" class="rounded-circle me-2" width="32" height="32" style="object-fit: cover;">
+                  {% else %}
+                    <img src="{{ url_for('static', filename=user_photo) }}" alt="avatar" class="rounded-circle me-2" width="32" height="32" style="object-fit: cover;">
+                  {% endif %}
                 {% else %}
                   {% set _name = current_user_name if current_user_name else current_username %}
                   <div class="avatar-placeholder me-2" style="width: 32px; height: 32px;">
@@ -601,9 +613,16 @@
       });
     </script>
     <!-- Подключение Google Maps Places API для автодополнения городов -->
-    <!-- Замените YOUR_API_KEY на действительный ключ Google Maps JavaScript API
-         с включённой библиотекой Places.  Без ключа подсказки работать не будут. -->
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB1j3yGGvqeJVdsp9Ep4GUKSC2N26Vg9vs&libraries=places"></script>
+    {#
+      Используем переменную google_maps_api_key, предоставляемую через
+      context_processor.  Если ключ определён, подключаем библиотеку
+      Google Maps Places; иначе пропускаем включение скрипта.  Это
+      позволяет конфигурировать API ключ через переменные окружения и
+      избегать жёстко прописанных строк в шаблоне.
+    #}
+    {% if google_maps_api_key %}
+    <script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&libraries=places"></script>
+    {% endif %}
     <script>
       document.addEventListener('DOMContentLoaded', function() {
         // Инициализируем Google Places Autocomplete для поля ввода города.

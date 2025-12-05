@@ -31,24 +31,34 @@
           нового файла), затем из базы данных (user.photo).  Если путь
           определён, показываем фото, иначе круг с инициалом.
         #}
-        {% set avatar_path = session.get('user_photo') or (user.photo if user and user.photo) %}
-        {% if avatar_path %}
-        <img id="profileAvatar" src="{{ url_for('static', filename=avatar_path) }}"
-             alt="Аватар"
-             class="rounded-circle shadow-sm"
-             style="width: 200px; height: 200px; object-fit: cover;">
+        {# Use the global ``user_photo`` variable provided by the context processor
+           via inject_current_user.  If ``user_photo`` is a data URI, use it
+           directly as the src; otherwise treat it as a static filename.  When
+           no photo exists, display initials instead. #}
+        {% if user_photo %}
+          {% if user_photo.startswith('data:') %}
+            <img id="profileAvatar" src="{{ user_photo }}"
+                 alt="Аватар"
+                 class="rounded-circle shadow-sm"
+                 style="width: 200px; height: 200px; object-fit: cover;">
+          {% else %}
+            <img id="profileAvatar" src="{{ url_for('static', filename=user_photo) }}"
+                 alt="Аватар"
+                 class="rounded-circle shadow-sm"
+                 style="width: 200px; height: 200px; object-fit: cover;">
+          {% endif %}
         {% else %}
-        <div id="profileAvatarCircle" class="avatar-circle shadow-sm">
-          <span>
-            {% if user and user.name %}
-              {{ user.name[0] | upper }}
-            {% elif user and user.username %}
-              {{ user.username[0] | upper }}
-            {% else %}
-              U
-            {% endif %}
-          </span>
-        </div>
+          <div id="profileAvatarCircle" class="avatar-circle shadow-sm">
+            <span>
+              {% if user and user.name %}
+                {{ user.name[0] | upper }}
+              {% elif user and user.username %}
+                {{ user.username[0] | upper }}
+              {% else %}
+                U
+              {% endif %}
+            </span>
+          </div>
         {% endif %}
         <!-- Кнопка загрузки аватара.  Отображается только в режиме редактирования. -->
         <div class="d-flex flex-column align-items-center mt-2">
@@ -56,7 +66,7 @@
                   class="btn btn-light upload-photo-button shadow rounded-pill d-none"
                   id="uploadPhotoBtn">
             <i class="bi bi-camera-fill me-1"></i>
-            {% if avatar_path %}Сменить{% else %}Добавить{% endif %}
+            {% if user_photo %}Сменить{% else %}Добавить{% endif %}
           </button>
         </div>
       </div>
