@@ -8620,7 +8620,7 @@ def new_room_step5():
             session['new_listing_guest_notes'] = guest_notes.strip()
         except Exception:
             session['new_listing_guest_notes'] = guest_notes
-        # Proceed to the next step (additional details)
+        # Proceed to the next step (house rules)
         return redirect(url_for('new_room_step6'))
     # On GET set the progress bar.  With nine steps, step 5 is just over
     # half way through the process – use approximately 55 percent progress.
@@ -8644,12 +8644,14 @@ def new_room_step5():
 @login_required
 @roles_required('owner')
 def new_room_step6():
-    """Step 6 of the new listing wizard: additional details.
+    """Step 6 of the new listing wizard: house rules.
 
-    Collects physical characteristics about the property such as floor,
-    elevator availability, area measurements and renovation type.  Data
-    is stored in the session and the user advances to pricing once complete."""
-    # Ensure previous steps exist
+    After the host has provided the property's description, they must
+    specify check‑in and check‑out times along with smoking and pet
+    policies.  These values are stored in the session.  Once saved, the
+    user continues to the details step.
+    """
+    # Ensure that all prior steps have been completed
     if not session.get('new_listing_property_type'):
         return redirect(url_for('new_room_step1'))
     if 'new_listing_address' not in session:
@@ -8658,9 +8660,57 @@ def new_room_step6():
         return redirect(url_for('new_room_step3'))
     if 'new_listing_photos' not in session:
         return redirect(url_for('new_room_step4'))
-    # Descriptions must be provided before this step
     if 'new_listing_main_description' not in session:
         return redirect(url_for('new_room_step5'))
+    if request.method == 'POST':
+        # Save house rules
+        session['new_listing_check_in_time'] = request.form.get('check_in_time', '')
+        session['new_listing_check_out_time'] = request.form.get('check_out_time', '')
+        session['new_listing_smoking'] = request.form.get('smoking', '')
+        session['new_listing_pets'] = request.form.get('pets', '')
+        # Continue to details step
+        return redirect(url_for('new_room_step7'))
+    # On GET set progress for step 6 (two‑thirds complete)
+    progress = 66
+    back_url = url_for('new_room_step5')
+    next_url = url_for('new_room_step7')
+    return render_template(
+        'new_room_step6.html',
+        progress=progress,
+        back_url=back_url,
+        next_url=next_url,
+        hide_nav=True,
+        check_in_time=session.get('new_listing_check_in_time', ''),
+        check_out_time=session.get('new_listing_check_out_time', ''),
+        smoking=session.get('new_listing_smoking', ''),
+        pets=session.get('new_listing_pets', ''),
+    )
+
+@app.route('/rooms/new/step7', methods=['GET', 'POST'])
+@login_required
+@roles_required('owner')
+def new_room_step7():
+    """Step 7 of the new listing wizard: additional details.
+
+    This step gathers physical characteristics about the property such as
+    floor number, elevator availability, total/living/kitchen area and
+    renovation type.  The collected data is stored in the session, and
+    upon completion the user proceeds to the pricing step.
+    """
+    # Ensure previous steps are complete
+    if not session.get('new_listing_property_type'):
+        return redirect(url_for('new_room_step1'))
+    if 'new_listing_address' not in session:
+        return redirect(url_for('new_room_step2'))
+    if 'new_listing_amenities' not in session:
+        return redirect(url_for('new_room_step3'))
+    if 'new_listing_photos' not in session:
+        return redirect(url_for('new_room_step4'))
+    if 'new_listing_main_description' not in session:
+        return redirect(url_for('new_room_step5'))
+    # House rules must be set before details
+    if 'new_listing_check_in_time' not in session:
+        return redirect(url_for('new_room_step6'))
     if request.method == 'POST':
         # Save numeric and categorical fields with basic validation
         session['new_listing_floor'] = request.form.get('floor', '').strip()
@@ -8670,13 +8720,13 @@ def new_room_step6():
         session['new_listing_kitchen_area'] = request.form.get('kitchen_area', '').strip()
         session['new_listing_renovation'] = request.form.get('renovation', '').strip()
         # Proceed to pricing step
-        return redirect(url_for('new_room_step7'))
-    # On GET set progress (roughly 65 percent of the way through 9 steps)
-    progress = 66
-    back_url = url_for('new_room_step5')
-    next_url = url_for('new_room_step7')
+        return redirect(url_for('new_room_step8'))
+    # On GET set progress for step 7 (roughly three‑quarters through)
+    progress = 77
+    back_url = url_for('new_room_step6')
+    next_url = url_for('new_room_step8')
     return render_template(
-        'new_room_step6.html',
+        'new_room_step7.html',
         progress=progress,
         back_url=back_url,
         next_url=next_url,
@@ -8689,16 +8739,17 @@ def new_room_step6():
         renovation=session.get('new_listing_renovation', ''),
     )
 
-@app.route('/rooms/new/step7', methods=['GET', 'POST'])
+@app.route('/rooms/new/step8', methods=['GET', 'POST'])
 @login_required
 @roles_required('owner')
-def new_room_step7():
-    """Step 7 of the new listing wizard: pricing.
+def new_room_step8():
+    """Step 8 of the new listing wizard: pricing.
 
-    Collects the base price per night and an optional weekend/holiday markup
-    percentage.  Values are stored in the session and the user moves on
-    to selecting discounts."""
-    # Ensure previous steps are complete
+    Collect the base nightly price and an optional percentage markup for
+    weekends and holidays.  Values are stored in the session.  After
+    submitting the form, the user moves on to the final discount step.
+    """
+    # Ensure prior steps are complete
     if not session.get('new_listing_property_type'):
         return redirect(url_for('new_room_step1'))
     if 'new_listing_address' not in session:
@@ -8709,8 +8760,10 @@ def new_room_step7():
         return redirect(url_for('new_room_step4'))
     if 'new_listing_main_description' not in session:
         return redirect(url_for('new_room_step5'))
-    if 'new_listing_floor' not in session:
+    if 'new_listing_check_in_time' not in session:
         return redirect(url_for('new_room_step6'))
+    if 'new_listing_floor' not in session:
+        return redirect(url_for('new_room_step7'))
     if request.method == 'POST':
         # Normalise and parse the base price (remove spaces and non‑digits)
         raw_price = request.form.get('base_price', '')
@@ -8726,11 +8779,11 @@ def new_room_step7():
         except Exception:
             session['new_listing_weekend_markup'] = 0
         # Proceed to discount selection
-        return redirect(url_for('new_room_step8'))
-    # On GET determine progress (roughly 75 percent)
-    progress = 77
-    back_url = url_for('new_room_step6')
-    next_url = url_for('new_room_step8')
+        return redirect(url_for('new_room_step9'))
+    # On GET determine progress (roughly 88 percent)
+    progress = 88
+    back_url = url_for('new_room_step7')
+    next_url = url_for('new_room_step9')
     # Prepare the base price string with spaces for thousands separators
     base_price_val = session.get('new_listing_base_price')
     if base_price_val:
@@ -8742,7 +8795,7 @@ def new_room_step7():
         base_price_str = ''
     weekend_markup_val = session.get('new_listing_weekend_markup', 0)
     return render_template(
-        'new_room_step7.html',
+        'new_room_step8.html',
         progress=progress,
         back_url=back_url,
         next_url=next_url,
@@ -8751,17 +8804,25 @@ def new_room_step7():
         weekend_markup=weekend_markup_val,
     )
 
-@app.route('/rooms/new/step8', methods=['GET', 'POST'])
+# --------------------------------------------------------------------------
+# Step 9: Discounts (final step)
+@app.route('/rooms/new/step9', methods=['GET', 'POST'])
 @login_required
 @roles_required('owner')
-def new_room_step8():
-    """Step 8 of the new listing wizard: discounts.
+def new_room_step9():
+    """Final step of the new listing wizard: select discounts.
 
-    Displays optional discount choices.  On POST the selected discounts are
-    saved to the session and the user proceeds to the final step (house rules)."""
-    # Ensure prior steps are complete
+    Hosts can opt into optional discount programs for early bookings and
+    longer stays.  On form submission the selected discounts are stored
+    in the session and the listing creation process is considered
+    complete.  The user is redirected to the rooms list.  If any prior
+    steps are incomplete, the user is redirected back to the appropriate
+    step.
+    """
+    # Ensure the wizard is in progress by checking required session keys
     if not session.get('new_listing_property_type'):
         return redirect(url_for('new_room_step1'))
+    # Ensure address, amenities, photos, description, house rules, details and pricing exist
     if 'new_listing_address' not in session:
         return redirect(url_for('new_room_step2'))
     if 'new_listing_amenities' not in session:
@@ -8770,79 +8831,223 @@ def new_room_step8():
         return redirect(url_for('new_room_step4'))
     if 'new_listing_main_description' not in session:
         return redirect(url_for('new_room_step5'))
-    if 'new_listing_floor' not in session:
+    if 'new_listing_check_in_time' not in session:
         return redirect(url_for('new_room_step6'))
-    if 'new_listing_base_price' not in session:
+    if 'new_listing_floor' not in session:
         return redirect(url_for('new_room_step7'))
+    if 'new_listing_base_price' not in session:
+        return redirect(url_for('new_room_step8'))
     if request.method == 'POST':
+        # Save discount selections from the form into the session.
         discounts_raw = request.form.getlist('discounts')
         if discounts_raw:
             try:
-                session['new_listing_discounts'] = [int(x) for x in discounts_raw if x.isdigit()]
+                session['new_listing_discounts'] = [int(x) for x in discounts_raw if str(x).isdigit()]
             except Exception:
                 session['new_listing_discounts'] = []
         else:
             session['new_listing_discounts'] = []
-        return redirect(url_for('new_room_step9'))
-    # On GET progress is roughly 85 percent
-    progress = 88
-    back_url = url_for('new_room_step7')
-    next_url = url_for('new_room_step9')
-    return render_template(
-        'new_room_step8.html',
-        progress=progress,
-        back_url=back_url,
-        next_url=next_url,
-        hide_nav=True,
-        discounts=session.get('new_listing_discounts'),
-    )
-
-# --------------------------------------------------------------------------
-# Step 9: House rules
-@app.route('/rooms/new/step9', methods=['GET', 'POST'])
-@login_required
-@roles_required('owner')
-def new_room_step9():
-    """Final step of the new listing wizard: collect house rules.
-
-    Users specify check-in and check-out times along with smoking and pet
-    policies.  Selected values are stored in the session.  Upon form
-    submission the listing is considered complete and the user is redirected
-    to the rooms list.  If accessed directly without completing prior steps,
-    the user is redirected back to the appropriate step.
-    """
-    # Ensure the wizard is in progress by checking a key session value.
-    if not session.get('new_listing_property_type'):
-        return redirect(url_for('new_room_step1'))
-    if request.method == 'POST':
-        # Determine whether this POST came from the house rules form or the discount selection
-        # If check-in/out times or policies are present, treat it as the final submission
-        if any(key in request.form for key in ['check_in_time', 'check_out_time', 'smoking', 'pets']):
-            session['new_listing_check_in_time'] = request.form.get('check_in_time', '')
-            session['new_listing_check_out_time'] = request.form.get('check_out_time', '')
-            session['new_listing_smoking'] = request.form.get('smoking', '')
-            session['new_listing_pets'] = request.form.get('pets', '')
-            # Save discount selections if posted along with the final form
-            discounts_raw = request.form.getlist('discounts')
-            if discounts_raw:
+        # If the publish flag is set, create a new room record and mark it as published.
+        # The final step of the wizard posts a hidden ``publish`` field when the
+        # user clicks the "Опубликовать" button.  When present we gather the
+        # collected data from the session, insert a new row into the rooms table,
+        # insert photo records and redirect to the user's room list.  Without the
+        # publish flag we simply redirect back to the rooms list.
+        if request.form.get('publish'):
+            # Gather basic details from the session.  Many fields are optional
+            # and may be missing if the user skipped them.  Convert values to
+            # appropriate types where necessary (e.g. numbers).
+            def _to_int(value):
                 try:
-                    session['new_listing_discounts'] = [int(x) for x in discounts_raw if x.isdigit()]
+                    return int(value) if value and str(value).strip() else None
                 except Exception:
-                    session['new_listing_discounts'] = []
-            # Redirect to rooms list (listing creation complete)
+                    return None
+            def _to_float(value):
+                try:
+                    return float(value) if value and str(value).strip() else None
+                except Exception:
+                    return None
+            # Determine the listing name.  Use the provided address if available,
+            # otherwise fall back to a generic placeholder.
+            room_number = session.get('new_listing_address') or 'Новое объявление'
+            user_id = session.get('user_id')
+            housing_type = session.get('new_listing_property_type')
+            description = session.get('new_listing_main_description') or ''
+            # Numeric and optional fields
+            floor = _to_int(session.get('new_listing_floor'))
+            floors_total = None  # not collected in the wizard
+            area_total = _to_float(session.get('new_listing_total_area'))
+            area_kitchen = _to_float(session.get('new_listing_kitchen_area'))
+            condition = session.get('new_listing_renovation') or None
+            kitchen_studio = None
+            # Compile discounts into a comma-separated string
+            discounts_list = session.get('new_listing_discounts', [])
+            try:
+                discount = ','.join([str(x) for x in discounts_list]) if discounts_list else None
+            except Exception:
+                discount = None
+            deposit = None
+            min_rent_days = None
+            max_rent_days = None
+            extra_charges = None
+            max_guests = None
+            allow_children = None
+            # Convert yes/no values for pets and smoking policies into booleans or strings
+            pets = session.get('new_listing_pets')
+            allow_pets = True if pets == 'yes' else False if pets == 'no' else None
+            smoking = session.get('new_listing_smoking')
+            smoking_policy = smoking if smoking else None
+            parties_policy = None
+            checkin_time = session.get('new_listing_check_in_time') or None
+            checkout_time = session.get('new_listing_check_out_time') or None
+            # Amenities are stored as a list; join into a comma-separated string
+            amenities_list = session.get('new_listing_amenities')
+            try:
+                amenities = ','.join([str(x) for x in amenities_list]) if amenities_list else None
+            except Exception:
+                amenities = None
+            features = None
+            owner_name = None
+            owner_phone = None
+            owner_messenger = None
+            owner_email = None
+            country = session.get('new_listing_country') or None
+            city = session.get('new_listing_city') or None
+            street = session.get('new_listing_street') or None
+            house_number = session.get('new_listing_house_number') or None
+            latitude = None
+            longitude = None
+            price_per_night = _to_float(session.get('new_listing_base_price'))
+            unavailable_dates = None
+            min_notice_days = None
+            booking_method = None
+            # Always set is_published to True when publishing a new listing
+            is_published = True
+            # Connect to the database and ensure required columns exist
+            conn = get_db_connection()
+            try:
+                ensure_rooms_additional_columns(conn)
+            except Exception:
+                pass
+            try:
+                ensure_room_photos_image_data_column(conn)
+            except Exception:
+                pass
+            try:
+                cur = conn.execute(
+                    "INSERT INTO rooms (room_number, listing_url, residential_complex, owner_id, "
+                    "housing_type, description, num_rooms, floor, floors_total, area_total, area_kitchen, condition, kitchen_studio, "
+                    "discount, deposit, min_rent_days, max_rent_days, extra_charges, max_guests, allow_children, allow_pets, smoking_policy, parties_policy, "
+                    "checkin_time, checkout_time, amenities, features, owner_name, owner_phone, owner_messenger, owner_email, "
+                    "country, city, street, house_number, latitude, longitude, price_per_night, unavailable_dates, min_notice_days, booking_method, is_published) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (
+                        room_number,
+                        None,  # listing_url
+                        None,  # residential_complex
+                        user_id,
+                        housing_type,
+                        description,
+                        None,  # num_rooms
+                        floor,
+                        floors_total,
+                        area_total,
+                        area_kitchen,
+                        condition,
+                        kitchen_studio,
+                        discount,
+                        deposit,
+                        min_rent_days,
+                        max_rent_days,
+                        extra_charges,
+                        max_guests,
+                        allow_children,
+                        allow_pets,
+                        smoking_policy,
+                        parties_policy,
+                        checkin_time,
+                        checkout_time,
+                        amenities,
+                        features,
+                        owner_name,
+                        owner_phone,
+                        owner_messenger,
+                        owner_email,
+                        country,
+                        city,
+                        street,
+                        house_number,
+                        latitude,
+                        longitude,
+                        price_per_night,
+                        unavailable_dates,
+                        min_notice_days,
+                        booking_method,
+                        is_published,
+                    ),
+                )
+                new_room_id = None
+                try:
+                    new_room_id = getattr(cur, 'lastrowid', None)
+                except Exception:
+                    new_room_id = None
+                if not new_room_id:
+                    # Attempt to fetch the id from RETURNING clause if supported
+                    try:
+                        new_id_row = cur.fetchone()
+                    except Exception:
+                        new_id_row = None
+                    if new_id_row:
+                        try:
+                            new_room_id = new_id_row.get('id')  # type: ignore[attr-defined]
+                        except Exception:
+                            try:
+                                new_room_id = new_id_row[0]
+                            except Exception:
+                                new_room_id = None
+                # Insert photos for the new room if available
+                photo_files = session.get('new_listing_photos', [])
+                if new_room_id and photo_files:
+                    for fname in photo_files:
+                        try:
+                            conn.execute(
+                                "INSERT INTO room_photos (room_id, file_name, image_data) VALUES (?, ?, ?)",
+                                (new_room_id, fname, None),
+                            )
+                        except Exception:
+                            # Ignore errors inserting individual photos
+                            continue
+                try:
+                    conn.commit()
+                except Exception:
+                    pass
+            except Exception:
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
+            finally:
+                conn.close()
+            # Clear wizard-related session variables so a new listing can be started cleanly
+            for key in [
+                'new_listing_property_type', 'new_listing_address',
+                'new_listing_country', 'new_listing_city', 'new_listing_street',
+                'new_listing_house_number', 'new_listing_amenities',
+                'new_listing_photos', 'new_listing_main_description',
+                'new_listing_guest_notes', 'new_listing_check_in_time',
+                'new_listing_check_out_time', 'new_listing_smoking',
+                'new_listing_pets', 'new_listing_floor', 'new_listing_elevator',
+                'new_listing_total_area', 'new_listing_living_area',
+                'new_listing_kitchen_area', 'new_listing_renovation',
+                'new_listing_base_price', 'new_listing_weekend_markup',
+                'new_listing_discounts'
+            ]:
+                session.pop(key, None)
+            # After publishing, redirect to the rooms list where the new listing will appear
             return redirect(url_for('list_rooms'))
-        else:
-            # POST came from the discount step; save selected discounts and then show house rules
-            discounts_raw = request.form.getlist('discounts')
-            if discounts_raw:
-                try:
-                    session['new_listing_discounts'] = [int(x) for x in discounts_raw if x.isdigit()]
-                except Exception:
-                    session['new_listing_discounts'] = []
-            else:
-                session['new_listing_discounts'] = []
-            return redirect(url_for('new_room_step9'))
-    # Determine progress for final step
+        # If not publishing, simply redirect to the rooms list
+        return redirect(url_for('list_rooms'))
+    # On GET, final step progress is 100 percent
     progress = 100
     back_url = url_for('new_room_step8')
     return render_template(
@@ -8850,8 +9055,5 @@ def new_room_step9():
         progress=progress,
         back_url=back_url,
         hide_nav=True,
-        check_in_time=session.get('new_listing_check_in_time', ''),
-        check_out_time=session.get('new_listing_check_out_time', ''),
-        smoking=session.get('new_listing_smoking', ''),
-        pets=session.get('new_listing_pets', ''),
+        discounts=session.get('new_listing_discounts'),
     )
