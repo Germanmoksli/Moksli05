@@ -8753,20 +8753,17 @@ def new_room_step4():
                 temp_conn.close()
             except Exception:
                 pass
-        # Persist filenames and base64 data in the session.  Retaining this
-        # mapping allows fallback use of session data if the temporary table
-        # insert failed.  However, storing only small amounts of data in the
-        # session is advisable to avoid cookie size limits.
+        # Persist only the list of filenames in the session.  Do not store
+        # base64 strings in the session because they can easily exceed
+        # cookie size limits and cause browsers to silently drop the cookie.
+        # The base64 image data is stored in the temporary database table
+        # ``room_photos_temp`` instead, so it can be retrieved at publish time
+        # without overflowing the cookie.  See new_room_step9() for retrieval.
         session['new_listing_photos'] = saved_filenames
-        if photo_data_map:
-            try:
-                existing_map = session.get('new_listing_photo_data', {})
-                if not isinstance(existing_map, dict):
-                    existing_map = {}
-                existing_map.update(photo_data_map)
-                session['new_listing_photo_data'] = existing_map
-            except Exception:
-                session['new_listing_photo_data'] = photo_data_map
+        # Note: we intentionally avoid storing ``photo_data_map`` in the
+        # session.  Large base64 strings will cause the cookie to exceed
+        # 4 KB and break the session entirely.  All base64 data is
+        # persisted in the temporary table ``room_photos_temp``.
         # After uploading photos, proceed to the next step (descriptions)
         return redirect(url_for('new_room_step5'))
     # On GET display the upload interface
@@ -9424,21 +9421,23 @@ def new_room_step9():
                         temp_map = {}
                 if new_room_id and photo_files:
                     for fname in photo_files:
-                        # Determine the image data to insert.  Prefer the session
-                        # mapping; next look in the temporary table; finally try
-                        # reading the file from disk.  If all sources fail,
-                        # img_data_value remains None and the record will be
-                        # inserted without image_data.
+                # Determine the image data to insert.  Prefer the temporary
+                # table mapping because it stores the base64 data outside of
+                # the session, avoiding cookie size issues.  Next, fall back
+                # to the legacy session mapping.  Finally try reading the
+                # file from disk.  If all sources fail, ``img_data_value``
+                # remains None and the record will be inserted without
+                # image_data.
                         img_data_value: typing.Optional[str] = None
-                        # Session-based base64
+                        # Temporary table base64 has priority
                         try:
-                            img_data_value = photo_data_map.get(fname)  # type: ignore[assignment]
+                            img_data_value = temp_map.get(fname)
                         except Exception:
                             img_data_value = None
-                        # Temporary table base64
+                        # Session-based base64 (legacy fallback)
                         if not img_data_value:
                             try:
-                                img_data_value = temp_map.get(fname)
+                                img_data_value = photo_data_map.get(fname)  # type: ignore[assignment]
                             except Exception:
                                 img_data_value = None
                         # Fallback: try to read from file system if base64 is still missing
