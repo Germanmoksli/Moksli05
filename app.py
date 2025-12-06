@@ -3774,6 +3774,27 @@ def ensure_room_photos_image_data_column(conn) -> None:
     except Exception:
         pass
 
+# -----------------------------------------------------------------------------
+# Generic helper to ensure a column exists on a given table.
+def ensure_column_exists(conn, table: str, column: str, col_type: str) -> None:
+    """Ensure that ``table`` contains a column named ``column`` of type ``col_type``.
+
+    This helper attempts to execute an ``ALTER TABLE`` to add the specified
+    column.  If the column already exists or the database engine does not
+    support the operation, any exceptions are ignored.  Repeated calls are
+    therefore safe and idempotent.
+
+    Args:
+        conn: A database connection or compatibility wrapper.
+        table: Name of the table to alter.
+        column: Name of the column to ensure exists.
+        col_type: SQL type of the column (e.g. ``TEXT``, ``INTEGER``).
+    """
+    try:
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}")
+    except Exception:
+        pass
+
 
 # Add room
 @app.route("/rooms/add", methods=["GET", "POST"])
@@ -9198,8 +9219,11 @@ def new_room_step9():
                 ensure_rooms_additional_columns(conn)
             except Exception:
                 pass
+            # Ensure the image_data column exists on room_photos using the generic helper.
+            # This call attempts to add the column and silently ignores errors if it
+            # already exists or cannot be added (e.g. unsupported dialect).
             try:
-                ensure_room_photos_image_data_column(conn)
+                ensure_column_exists(conn, 'room_photos', 'image_data', 'TEXT')
             except Exception:
                 pass
             try:
