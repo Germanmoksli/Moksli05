@@ -7497,36 +7497,46 @@ def account():
                     os.makedirs(upload_folder, exist_ok=True)
                 except Exception:
                     pass
+                # Build the full path for saving the avatar
+                save_path = os.path.join(upload_folder, unique_name)
+                # Read the uploaded file into memory *before* saving it.  This
+                # ensures that we capture the contents even if writing to
+                # disk fails or the filesystem is read‑only.  After reading
+                # we reset the stream position so that the subsequent save
+                # writes the complete file.  If an exception occurs during
+                # reading, ``file_bytes`` will remain None and no base64
+                # string will be produced.
+                try:
+                    file_bytes = photo_file.read()
+                except Exception:
+                    file_bytes = None
+                # Reset the stream to the beginning for saving
+                try:
+                    photo_file.seek(0)
+                except Exception:
+                    try:
+                        photo_file.stream.seek(0)
+                    except Exception:
+                        pass
                 # Attempt to save the uploaded file to disk.  If writing
                 # fails, ``photo_path`` will remain None and we will rely
-                # solely on the base64 data.
-                save_path = os.path.join(upload_folder, unique_name)
+                # solely on the base64 data.  Saving happens after reading
+                # so that ``photo_file.read()`` does not consume the stream
+                # needed for saving.
                 try:
                     photo_file.save(save_path)
                     photo_path = f"uploads/{unique_name}"
                 except Exception:
                     photo_path = None
-                # Always read the file contents into memory so that we can
-                # encode it into base64.  If reading fails for any reason
-                # then ``photo_data_str`` will remain None.
-                try:
-                    file_bytes = photo_file.read()
-                    # Reset file pointer for any further operations (not
-                    # strictly necessary here but safe to perform).
+                # If we successfully read bytes from the uploaded file,
+                # encode them into a base64 string.  Store the result in
+                # ``photo_data_str``; if encoding fails, leave it as None.
+                photo_data_str = None
+                if file_bytes:
                     try:
-                        photo_file.seek(0)
+                        photo_data_str = base64.b64encode(file_bytes).decode('utf-8')
                     except Exception:
-                        try:
-                            photo_file.stream.seek(0)
-                        except Exception:
-                            pass
-                    if file_bytes:
-                        try:
-                            photo_data_str = base64.b64encode(file_bytes).decode('utf-8')
-                        except Exception:
-                            photo_data_str = None
-                except Exception:
-                    photo_data_str = None
+                        photo_data_str = None
                 # Set session overrides for immediate display.  If we have a
                 # base64 string, prefer that; otherwise fall back to the
                 # saved file path.  Clear any previous overrides so
@@ -8590,46 +8600,68 @@ def new_room_step4():
         # image data into the database at publish time.
         photo_data_map: dict[str, str] = {}
         for file in files:
+            # Skip empty or missing file objects
             if not file or file.filename == '':
                 continue
             filename = secure_filename(file.filename)
             ext = os.path.splitext(filename)[1].lower()
+            # Only allow supported image formats
             if ext not in {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'}:
                 continue
+            # Create a unique name for the stored file so multiple uploads don't collide
             unique_name = f"{uuid.uuid4().hex}{ext}"
-            # Attempt to save to disk
+            # Read the uploaded file into memory before saving it.  Reading
+            # first ensures that we have the image contents even on hosts where
+            # file saving may fail or the filesystem is read‑only.  After
+            # reading we reset the stream pointer back to the beginning so
+            # that subsequent calls to ``file.save`` still write the full file.
+            file_bytes: bytes | None = None
+            try:
+                # Attempt to read the entire file.  Depending on the
+                # FileStorage implementation, ``file.read()`` reads from an
+                # internal stream.  If this succeeds we obtain the raw bytes
+                # needed for base64 encoding.
+                file_bytes = file.read()
+            except Exception:
+                file_bytes = None
+            # Reset the stream position to the beginning so saving writes
+            # the complete content.  Try the common attributes ``seek`` on
+            # the FileStorage itself and on the underlying ``stream``.
+            try:
+                file.seek(0)
+            except Exception:
+                try:
+                    file.stream.seek(0)
+                except Exception:
+                    pass
+            # If we successfully read bytes, encode them to base64 and
+            # store them keyed by the unique filename.  Use a try/except
+            # around base64 encoding to gracefully skip any unexpected
+            # errors; invalid or empty data will simply be omitted from the
+            # photo_data_map.
+            if file_bytes:
+                try:
+                    data_str = base64.b64encode(file_bytes).decode('utf-8')
+                    photo_data_map[unique_name] = data_str
+                except Exception:
+                    # Ignore encoding errors; the photo will still be
+                    # available on disk if the save succeeds.
+                    pass
+            # Attempt to save the file to the uploads directory.  Saving
+            # happens after reading so that read operations don't consume
+            # the stream for the save.  If saving fails (e.g. because the
+            # filesystem is read‑only), we still retain the base64 data
+            # captured above.  Note that ``secure_filename`` sanitizes
+            # filenames but does not modify the generated unique_name.
             saved = False
             try:
                 file.save(os.path.join(UPLOAD_ROOMS_FOLDER, unique_name))
                 saved = True
             except Exception:
                 saved = False
-            # Always attempt to read file bytes to store base64 data
-            try:
-                # Read contents from the uploaded file.  If saving to disk
-                # succeeded, this reads from the same file object; if saving
-                # failed, we still have the in-memory stream.
-                file_bytes = None
-                try:
-                    file_bytes = file.read()
-                except Exception:
-                    file_bytes = None
-                # Reset pointer for any potential further reads
-                try:
-                    file.seek(0)
-                except Exception:
-                    try:
-                        file.stream.seek(0)
-                    except Exception:
-                        pass
-                if file_bytes:
-                    try:
-                        data_str = base64.b64encode(file_bytes).decode('utf-8')
-                        photo_data_map[unique_name] = data_str
-                    except Exception:
-                        pass
-            except Exception:
-                pass
+            # Whether or not saving to disk succeeded, record the name in
+            # ``saved_filenames`` so that it will be inserted into the
+            # ``room_photos`` table when the listing is published.
             saved_filenames.append(unique_name)
         # Persist filenames and base64 data in the session
         session['new_listing_photos'] = saved_filenames
