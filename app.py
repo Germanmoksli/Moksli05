@@ -9283,14 +9283,48 @@ def new_room_step9():
                 # inserted.  If the ``image_data`` column does not exist,
                 # insertion falls back to including only room_id and file_name.
                 photo_files = session.get('new_listing_photos', [])
-                photo_data_map = session.get('new_listing_photo_data', {})
+                # Retrieve the mapping of filenames to base64 data.  Because Flask's
+                # default session is cookie‑based, large base64 strings may be
+                # truncated or omitted.  Use a dict if available, otherwise an
+                # empty mapping.
+                photo_data_map: typing.Dict[str, str] = {}
+                try:
+                    maybe_map = session.get('new_listing_photo_data', {})
+                    if isinstance(maybe_map, dict):
+                        photo_data_map = maybe_map
+                except Exception:
+                    photo_data_map = {}
                 if new_room_id and photo_files:
                     for fname in photo_files:
-                        # Determine the base64 data for this filename, if any
+                        # Start with any base64 value stored in the session.  If
+                        # none exists, attempt to read the file from disk and
+                        # base64‑encode its contents.  This fallback ensures
+                        # images are persisted even if the session cookie was too
+                        # large to include the photo data.  If reading fails,
+                        # img_data_value remains None and the file_name alone
+                        # will be inserted.
+                        img_data_value: typing.Optional[str] = None
                         try:
-                            img_data_value = photo_data_map.get(fname)
+                            img_data_value = photo_data_map.get(fname)  # type: ignore[assignment]
                         except Exception:
                             img_data_value = None
+                        if not img_data_value:
+                            # Try to read the file from the uploads directory
+                            file_path = os.path.join(UPLOAD_ROOMS_FOLDER, fname)
+                            try:
+                                with open(file_path, 'rb') as f:
+                                    file_bytes = f.read()
+                                if file_bytes:
+                                    try:
+                                        # Encode the raw bytes as base64.  Do not
+                                        # prefix with data URI here; the
+                                        # template logic prepends the MIME
+                                        # information when constructing the src.
+                                        img_data_value = base64.b64encode(file_bytes).decode('utf-8')
+                                    except Exception:
+                                        img_data_value = None
+                            except Exception:
+                                img_data_value = None
                         inserted = False
                         try:
                             conn.execute(
