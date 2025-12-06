@@ -9424,19 +9424,16 @@ def new_room_step9():
                         temp_map = {}
                 if new_room_id and photo_files:
                     for fname in photo_files:
-                        """
-                        Persist each uploaded photo to the room_photos table.
-
-                        This logic mirrors the behaviour of the edit_room() route: it tries
-                        to load the raw bytes of the image from disk if available, otherwise
-                        decodes base64 data from the temporary table or legacy session map.  It
-                        then applies the watermark, encodes the result to base64 for storage in
-                        the database, and attempts to save the watermarked bytes back to the
-                        uploads folder.  If the filesystem is read-only, saving the file is
-                        silently ignored.  Finally, the photo record is inserted into the
-                        ``room_photos`` table, including the image_data when available, with a
-                        fallback to omit the column on older schemas.
-                        """
+                        # Persist each uploaded photo to the room_photos table.  This logic
+                        # mirrors the behaviour of the edit_room() route: it tries to load
+                        # the raw bytes of the image from disk if available, otherwise decodes
+                        # base64 data from the temporary table or legacy session map.  It then
+                        # applies the watermark, encodes the result to base64 for storage in
+                        # the database, and attempts to save the watermarked bytes back to
+                        # the uploads folder.  If the filesystem is read-only, saving the file
+                        # is silently ignored.  Finally, the photo record is inserted into the
+                        # ``room_photos`` table, including the image_data when available, with a
+                        # fallback to omit the column on older schemas.
                         # Determine the raw image bytes.  Prefer reading the file from disk.
                         img_bytes: typing.Optional[bytes] = None
                         file_path = os.path.join(UPLOAD_ROOMS_FOLDER, fname)
