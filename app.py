@@ -9420,47 +9420,58 @@ def new_room_step9():
                     except Exception:
                         temp_map = {}
                 if new_room_id and photo_files:
+                    # Ensure the image_data column exists before inserting photos.  This call
+                    # silently ignores errors if the column already exists.
+                    try:
+                        ensure_room_photos_image_data_column(conn)
+                    except Exception:
+                        pass
                     for fname in photo_files:
-                # Determine the image data to insert.  Prefer the temporary
-                # table mapping because it stores the base64 data outside of
-                # the session, avoiding cookie size issues.  Next, fall back
-                # to the legacy session mapping.  Finally try reading the
-                # file from disk.  If all sources fail, ``img_data_value``
-                # remains None and the record will be inserted without
-                # image_data.
+                        # For each photo, attempt to read the corresponding file from the uploads
+                        # directory and apply a watermark before encoding to base64.  Reading the
+                        # file at publish time ensures we insert the final image (possibly
+                        # watermarked) into the database.  If the file cannot be read (for
+                        # example if the filesystem is read‑only or the file is missing), fall
+                        # back to the base64 data stored in the temporary table.  As a last
+                        # resort, use the legacy session mapping.
                         img_data_value: typing.Optional[str] = None
-                        # Temporary table base64 has priority
+                        # Try reading from disk and applying a watermark
+                        file_path = os.path.join(UPLOAD_ROOMS_FOLDER, fname)
                         try:
-                            img_data_value = temp_map.get(fname)
+                            with open(file_path, 'rb') as f:
+                                file_bytes = f.read()
+                            if file_bytes:
+                                try:
+                                    # Apply watermark to the image bytes
+                                    watermarked = apply_watermark_to_image_data(file_bytes)
+                                    # Encode watermarked bytes to base64
+                                    img_data_value = base64.b64encode(watermarked).decode('utf-8')
+                                except Exception:
+                                    # If watermarking fails, encode the raw bytes
+                                    try:
+                                        img_data_value = base64.b64encode(file_bytes).decode('utf-8')
+                                    except Exception:
+                                        img_data_value = None
                         except Exception:
                             img_data_value = None
-                        # Session-based base64 (legacy fallback)
+                        # If reading from disk failed, fall back to the temporary table
+                        if not img_data_value:
+                            try:
+                                img_data_value = temp_map.get(fname)
+                            except Exception:
+                                img_data_value = None
+                        # If still no data, fall back to the legacy session mapping
                         if not img_data_value:
                             try:
                                 img_data_value = photo_data_map.get(fname)  # type: ignore[assignment]
                             except Exception:
                                 img_data_value = None
-                        # Fallback: try to read from file system if base64 is still missing
-                        if not img_data_value:
-                            file_path = os.path.join(UPLOAD_ROOMS_FOLDER, fname)
-                            try:
-                                with open(file_path, 'rb') as f:
-                                    file_bytes = f.read()
-                                if file_bytes:
-                                    try:
-                                        img_data_value = base64.b64encode(file_bytes).decode('utf-8')
-                                    except Exception:
-                                        img_data_value = None
-                            except Exception:
-                                img_data_value = None
                         # Attempt to insert the photo record.  Include image_data if available.
-                        inserted = False
                         try:
                             conn.execute(
                                 "INSERT INTO room_photos (room_id, file_name, image_data) VALUES (?, ?, ?)",
                                 (new_room_id, fname, img_data_value),
                             )
-                            inserted = True
                         except Exception:
                             # Fallback: insert without the image_data column if it doesn't exist
                             try:
@@ -9468,11 +9479,9 @@ def new_room_step9():
                                     "INSERT INTO room_photos (room_id, file_name) VALUES (?, ?)",
                                     (new_room_id, fname),
                                 )
-                                inserted = True
                             except Exception:
-                                inserted = False
-                        # Continue to next photo regardless of success
-                        continue
+                                # Ignore any insert errors for individual photos
+                                pass
                 # After inserting all photos, attempt to remove temporary records for this session.
                 if sid_local:
                     try:
