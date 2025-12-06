@@ -3775,6 +3775,45 @@ def ensure_room_photos_image_data_column(conn) -> None:
         pass
 
 # -----------------------------------------------------------------------------
+# Temporary photos table helper
+#
+# Because Flask’s default session is cookie‑based, large base64 strings for
+# uploaded photos can exceed the cookie size limits.  When that happens the
+# `new_listing_photo_data` mapping stored in the session will be truncated or
+# omitted entirely, causing the base64 contents to be lost between wizard steps.
+# On platforms like Render where the local filesystem may be read‑only, we
+# cannot reliably re‑read uploaded files from disk.  To preserve image data
+# across wizard steps without relying on large cookies or persistent disks, we
+# store each uploaded photo’s base64 string into a temporary database table
+# keyed by a per‑session identifier.  At publish time the photos are moved
+# from this temporary table into the permanent `room_photos` table and the
+# temporary records are deleted.
+def ensure_room_photos_temp_table(conn) -> None:
+    """
+    Ensure the temporary photos table exists.  This table stores base64
+    encoded image data for uploaded photos keyed by a session identifier and
+    filename.  The table is created on first use and ignored if it already
+    exists.  It contains the following columns:
+
+    - session_id (TEXT): Unique identifier associated with the user’s session.
+    - file_name  (TEXT): Name of the uploaded file (generated unique name).
+    - image_data (TEXT): Base64 encoded image data (without data URI prefix).
+
+    Args:
+        conn: A database connection supporting the `execute` method.
+    """
+    try:
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS room_photos_temp ("
+            "session_id TEXT NOT NULL,"
+            "file_name TEXT NOT NULL,"
+            "image_data TEXT"
+            ")"
+        )
+    except Exception:
+        pass
+
+# -----------------------------------------------------------------------------
 # Generic helper to ensure a column exists on a given table.
 def ensure_column_exists(conn, table: str, column: str, col_type: str) -> None:
     """Ensure that ``table`` contains a column named ``column`` of type ``col_type``.
@@ -8614,12 +8653,27 @@ def new_room_step4():
             files = ordered_files
         saved_filenames: list[str] = []
         # For each uploaded file, we save it to disk when possible and also
-        # capture its base64‑encoded contents.  The base64 strings are stored
-        # in the session under ``new_listing_photo_data`` keyed by the unique
-        # filename.  This allows us to persist images even on platforms where
-        # the filesystem is read‑only (e.g. Render) by later writing the
-        # image data into the database at publish time.
+        # capture its base64‑encoded contents.  In addition to storing the
+        # base64 in the session (which can overflow cookie size limits), we
+        # persist the data into a temporary database table keyed by a
+        # per‑session identifier.  This ensures that even when the session
+        # cookie truncates large values, the image data can be retrieved at
+        # publish time.
         photo_data_map: dict[str, str] = {}
+        # Acquire a database connection for inserting temporary photo records
+        temp_conn = None
+        try:
+            temp_conn = get_db_connection()
+            # Ensure the temp table exists before inserting
+            ensure_room_photos_temp_table(temp_conn)
+        except Exception:
+            temp_conn = None
+        # Determine a per‑session identifier for temporary photo storage.  If one
+        # does not exist yet, generate a new UUID and persist it in the session.
+        sid = session.get('_upload_temp_id')
+        if not sid:
+            sid = uuid.uuid4().hex
+            session['_upload_temp_id'] = sid
         for file in files:
             # Skip empty or missing file objects
             if not file or file.filename == '':
@@ -8638,10 +8692,6 @@ def new_room_step4():
             # that subsequent calls to ``file.save`` still write the full file.
             file_bytes: bytes | None = None
             try:
-                # Attempt to read the entire file.  Depending on the
-                # FileStorage implementation, ``file.read()`` reads from an
-                # internal stream.  If this succeeds we obtain the raw bytes
-                # needed for base64 encoding.
                 file_bytes = file.read()
             except Exception:
                 file_bytes = None
@@ -8655,18 +8705,28 @@ def new_room_step4():
                     file.stream.seek(0)
                 except Exception:
                     pass
+            data_str: str | None = None
             # If we successfully read bytes, encode them to base64 and
             # store them keyed by the unique filename.  Use a try/except
             # around base64 encoding to gracefully skip any unexpected
             # errors; invalid or empty data will simply be omitted from the
-            # photo_data_map.
+            # photo_data_map and temp table.
             if file_bytes:
                 try:
                     data_str = base64.b64encode(file_bytes).decode('utf-8')
                     photo_data_map[unique_name] = data_str
                 except Exception:
-                    # Ignore encoding errors; the photo will still be
-                    # available on disk if the save succeeds.
+                    data_str = None
+            # Attempt to insert into the temporary table if we have a
+            # base64‑encoded string and a valid database connection.  Even
+            # if the insert fails, the data may still be in the session.
+            if data_str and temp_conn:
+                try:
+                    temp_conn.execute(
+                        "INSERT INTO room_photos_temp (session_id, file_name, image_data) VALUES (?, ?, ?)",
+                        (sid, unique_name, data_str),
+                    )
+                except Exception:
                     pass
             # Attempt to save the file to the uploads directory.  Saving
             # happens after reading so that read operations don't consume
@@ -8674,27 +8734,35 @@ def new_room_step4():
             # filesystem is read‑only), we still retain the base64 data
             # captured above.  Note that ``secure_filename`` sanitizes
             # filenames but does not modify the generated unique_name.
-            saved = False
             try:
                 file.save(os.path.join(UPLOAD_ROOMS_FOLDER, unique_name))
-                saved = True
             except Exception:
-                saved = False
+                # Ignore save errors; rely on base64 data instead
+                pass
             # Whether or not saving to disk succeeded, record the name in
             # ``saved_filenames`` so that it will be inserted into the
             # ``room_photos`` table when the listing is published.
             saved_filenames.append(unique_name)
-        # Persist filenames and base64 data in the session
+        # Commit and close the temporary connection, if opened
+        if temp_conn:
+            try:
+                temp_conn.commit()
+            except Exception:
+                pass
+            try:
+                temp_conn.close()
+            except Exception:
+                pass
+        # Persist filenames and base64 data in the session.  Retaining this
+        # mapping allows fallback use of session data if the temporary table
+        # insert failed.  However, storing only small amounts of data in the
+        # session is advisable to avoid cookie size limits.
         session['new_listing_photos'] = saved_filenames
-        # Store the mapping of filename to base64 only if it is non‑empty.  This
-        # mapping will be used in new_room_step9 when inserting into
-        # ``room_photos`` with ``image_data`` values.
         if photo_data_map:
             try:
                 existing_map = session.get('new_listing_photo_data', {})
                 if not isinstance(existing_map, dict):
                     existing_map = {}
-                # Merge with existing data to retain previously uploaded files
                 existing_map.update(photo_data_map)
                 session['new_listing_photo_data'] = existing_map
             except Exception:
@@ -9307,10 +9375,9 @@ def new_room_step9():
                 # inserted.  If the ``image_data`` column does not exist,
                 # insertion falls back to including only room_id and file_name.
                 photo_files = session.get('new_listing_photos', [])
-                # Retrieve the mapping of filenames to base64 data.  Because Flask's
-                # default session is cookie‑based, large base64 strings may be
-                # truncated or omitted.  Use a dict if available, otherwise an
-                # empty mapping.
+                # Retrieve the mapping of filenames to base64 data from the session.
+                # Because Flask's default session is cookie‑based, large base64
+                # strings may be truncated or omitted.  Use a dict if available.
                 photo_data_map: typing.Dict[str, str] = {}
                 try:
                     maybe_map = session.get('new_listing_photo_data', {})
@@ -9318,37 +9385,76 @@ def new_room_step9():
                         photo_data_map = maybe_map
                 except Exception:
                     photo_data_map = {}
+                # Retrieve any temporary photo data stored in the room_photos_temp table.
+                temp_map: typing.Dict[str, str] = {}
+                sid_local = session.get('_upload_temp_id')
+                if sid_local:
+                    try:
+                        # Use a separate connection to avoid interfering with the current transaction
+                        temp_conn2 = get_db_connection()
+                        ensure_room_photos_temp_table(temp_conn2)
+                        rows = temp_conn2.execute(
+                            "SELECT file_name, image_data FROM room_photos_temp WHERE session_id = ?",
+                            (sid_local,),
+                        ).fetchall()
+                        for row in rows:
+                            try:
+                                # Each row may be a dict (RealDictRow) or tuple
+                                fname_key = row['file_name'] if isinstance(row, dict) or hasattr(row, 'keys') else row[0]
+                            except Exception:
+                                try:
+                                    fname_key = row[0]
+                                except Exception:
+                                    fname_key = None
+                            try:
+                                img_val = row['image_data'] if isinstance(row, dict) or hasattr(row, 'keys') else row[1]
+                            except Exception:
+                                try:
+                                    img_val = row[1]
+                                except Exception:
+                                    img_val = None
+                            if fname_key and img_val:
+                                temp_map[str(fname_key)] = str(img_val)
+                        # Close the temporary connection
+                        try:
+                            temp_conn2.close()
+                        except Exception:
+                            pass
+                    except Exception:
+                        temp_map = {}
                 if new_room_id and photo_files:
                     for fname in photo_files:
-                        # Start with any base64 value stored in the session.  If
-                        # none exists, attempt to read the file from disk and
-                        # base64‑encode its contents.  This fallback ensures
-                        # images are persisted even if the session cookie was too
-                        # large to include the photo data.  If reading fails,
-                        # img_data_value remains None and the file_name alone
-                        # will be inserted.
+                        # Determine the image data to insert.  Prefer the session
+                        # mapping; next look in the temporary table; finally try
+                        # reading the file from disk.  If all sources fail,
+                        # img_data_value remains None and the record will be
+                        # inserted without image_data.
                         img_data_value: typing.Optional[str] = None
+                        # Session-based base64
                         try:
                             img_data_value = photo_data_map.get(fname)  # type: ignore[assignment]
                         except Exception:
                             img_data_value = None
+                        # Temporary table base64
                         if not img_data_value:
-                            # Try to read the file from the uploads directory
+                            try:
+                                img_data_value = temp_map.get(fname)
+                            except Exception:
+                                img_data_value = None
+                        # Fallback: try to read from file system if base64 is still missing
+                        if not img_data_value:
                             file_path = os.path.join(UPLOAD_ROOMS_FOLDER, fname)
                             try:
                                 with open(file_path, 'rb') as f:
                                     file_bytes = f.read()
                                 if file_bytes:
                                     try:
-                                        # Encode the raw bytes as base64.  Do not
-                                        # prefix with data URI here; the
-                                        # template logic prepends the MIME
-                                        # information when constructing the src.
                                         img_data_value = base64.b64encode(file_bytes).decode('utf-8')
                                     except Exception:
                                         img_data_value = None
                             except Exception:
                                 img_data_value = None
+                        # Attempt to insert the photo record.  Include image_data if available.
                         inserted = False
                         try:
                             conn.execute(
@@ -9357,7 +9463,7 @@ def new_room_step9():
                             )
                             inserted = True
                         except Exception:
-                            # Fallback: try inserting without the image_data column
+                            # Fallback: insert without the image_data column if it doesn't exist
                             try:
                                 conn.execute(
                                     "INSERT INTO room_photos (room_id, file_name) VALUES (?, ?)",
@@ -9365,10 +9471,20 @@ def new_room_step9():
                                 )
                                 inserted = True
                             except Exception:
-                                # Give up on this photo
                                 inserted = False
                         # Continue to next photo regardless of success
                         continue
+                # After inserting all photos, attempt to remove temporary records for this session.
+                if sid_local:
+                    try:
+                        # Use the same connection (conn) since we are inside the publish transaction
+                        conn.execute(
+                            "DELETE FROM room_photos_temp WHERE session_id = ?",
+                            (sid_local,),
+                        )
+                    except Exception:
+                        pass
+                # Commit the changes made during publish
                 try:
                     conn.commit()
                 except Exception:
@@ -9392,7 +9508,9 @@ def new_room_step9():
                 'new_listing_total_area', 'new_listing_living_area',
                 'new_listing_kitchen_area', 'new_listing_renovation',
                 'new_listing_base_price', 'new_listing_weekend_markup',
-                'new_listing_discounts'
+                'new_listing_discounts',
+                'new_listing_photo_data',    # clear any leftover base64 mapping
+                '_upload_temp_id'            # clear the session identifier for temp photos
             ]:
                 session.pop(key, None)
             # After publishing, redirect to the rooms list where the new listing will appear
