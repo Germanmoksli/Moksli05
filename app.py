@@ -9226,9 +9226,61 @@ def new_room_step9():
                 except Exception:
                     return None
             # Determine the listing name.  Use the provided address if available,
-            # otherwise fall back to a generic placeholder.
-            room_number = session.get('new_listing_address') or 'Новое объявление'
+            # otherwise fall back to a generic placeholder.  The ``room_number``
+            # column on the rooms table has a UNIQUE constraint, meaning two
+            # different objects cannot have the same name.  When hosts create
+            # new listings via the multi‑step wizard it is common to reuse
+            # identical addresses or titles.  On PostgreSQL this results in a
+            # unique constraint violation and the insert fails silently, leaving
+            # the user without a new apartment.  To avoid this scenario we
+            # ensure that the generated room name is unique for the current
+            # database.  If a conflict is detected we append an incremental
+            # suffix (e.g. " (2)", " (3)") until a free name is found.  This
+            # preserves the user‑provided address as the base while still
+            # satisfying the UNIQUE constraint.
+            base_room_number = session.get('new_listing_address') or 'Новое объявление'
             user_id = session.get('user_id')
+            # Check for duplicates and generate a unique room_number
+            # Use a separate connection for the uniqueness check so that the
+            # subsequent insert transaction remains clean.  If the rooms table
+            # does not yet exist or the query fails, we fall back to the base
+            # name without modification.
+            room_number = base_room_number
+            try:
+                dup_conn = get_db_connection()
+                try:
+                    # Ensure extended columns exist to avoid select errors
+                    try:
+                        ensure_rooms_additional_columns(dup_conn)
+                    except Exception:
+                        pass
+                    # Query for any existing rooms with the same room_number
+                    existing = dup_conn.execute(
+                        "SELECT id FROM rooms WHERE room_number = ?", (room_number,)
+                    ).fetchone()
+                    if existing:
+                        # If a duplicate exists, append numeric suffixes until a unique name is found
+                        suffix = 2
+                        while existing:
+                            candidate = f"{base_room_number} ({suffix})"
+                            res = dup_conn.execute(
+                                "SELECT id FROM rooms WHERE room_number = ?", (candidate,)
+                            ).fetchone()
+                            if not res:
+                                room_number = candidate
+                                break
+                            suffix += 1
+                            existing = res
+                    dup_conn.close()
+                except Exception:
+                    # Ensure we close the connection on any error
+                    try:
+                        dup_conn.close()
+                    except Exception:
+                        pass
+            except Exception:
+                # If we cannot connect to the database (unlikely), leave room_number unchanged
+                room_number = base_room_number
             housing_type = session.get('new_listing_property_type')
             description = session.get('new_listing_main_description') or ''
             # Numeric and optional fields
