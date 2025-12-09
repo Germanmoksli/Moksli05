@@ -9474,6 +9474,18 @@ def new_room_step9():
                             pass
                     except Exception:
                         temp_map = {}
+                # If there are no filenames persisted in the session (e.g. due to
+                # large cookies) but we do have temporary photo data in the
+                # room_photos_temp table, fall back to using the keys of this
+                # temporary map as the filenames.  Without this fallback the
+                # subsequent loop would not process any photos, resulting in
+                # listings without images until the owner edits the listing and
+                # re-uploads the photos.
+                if not photo_files and temp_map:
+                    try:
+                        photo_files = list(temp_map.keys())
+                    except Exception:
+                        photo_files = []
                 if new_room_id and photo_files:
                     for fname in photo_files:
                         # Persist each uploaded photo to the room_photos table.  This logic
