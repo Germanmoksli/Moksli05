@@ -8189,10 +8189,28 @@ def view_room_public(room_id: int):
                 src = None
         if src:
             photos.append(src)
+    # Determine whether the current user has favorited this room.  If the user
+    # is not logged in or the favorites table cannot be queried, the value
+    # defaults to False.  The toggle_favorite route can still be accessed,
+    # but it will redirect to the login page if required.
+    is_favorite = False
+    user_id = session.get('user_id')
+    if user_id:
+        try:
+            # Ensure the favorites table exists before querying it.
+            conn2 = get_db_connection()
+            ensure_favorites_table(conn2)
+            row = conn2.execute('SELECT 1 FROM favorites WHERE user_id = ? AND room_id = ?', (user_id, room_id)).fetchone()
+            if row:
+                is_favorite = True
+            conn2.close()
+        except Exception:
+            is_favorite = False
+    # Close the original connection used for loading the room and photos
     conn.close()
     # Pass Google Maps API key to the detail page so that Google Maps can be loaded
     google_maps_api_key = os.environ.get("GOOGLE_MAPS_API_KEY")
-    return render_template('room_detail.html', room=room, photos=photos, google_maps_api_key=google_maps_api_key)
+    return render_template('room_detail.html', room=room, photos=photos, google_maps_api_key=google_maps_api_key, is_favorite=is_favorite)
 
 
 # ---------------------------------------------------------------------------
@@ -8296,7 +8314,17 @@ def new_room_step1():
         if property_type not in {"flat", "studio", "room", "house"}:
             flash("Пожалуйста, выберите тип жилья из предложенных вариантов.", "warning")
             return redirect(url_for('new_room_step1'))
+        # Persist the selected property type and the user-provided property name.
+        # The name is captured via a hidden input in the form.  If provided,
+        # store it in the session so it can be used later (e.g. for the room's
+        # display name on the detail page).
         session['new_listing_property_type'] = property_type
+        property_name = request.form.get("property_name", "")
+        if property_name:
+            try:
+                session['new_listing_property_name'] = property_name.strip()
+            except Exception:
+                session['new_listing_property_name'] = property_name
         return redirect(url_for('new_room_step2'))
     # Determine selected property type from session for highlighting cards
     selected_type = session.get('new_listing_property_type')
@@ -8308,7 +8336,10 @@ def new_room_step1():
     back_url: typing.Optional[str] = None
     # Next step goes to step 2
     next_url = url_for('new_room_step2')
-    return render_template('new_room_step1.html', selected_type=selected_type, progress=progress, back_url=back_url, next_url=next_url, hide_nav=True)
+    # Pass any previously entered property name to the template so that it
+    # pre-fills the modal input if the user navigates back to this step.
+    property_name = session.get('new_listing_property_name', '')
+    return render_template('new_room_step1.html', selected_type=selected_type, progress=progress, back_url=back_url, next_url=next_url, hide_nav=True, property_name=property_name)
 
 @app.route("/rooms/new/step2", methods=["GET", "POST"])
 @login_required
@@ -9235,7 +9266,11 @@ def new_room_step9():
             # suffix (e.g. " (2)", " (3)") until a free name is found.  This
             # preserves the user‑provided address as the base while still
             # satisfying the UNIQUE constraint.
-            base_room_number = session.get('new_listing_address') or 'Новое объявление'
+            # Prefer the user-provided property name for the listing's room_number.  If no
+            # name was provided, fall back to the combined address.  As a final
+            # fallback use a generic placeholder.  This value will later be
+            # de-duplicated if a room with the same name already exists.
+            base_room_number = session.get('new_listing_property_name') or session.get('new_listing_address') or 'Новое объявление'
             user_id = session.get('user_id')
             # Check for duplicates and generate a unique room_number
             # Use a separate connection for the uniqueness check so that the

@@ -2,8 +2,21 @@
 {% block title %}{{ room['room_number'] }}{% endblock %}
 {% block content %}
 <div class="container py-4">
-  <!-- Название объекта -->
-  <h1 class="fw-bold fs-2 mb-4">{{ room['room_number'] }}</h1>
+  <!-- Название объекта и кнопки действий -->
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <!-- Display the room name provided by the host.  Align left of the gallery. -->
+    <h1 class="fw-bold fs-2 mb-0 text-start">{{ room['room_number'] }}</h1>
+    <div class="d-flex align-items-center">
+      <!-- Favorite toggle: shows filled heart if the room is already in favorites -->
+      <a href="{{ url_for('toggle_favorite', room_id=room['id']) }}" class="btn btn-link p-0 me-3" title="Избранное">
+        <i class="bi bi-heart{% if is_favorite %}-fill{% endif %} fs-3{% if is_favorite %} text-danger{% else %} text-primary{% endif %}"></i>
+      </a>
+      <!-- Share button: copies the current page URL to the clipboard -->
+      <button type="button" class="btn btn-link p-0" id="shareButton" title="Поделиться">
+        <i class="bi bi-share fs-3 text-primary"></i>
+      </button>
+    </div>
+  </div>
   <div class="row justify-content-center">
     <!-- Левая колонка: галерея и дополнительные сведения -->
     <div class="col-lg-10">
@@ -248,4 +261,27 @@
 </script>
 <script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&callback=initRoomDetailMap" async defer></script>
 {% endif %}
+
+  {# Share button script: copy the current page URL to the clipboard or prompt the user. #}
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      var shareBtn = document.getElementById('shareButton');
+      if (shareBtn) {
+        shareBtn.addEventListener('click', function() {
+          var url = window.location.href;
+          // Use the Clipboard API when available and the page is served over HTTPS (secure context).
+          if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(url).then(function() {
+              alert('Ссылка скопирована в буфер обмена');
+            }).catch(function() {
+              alert('Не удалось скопировать ссылку');
+            });
+          } else {
+            // Fallback: show a prompt so the user can copy manually.
+            prompt('Скопируйте ссылку на объявление:', url);
+          }
+        });
+      }
+    });
+  </script>
 {% endblock %}
