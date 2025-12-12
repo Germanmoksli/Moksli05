@@ -3949,82 +3949,81 @@ def add_room():
         house_number = request.form.get("house_number") or None
         latitude = _to_float(request.form.get("latitude"))
         longitude = _to_float(request.form.get("longitude"))
-        # Handle photo uploads.  Use secure filenames and generate a unique
-        # name for each file.  For each uploaded photo we read its bytes
-        # into memory (if possible), encode them using base64 and store
-        # the resulting string into the ``image_data`` field of the
-        # room_photos table.  We still attempt to save the file to the
-        # uploads directory for backward compatibility, but storing the
-        # image in the database ensures the photo persists even when the
-        # filesystem is read‑only (e.g. on Render).  ``saved_photos`` is a
-        # list of tuples (file_name, image_data) so that both values can be
-        # inserted later.
-        # Prepare uploaded photos.  Always obtain the list of files from the
-        # form and limit the total number of saved images to 20.  Each entry in
-        # ``saved_photos`` is a tuple (unique_file_name, base64_data_or_None).
-        # If reading the file fails, image_data will be None and the fallback
-        # URL will be used when serving the photo.
+        # Обработка загрузки фотографий.  Создание новых объявлений должно
+        # использовать те же правила, что и при редактировании: ограничить
+        # количество изображений, сгенерировать уникальные имена, добавить
+        # водяной знак, сохранить копию на диск и вставить данные в базу.  ``saved_photos``
+        # представляет собой список кортежей (имя_файла, base64), который
+        # будет использован после записи объекта для создания строк в
+        # таблице room_photos.
         saved_photos: list[tuple[str, typing.Optional[str]]] = []
+        # Получаем список всех загруженных файлов с именем ``photos``.
         try:
-            uploaded_photos = request.files.getlist('photos')
+            uploaded_photos = request.files.getlist("photos")
         except Exception:
             uploaded_photos = []
-        # Enforce a maximum of 20 photos for new objects
+        # Ограничим общее количество фото, которое можно загрузить при
+        # создании объявления, до 20.  Если файлов больше, лишние игнорируем.
         if uploaded_photos:
             photos_to_process = uploaded_photos[:20]
             if len(uploaded_photos) > 20:
                 flash("Количество фотографий ограничено 20. Лишние файлы не были загружены.")
-            for photo in photos_to_process:
-                # Skip empty uploads
-                if not photo or not getattr(photo, 'filename', None):
+            for file in photos_to_process:
+                # Пропускаем пустые объекты
+                if not file or not getattr(file, "filename", None):
                     continue
-                # Generate a unique filename
-                original = secure_filename(photo.filename)
+                # Генерируем безопасное уникальное имя файла
+                original = secure_filename(file.filename)
                 ext = os.path.splitext(original)[1]
                 unique_name = f"{uuid.uuid4().hex}{ext}"
                 image_data_str: typing.Optional[str] = None
-                # Read the uploaded file into memory and apply a watermark
                 watermarked_bytes: typing.Optional[bytes] = None
+                # Считываем содержимое файла в память для наложения водяного знака
                 try:
-                    file_bytes = photo.read()
-                    # Reset the stream (not strictly needed since we won't call photo.save)
+                    file_bytes = file.read()
+                    # Возвращаем указатель на начало файла, чтобы в случае
+                    # необходимости файл можно было сохранить методом save().
                     try:
-                        photo.seek(0)
+                        file.seek(0)
                     except Exception:
                         try:
-                            photo.stream.seek(0)  # type: ignore[attr-defined]
+                            file.stream.seek(0)  # type: ignore[attr-defined]
                         except Exception:
                             pass
                     if file_bytes:
                         try:
+                            # Пробуем наложить водяной знак.  Если это не
+                            # удаётся, используем исходные байты.
                             watermarked_bytes = apply_watermark_to_image_data(file_bytes)
-                            image_data_str = base64.b64encode(watermarked_bytes).decode('utf-8')
+                            image_data_str = base64.b64encode(watermarked_bytes).decode("utf-8")
                         except Exception:
-                            image_data_str = base64.b64encode(file_bytes).decode('utf-8')
+                            image_data_str = base64.b64encode(file_bytes).decode("utf-8")
                             watermarked_bytes = file_bytes
                 except Exception:
                     image_data_str = None
                     watermarked_bytes = None
-                # Save the watermarked image to the uploads directory. Ignore filesystem errors; the base64 data ensures persistence.
+                # Создаём каталог для загрузок, если он ещё не существует.
                 try:
                     os.makedirs(UPLOAD_ROOMS_FOLDER, exist_ok=True)
                 except Exception:
                     pass
+                # Сохраняем водяной знак или исходный файл на диск.  Любые
+                # ошибки при записи подавляются – изображение всё равно будет
+                # храниться в базе данных.
                 try:
                     if watermarked_bytes:
-                        with open(os.path.join(UPLOAD_ROOMS_FOLDER, unique_name), 'wb') as out_f:
+                        with open(os.path.join(UPLOAD_ROOMS_FOLDER, unique_name), "wb") as out_f:
                             out_f.write(watermarked_bytes)
                     else:
-                        # Fallback: use Werkzeug's save method if no data is available
-                        photo.save(os.path.join(UPLOAD_ROOMS_FOLDER, unique_name))
+                        file.save(os.path.join(UPLOAD_ROOMS_FOLDER, unique_name))
                 except Exception:
                     pass
                 saved_photos.append((unique_name, image_data_str))
-        # Reorder saved photos so that the selected main photo (if any) becomes the first element
-        # Owners choose the main photo via a 1-indexed select in the form (main_photo_index).  We
-        # convert this to zero-based indexing and, if it is within range of the uploaded photos,
-        # move that photo to the beginning of the list.  This ensures the chosen main photo
-        # appears first in galleries and in the public listing.
+        # Устанавливаем порядок фотографий: выбранная пользователем главная
+        # фотография должна быть первой.  Пользователь указывает номер
+        # фотографии (1‑индексированный) в поле ``main_photo_index``.  Мы
+        # конвертируем значение в 0‑индекс и перемещаем выбранную
+        # фотографию в начало списка, если индекс в допустимом диапазоне.
         try:
             main_idx_str = request.form.get("main_photo_index", "")
             main_idx = int(main_idx_str) - 1 if main_idx_str else 0
@@ -4035,7 +4034,7 @@ def add_room():
                 selected_photo = saved_photos.pop(main_idx)
                 saved_photos.insert(0, selected_photo)
             except Exception:
-                # If popping fails for any reason, leave the order unchanged
+                # Если перестановка не удалась, оставляем порядок как есть
                 pass
         # Insert the new room record with all collected fields
         conn = get_db_connection()
