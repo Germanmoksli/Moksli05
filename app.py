@@ -9399,23 +9399,55 @@ def new_room_step9():
                         is_published,
                     ),
                 )
+                # Determine the id of the newly inserted room.  Depending on the
+                # database adapter in use, ``cur.lastrowid`` may be available
+                # (e.g. sqlite3) or the DB may require a RETURNING clause (e.g.
+                # psycopg2).  Attempt several methods to obtain the id and, as
+                # a final fallback, query the rooms table for the inserted
+                # record based on the unique room_number and owner_id.  Without
+                # this fallback the photos loop below is skipped when running
+                # against PostgreSQL because ``cur.lastrowid`` is always
+                # ``None``.
                 new_room_id = None
+                # 1) Try attribute lastrowid (works with sqlite3)
                 try:
                     new_room_id = getattr(cur, 'lastrowid', None)
                 except Exception:
                     new_room_id = None
+                # 2) If supported, attempt to fetch a RETURNING id value
                 if not new_room_id:
-                    # Attempt to fetch the id from RETURNING clause if supported
                     try:
                         new_id_row = cur.fetchone()
                     except Exception:
                         new_id_row = None
                     if new_id_row:
                         try:
+                            # dict-like row
                             new_room_id = new_id_row.get('id')  # type: ignore[attr-defined]
                         except Exception:
                             try:
+                                # tuple-like row
                                 new_room_id = new_id_row[0]
+                            except Exception:
+                                new_room_id = None
+                # 3) Fallback: query for the most recently inserted row matching
+                # the generated room_number and owner_id.  Since room_number has
+                # a unique constraint, this lookup reliably returns the new id.
+                if not new_room_id:
+                    try:
+                        fallback_row = conn.execute(
+                            "SELECT id FROM rooms WHERE room_number = ? AND owner_id = ? ORDER BY id DESC LIMIT 1",
+                            (room_number, user_id),
+                        ).fetchone()
+                    except Exception:
+                        fallback_row = None
+                    if fallback_row:
+                        try:
+                            # dict-like row
+                            new_room_id = fallback_row.get('id')  # type: ignore[attr-defined]
+                        except Exception:
+                            try:
+                                new_room_id = fallback_row[0]
                             except Exception:
                                 new_room_id = None
                 # Insert photos for the new room if available.  Retrieve any
