@@ -138,7 +138,12 @@
       const photoGrid = document.getElementById('photoGrid');
       const photoOrderInput = document.getElementById('photoOrder');
       let photos = [];
-      const MAX_PHOTOS = 100;
+      // Align the client‑side photo limit with the server logic.  The
+      // backend enforces a maximum of 20 images during the add/edit
+      // operations, so restricting the client here prevents users from
+      // selecting more than will ultimately be accepted.  If this number
+      // changes server‑side, update this constant accordingly.
+      const MAX_PHOTOS = 20;
       uploadArea.addEventListener('click', function() {
         photoInput.click();
       });
@@ -156,6 +161,26 @@
         });
         renderGrid();
         photoInput.value = '';
+      });
+
+      // On submission, assemble a FileList containing the selected
+      // photo objects.  Without this, resetting the photoInput value
+      // causes the server to see an empty file list because the
+      // selected files live only in the `photos` array used for
+      // previews.  Using a DataTransfer bridges that gap so that
+      // request.files.getlist('photos') returns the correct set of
+      // uploaded images when the form is posted.
+      const photoForm = document.getElementById('photoForm');
+      photoForm.addEventListener('submit', function(e) {
+        const dt = new DataTransfer();
+        photos.forEach(function(item) {
+          // Only attach File objects (existing photos have file === null)
+          if (item.file) {
+            dt.items.add(item.file);
+          }
+        });
+        // Update the underlying file input with the aggregated FileList
+        photoInput.files = dt.files;
       });
       function renderGrid() {
         // Hide the large upload area once there are photos
