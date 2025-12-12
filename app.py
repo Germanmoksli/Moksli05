@@ -8752,20 +8752,18 @@ def new_room_step4():
                 temp_conn.close()
             except Exception:
                 pass
-        # Persist filenames and base64 data in the session.  Retaining this
-        # mapping allows fallback use of session data if the temporary table
-        # insert failed.  However, storing only small amounts of data in the
-        # session is advisable to avoid cookie size limits.
+        # Persist filenames in the session so subsequent steps know that photos
+        # have been uploaded.  Do not store raw base64 image data in the
+        # session because doing so can easily exceed cookie size limits and
+        # cause server errors (e.g. 502/520).  The raw image bytes are
+        # instead kept in the temporary ``room_photos_temp`` table keyed by
+        # ``_upload_temp_id`` and will be retrieved when the listing is
+        # published.  This reduces the size of the session cookie and
+        # avoids gateway errors.
         session['new_listing_photos'] = saved_filenames
-        if photo_data_map:
-            try:
-                existing_map = session.get('new_listing_photo_data', {})
-                if not isinstance(existing_map, dict):
-                    existing_map = {}
-                existing_map.update(photo_data_map)
-                session['new_listing_photo_data'] = existing_map
-            except Exception:
-                session['new_listing_photo_data'] = photo_data_map
+        # No longer persist photo_data_map in the session.  The data is
+        # available via the temporary table when publishing (see
+        # new_room_step9()).
         # After uploading photos, proceed to the next step (descriptions)
         return redirect(url_for('new_room_step5'))
     # On GET display the upload interface
