@@ -1986,9 +1986,12 @@ def switch_role():
     # is currently acting as a guest, restore their original owner role.
     current_role = session.get('user_role')
     if current_role == 'guest':
+        # Switching from guest back to owner.  After restoring the owner's role,
+        # send them directly to their list of apartments rather than the
+        # generic dashboard so they can manage their properties immediately.
         session['user_role'] = original_role
         flash('Теперь вы в режиме владельца.')
-        return redirect(url_for('index'))
+        return redirect(url_for('list_rooms'))
     # Otherwise switch into guest mode.  Note: we do not modify
     # ``original_user_role`` here; the original owner role remains
     # unchanged in the session.
@@ -2032,9 +2035,14 @@ def login():
             session['original_user_role'] = user['role']
             conn.close()
             flash('Вход выполнен успешно!')
-            # Guests are returned to the public listings catalogue; other roles go to the dashboard
+            # Redirect based on the user's role.  Guests go to the public catalogue,
+            # owners go directly to their list of apartments, and other roles
+            # continue to the main dashboard.  This ensures that owners
+            # immediately see their own listings after logging in.
             if user['role'] == 'guest':
                 return redirect(url_for('public_listings'))
+            elif user['role'] == 'owner':
+                return redirect(url_for('list_rooms'))
             else:
                 return redirect(url_for('index'))
         else:
@@ -3523,11 +3531,91 @@ def list_rooms():
         # If creation fails (e.g. due to missing permissions), ignore and
         # proceed.  Subsequent SELECT will handle missing table gracefully.
         pass
-    # Fetch published rooms owned by the current user
-    rooms = conn.execute(
-        "SELECT * FROM rooms WHERE owner_id = ? ORDER BY id",
+    # Fetch published rooms owned by the current user.  In addition to the
+    # basic room attributes we also select the first photo's filename and
+    # embedded image data (if present) so that the template can render a
+    # preview image for each card.  The subqueries select the earliest
+    # photo record for the given room.  We wrap the call to
+    # ensure_room_photos_image_data_column in a try/except so that the
+    # column is created if it does not yet exist.  See public_listings()
+    # for a similar example.
+    try:
+        ensure_rooms_additional_columns(conn)
+    except Exception:
+        pass
+    try:
+        ensure_room_photos_image_data_column(conn)
+    except Exception:
+        pass
+    # Build the query to include first photo filename and image data
+    room_rows = conn.execute(
+        "SELECT rooms.*, "
+        "       (SELECT file_name FROM room_photos WHERE room_id = rooms.id ORDER BY id LIMIT 1) AS photo_file_name, "
+        "       (SELECT image_data FROM room_photos WHERE room_id = rooms.id ORDER BY id LIMIT 1) AS photo_image_data "
+        "FROM rooms WHERE owner_id = ? ORDER BY id",
         (user_id,)
     ).fetchall()
+    rooms = []
+    for row in room_rows:
+        # Convert the row to a dictionary.  Different drivers (sqlite3, psycopg2)
+        # may return dict-like rows or tuples.  Attempt dict() first and
+        # fallback to manual construction if necessary.
+        try:
+            room_dict = dict(row)  # type: ignore[arg-type]
+        except Exception:
+            room_dict = {}
+            if hasattr(row, 'keys'):
+                for key in row.keys():
+                    try:
+                        room_dict[key] = row[key]
+                    except Exception:
+                        pass
+        # Extract the first photo's filename and base64 image data.  Use
+        # both dictionary and attribute access to accommodate different row
+        # types.
+        file_name = None
+        image_data = None
+        try:
+            file_name = room_dict.get('photo_file_name')  # type: ignore[attr-defined]
+            image_data = room_dict.get('photo_image_data')  # type: ignore[attr-defined]
+        except Exception:
+            # Fallback for non-dict rows
+            try:
+                file_name = row['photo_file_name']  # type: ignore[index]
+            except Exception:
+                file_name = None
+            try:
+                image_data = row['photo_image_data']  # type: ignore[index]
+            except Exception:
+                image_data = None
+        # Compute the photo_src used in the template.  Prefer the embedded
+        # image_data because it avoids a filesystem lookup.  Determine the
+        # MIME type from the filename extension when available; default to
+        # image/jpeg.  If both image_data and file_name are missing, the
+        # template will display a placeholder image.
+        photo_src: str | None = None
+        if image_data:
+            mime = 'image/jpeg'
+            try:
+                fn = file_name or ''
+                ext = fn.rsplit('.', 1)[-1].lower()
+                if ext == 'png':
+                    mime = 'image/png'
+                elif ext == 'gif':
+                    mime = 'image/gif'
+                elif ext == 'webp':
+                    mime = 'image/webp'
+            except Exception:
+                mime = 'image/jpeg'
+            photo_src = f"data:{mime};base64,{image_data}"
+        elif file_name:
+            # Fall back to serving the uploaded file via the dedicated route
+            try:
+                photo_src = url_for('uploaded_room_image', filename=file_name)
+            except Exception:
+                photo_src = None
+        room_dict['photo_src'] = photo_src
+        rooms.append(room_dict)
     # Attempt to fetch draft listings; if the table doesn't exist or query
     # fails, simply treat as no drafts
     drafts: list[dict] = []
