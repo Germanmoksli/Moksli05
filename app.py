@@ -9354,11 +9354,13 @@ def new_room_step9():
             # suffix (e.g. " (2)", " (3)") until a free name is found.  This
             # preserves the user‑provided address as the base while still
             # satisfying the UNIQUE constraint.
-            # Prefer the user-provided property name for the listing's room_number.  If no
-            # name was provided, fall back to the combined address.  As a final
-            # fallback use a generic placeholder.  This value will later be
+            # Prefer the user-provided property name for the listing's ``room_number``.  If
+            # no name was provided, use a generic placeholder rather than
+            # falling back to the address.  Displaying the country/city as the
+            # title in the catalogue can be confusing for guests, so we avoid
+            # using ``new_listing_address`` here.  This value will later be
             # de-duplicated if a room with the same name already exists.
-            base_room_number = session.get('new_listing_property_name') or session.get('new_listing_address') or 'Новое объявление'
+            base_room_number = session.get('new_listing_property_name') or 'Новое объявление'
             user_id = session.get('user_id')
             # Check for duplicates and generate a unique room_number
             # Use a separate connection for the uniqueness check so that the
