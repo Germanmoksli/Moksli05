@@ -8156,7 +8156,33 @@ def public_listings():
             except Exception:
                 photo_src = None
         room_dict['photo_src'] = photo_src
+        # Append the room dictionary to our list. We defer additional price computations
+        # until after this loop so that we know the number of nights selected.
         rooms.append(room_dict)
+    # Compute the number of nights selected by the user if both dates are valid.
+    nights = None
+    if valid_dates:
+        try:
+            nights = (check_out_date - check_in_date).days
+            # If the computed range yields zero or negative nights, default to one night.
+            if nights <= 0:
+                nights = 1
+        except Exception:
+            nights = None
+    # If nights were computed and the room has a nightly rate, calculate the total price
+    if nights:
+        for room in rooms:
+            try:
+                price = room.get('price_per_night')
+                if price is not None:
+                    # Convert to float in case the value is a string
+                    nightly_rate = float(price)
+                    room['price_total'] = nightly_rate * nights
+                else:
+                    room['price_total'] = None
+            except Exception:
+                # In case of any error during conversion, set total price to None
+                room['price_total'] = None
     # If the user is logged in, gather their favorite rooms
     favorite_ids = set()
     if session.get('user_id'):
@@ -8171,7 +8197,16 @@ def public_listings():
         except Exception:
             favorite_ids = set()
     conn.close()
-    return render_template('public_listings.html', rooms=rooms, check_in=check_in, check_out=check_out, location=location, guests=guests_raw or '', favorite_ids=favorite_ids)
+    return render_template(
+        'public_listings.html',
+        rooms=rooms,
+        check_in=check_in,
+        check_out=check_out,
+        location=location,
+        guests=guests_raw or '',
+        favorite_ids=favorite_ids,
+        nights=nights,
+    )
 
 
 # ---------------------------------------------------------------------------
