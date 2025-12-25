@@ -661,7 +661,7 @@
               <div class="mb-2" style="font-size: 1rem; color: var(--bs-primary);">
                 {% set amenities_lower = (room.get('amenities') or '').lower().split(',') %}
                 {% if 'wifi' in amenities_lower or 'wi-fi' in amenities_lower or 'wi fi' in amenities_lower %}<i class="bi bi-wifi me-2" title="Wi-Fi"></i>{% endif %}
-                {% if 'парковка' in amenities_lower or 'parking' in amenities_lower %}<i class="bi bi-car-front me-2" title="Парковка"></i>{% endif %}
+                {# Иконку парковки убираем из каталога — она больше не отображается #}
                 {% if 'кондиционер' in amenities_lower or 'air conditioning' in amenities_lower or 'кондиционер' in amenities_lower %}<i class="bi bi-snow me-2" title="Кондиционер"></i>{% endif %}
               </div>
               <!-- Цена: отображаем за ночь или за выбранный период -->
