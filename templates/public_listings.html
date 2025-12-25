@@ -93,13 +93,42 @@
         width: 20px;
         text-align: center;
       }
-      #nav_guests_wrapper .btn {
+      /* Стили для кнопок добавления/убавления гостей. Кнопки круглые (32px) с
+         синей обводкой и белым фоном. При наведении они заполняются
+         фирменным цветом и текст становится белым. Кнопка уменьшения
+         блокируется и становится серой при значении 0. */
+      #nav_guests_wrapper .nav-guests-increment,
+      #nav_guests_wrapper .nav-guests-decrement {
+        width: 32px !important;
+        height: 32px !important;
         border-radius: 50% !important;
-        width: 32px;
-        height: 32px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        border: 1px solid var(--bs-primary) !important;
+        background-color: #ffffff !important;
+        color: var(--bs-primary) !important;
+        cursor: pointer;
+        padding: 0;
+      }
+      #nav_guests_wrapper .nav-guests-increment:hover,
+      #nav_guests_wrapper .nav-guests-increment:focus,
+      #nav_guests_wrapper .nav-guests-increment:active,
+      #nav_guests_wrapper .nav-guests-decrement:not(:disabled):hover,
+      #nav_guests_wrapper .nav-guests-decrement:not(:disabled):focus,
+      #nav_guests_wrapper .nav-guests-decrement:not(:disabled):active {
+        background-color: var(--bs-primary) !important;
+        color: #ffffff !important;
+      }
+      #nav_guests_wrapper .nav-guests-decrement:disabled {
+        background-color: #e2e6ea !important;
+        border-color: #e2e6ea !important;
+        color: #6c757d !important;
+        cursor: default !important;
+      }
+      /* Скругляем кнопку "Применить" */
+      #nav_guests_wrapper .apply-guests {
+        border-radius: 20px !important;
       }
 
       /* Стилизация подсказок Google Places Autocomplete, чтобы они
@@ -360,35 +389,44 @@
             <div class="dropdown-menu p-3" aria-labelledby="nav_guests_display">
               <div class="fw-semibold mb-2">Кто едет?</div>
               <div class="d-flex justify-content-between align-items-center mb-2">
-                <span>Взрослые</span>
+                <div>
+                  <div>Взрослые</div>
+                  <small class="text-muted">от 18 лет</small>
+                </div>
                 <div class="d-flex align-items-center">
-                  <button type="button" class="btn btn-outline-secondary nav-guests-decrement" data-target="adults">-</button>
+                  <button type="button" class="nav-guests-decrement" data-target="adults">-</button>
                   <span class="guest-count mx-2" id="count_adults">0</span>
-                  <button type="button" class="btn btn-outline-secondary nav-guests-increment" data-target="adults">+</button>
+                  <button type="button" class="nav-guests-increment" data-target="adults">+</button>
                 </div>
               </div>
               <div class="d-flex justify-content-between align-items-center mb-2">
-                <span>Подростки</span>
+                <div>
+                  <div>Подростки</div>
+                  <small class="text-muted">с 12 до 18 лет</small>
+                </div>
                 <div class="d-flex align-items-center">
-                  <button type="button" class="btn btn-outline-secondary nav-guests-decrement" data-target="teens">-</button>
+                  <button type="button" class="nav-guests-decrement" data-target="teens">-</button>
                   <span class="guest-count mx-2" id="count_teens">0</span>
-                  <button type="button" class="btn btn-outline-secondary nav-guests-increment" data-target="teens">+</button>
+                  <button type="button" class="nav-guests-increment" data-target="teens">+</button>
                 </div>
               </div>
               <div class="d-flex justify-content-between align-items-center mb-2">
-                <span>Дети</span>
+                <div>
+                  <div>Дети</div>
+                  <small class="text-muted">до 12 лет</small>
+                </div>
                 <div class="d-flex align-items-center">
-                  <button type="button" class="btn btn-outline-secondary nav-guests-decrement" data-target="children">-</button>
+                  <button type="button" class="nav-guests-decrement" data-target="children">-</button>
                   <span class="guest-count mx-2" id="count_children">0</span>
-                  <button type="button" class="btn btn-outline-secondary nav-guests-increment" data-target="children">+</button>
+                  <button type="button" class="nav-guests-increment" data-target="children">+</button>
                 </div>
               </div>
               <div class="d-flex justify-content-between align-items-center mb-2">
                 <span>Животные</span>
                 <div class="d-flex align-items-center">
-                  <button type="button" class="btn btn-outline-secondary nav-guests-decrement" data-target="animals">-</button>
+                  <button type="button" class="nav-guests-decrement" data-target="animals">-</button>
                   <span class="guest-count mx-2" id="count_animals">0</span>
-                  <button type="button" class="btn btn-outline-secondary nav-guests-increment" data-target="animals">+</button>
+                  <button type="button" class="nav-guests-increment" data-target="animals">+</button>
                 </div>
               </div>
               <button type="button" class="btn btn-primary w-100 apply-guests">Применить</button>
@@ -805,6 +843,11 @@
               if (el) {
                 el.textContent = counts[key];
               }
+            });
+            // Блокируем кнопки уменьшения, если соответствующее значение равно нулю
+            wrapper.querySelectorAll('.nav-guests-decrement').forEach(function(btn) {
+              var targetKey = btn.getAttribute('data-target');
+              btn.disabled = counts[targetKey] === 0;
             });
           }
           updateDisplay();
