@@ -805,7 +805,18 @@
                 <!-- Гость: в правой части только иконка меню; аватар отображается в самом меню -->
                 <div class="dropdown">
                   <a href="#" class="d-flex align-items-center text-decoration-none" id="guestMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="bi bi-list" style="font-size: 2rem;"></i>
+                    {% if user_photo %}
+                      {% if user_photo.startswith('data:') %}
+                        <img src="{{ user_photo }}" class="rounded-circle" width="32" height="32" style="object-fit: cover;">
+                      {% else %}
+                        <img src="{{ url_for('static', filename=user_photo) }}" class="rounded-circle" width="32" height="32" style="object-fit: cover;">
+                      {% endif %}
+                    {% else %}
+                      {% set _name = current_user_name if current_user_name else current_username %}
+                      <div class="avatar-placeholder" style="width: 32px; height: 32px;">
+                        {{ _name[0]|upper }}
+                      </div>
+                    {% endif %}
                   </a>
                   <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="guestMenuButton">
                     <!-- Заголовок с именем пользователя и крупной аватаркой -->
