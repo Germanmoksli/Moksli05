@@ -246,19 +246,6 @@
         box-shadow: none !important;
       }
 
-      /*
-       * Переопределяем стандартные классы Bootstrap bg-white и bg-light,
-       * которые задают белый фон. Теперь они устанавливают серый фон,
-       * совпадающий с навигационной панелью.  Это позволяет убрать
-       * белые области на всех страницах без изменения карточек, так
-       * как карточки используют свой собственный цвет фона через
-       * переменную --card-bg.
-       */
-      .bg-white,
-      .bg-light {
-        background-color: #f0f2f5 !important;
-      }
-
       /* Объединяем две месячные секции календаря в одну сплошную плашку. По
          умолчанию Litepicker задаёт фон для каждой колонки отдельно. Мы
          перекрываем эти фоны и задаём общий белый фон контейнеру месяцев. */
@@ -704,8 +691,50 @@
               <input type="hidden" id="nav_check_in" name="check_in" value="{{ request.args.get('check_in', '') }}">
               <input type="hidden" id="nav_check_out" name="check_out" value="{{ request.args.get('check_out', '') }}">
             </div>
-            <div style="width: 110px;">
-              <input type="number" min="1" class="form-control" id="nav_guests" name="guests" placeholder="Гости" value="{{ request.args.get('guests', '') }}">
+            <div id="nav_guests_wrapper" class="dropdown" style="width: 150px;">
+              <!-- Отображаем выбранное количество гостей; по умолчанию поле пустое. Используем
+                   dropdown-toggle, чтобы открыть всплывающее меню выбора гостей. -->
+              <input type="text" class="form-control dropdown-toggle" id="nav_guests_display"
+                     placeholder="Гости" data-bs-toggle="dropdown" aria-expanded="false"
+                     readonly>
+              <!-- Скрытое поле, в котором хранится итоговое количество гостей для отправки формы -->
+              <input type="hidden" id="nav_guests" name="guests" value="{{ request.args.get('guests', '') }}">
+              <div class="dropdown-menu p-3" aria-labelledby="nav_guests_display">
+                <div class="fw-semibold mb-2">Кто едет?</div>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <span>Взрослые</span>
+                  <div class="d-flex align-items-center">
+                    <button type="button" class="btn btn-outline-secondary nav-guests-decrement" data-target="adults">-</button>
+                    <span class="guest-count mx-2" id="count_adults">0</span>
+                    <button type="button" class="btn btn-outline-secondary nav-guests-increment" data-target="adults">+</button>
+                  </div>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <span>Подростки</span>
+                  <div class="d-flex align-items-center">
+                    <button type="button" class="btn btn-outline-secondary nav-guests-decrement" data-target="teens">-</button>
+                    <span class="guest-count mx-2" id="count_teens">0</span>
+                    <button type="button" class="btn btn-outline-secondary nav-guests-increment" data-target="teens">+</button>
+                  </div>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <span>Дети</span>
+                  <div class="d-flex align-items-center">
+                    <button type="button" class="btn btn-outline-secondary nav-guests-decrement" data-target="children">-</button>
+                    <span class="guest-count mx-2" id="count_children">0</span>
+                    <button type="button" class="btn btn-outline-secondary nav-guests-increment" data-target="children">+</button>
+                  </div>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <span>Животные</span>
+                  <div class="d-flex align-items-center">
+                    <button type="button" class="btn btn-outline-secondary nav-guests-decrement" data-target="animals">-</button>
+                    <span class="guest-count mx-2" id="count_animals">0</span>
+                    <button type="button" class="btn btn-outline-secondary nav-guests-increment" data-target="animals">+</button>
+                  </div>
+                </div>
+                <button type="button" class="btn btn-primary w-100 apply-guests">Применить</button>
+              </div>
             </div>
             <!-- Убираем текстовую кнопку "Найти", так как иконка поиска располагается слева -->
           </form>
@@ -1103,6 +1132,75 @@
          переопределяем глобальную функцию alert, чтобы она ничего не делала. -->
     <script>
       window.alert = function() { return true; };
+    </script>
+
+    <!-- Скрипт для выбора количества гостей в форме фильтров.  Добавляет выпадающее
+         меню с категориями (взрослые, подростки, дети, животные) и управляет
+         отображением выбранных значений.  Обновляет скрытое поле nav_guests,
+         в котором хранится итоговое количество гостей для отправки формы. -->
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        var wrapper = document.getElementById('nav_guests_wrapper');
+        if (wrapper) {
+          var counts = { adults: 0, teens: 0, children: 0, animals: 0 };
+          var hiddenInput = document.getElementById('nav_guests');
+          var displayInput = document.getElementById('nav_guests_display');
+          // Инициализируем счётчики на основании существующего значения скрытого поля.
+          if (hiddenInput && hiddenInput.value) {
+            var initial = parseInt(hiddenInput.value);
+            if (!isNaN(initial) && initial > 0) {
+              counts.adults = initial;
+            }
+          }
+          function updateDisplay() {
+            var total = counts.adults + counts.teens + counts.children;
+            var parts = [];
+            if (counts.adults > 0) parts.push(counts.adults + ' взр.');
+            if (counts.teens > 0) parts.push(counts.teens + ' подр.');
+            if (counts.children > 0) parts.push(counts.children + ' дет.');
+            if (counts.animals > 0) parts.push(counts.animals + ' жив.');
+            if (displayInput) {
+              displayInput.value = parts.length > 0 ? parts.join(', ') : '';
+            }
+            if (hiddenInput) {
+              hiddenInput.value = total > 0 ? total : '';
+            }
+            ['adults','teens','children','animals'].forEach(function(key) {
+              var el = document.getElementById('count_' + key);
+              if (el) {
+                el.textContent = counts[key];
+              }
+            });
+          }
+          updateDisplay();
+          wrapper.querySelectorAll('.nav-guests-increment').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+              var target = btn.getAttribute('data-target');
+              counts[target] += 1;
+              updateDisplay();
+            });
+          });
+          wrapper.querySelectorAll('.nav-guests-decrement').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+              var target = btn.getAttribute('data-target');
+              if (counts[target] > 0) {
+                counts[target] -= 1;
+                updateDisplay();
+              }
+            });
+          });
+          var applyBtn = wrapper.querySelector('.apply-guests');
+          if (applyBtn) {
+            applyBtn.addEventListener('click', function() {
+              var dropdownToggle = wrapper.querySelector('.dropdown-toggle');
+              if (dropdownToggle) {
+                var dd = bootstrap.Dropdown.getOrCreateInstance(dropdownToggle);
+                dd.hide();
+              }
+            });
+          }
+        }
+      });
     </script>
 
     <!-- Футер приложения. Закреплён внизу всех страниц. Используем серый фон,
