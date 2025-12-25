@@ -87,7 +87,9 @@
       /* Стили для выпадающего списка "Кто" (гости). Сохранены скруглённые
          углы и добавлена мягкая тень. У кнопок плюс/минус круглая форма. */
       #nav_guests_wrapper .dropdown-menu {
+        /* Сохраняем тень и задаём минимальную ширину для более просторного отображения */
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+        min-width: 320px !important;
       }
       #nav_guests_wrapper .guest-count {
         width: 20px;
@@ -99,6 +101,7 @@
          блокируется и становится серой при значении 0. */
       #nav_guests_wrapper .nav-guests-increment,
       #nav_guests_wrapper .nav-guests-decrement {
+        /* Кнопки плюс и минус остаются круглого размера 32x32px */
         width: 32px !important;
         height: 32px !important;
         border-radius: 50% !important;
@@ -110,6 +113,9 @@
         color: var(--bs-primary) !important;
         cursor: pointer;
         padding: 0;
+        /* Увеличиваем размер и жирность текста символов “+” и “–” */
+        font-size: 1.25rem !important;
+        font-weight: 700 !important;
       }
       #nav_guests_wrapper .nav-guests-increment:hover,
       #nav_guests_wrapper .nav-guests-increment:focus,
@@ -378,7 +384,7 @@
             <input type="hidden" id="nav_check_in" name="check_in" value="{{ request.args.get('check_in', '') }}">
             <input type="hidden" id="nav_check_out" name="check_out" value="{{ request.args.get('check_out', '') }}">
           </div>
-          <div id="nav_guests_wrapper" class="dropdown" style="width: 150px;">
+          <div id="nav_guests_wrapper" class="dropdown" data-bs-auto-close="outside" style="width: 200px;">
             <!-- Отображаем выбранное количество гостей; по умолчанию поле пустое. Используем
                  dropdown-toggle, чтобы открыть всплывающее меню выбора гостей. -->
             <input type="text" class="form-control dropdown-toggle" id="nav_guests_display"
