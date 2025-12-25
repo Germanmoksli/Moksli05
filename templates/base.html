@@ -806,14 +806,17 @@
                 <div class="dropdown">
                   <a href="#" class="d-flex align-items-center text-decoration-none" id="guestMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
                     {% if user_photo %}
+                      {# Увеличиваем размер аватара до 48×48 пикселей, чтобы он совпадал с размером кнопки поиска #}
                       {% if user_photo.startswith('data:') %}
-                        <img src="{{ user_photo }}" class="rounded-circle" width="32" height="32" style="object-fit: cover;">
+                        <img src="{{ user_photo }}" class="rounded-circle" width="48" height="48" style="object-fit: cover;">
                       {% else %}
-                        <img src="{{ url_for('static', filename=user_photo) }}" class="rounded-circle" width="32" height="32" style="object-fit: cover;">
+                        <img src="{{ url_for('static', filename=user_photo) }}" class="rounded-circle" width="48" height="48" style="object-fit: cover;">
                       {% endif %}
                     {% else %}
+                      {# Когда нет фотографии, показываем placeholder с первой буквой имени. Увеличиваем
+                         размеры до 48×48 px и задаём line-height, чтобы буква была по центру #}
                       {% set _name = current_user_name if current_user_name else current_username %}
-                      <div class="avatar-placeholder" style="width: 32px; height: 32px;">
+                      <div class="avatar-placeholder d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; border-radius: 50%; font-size: 1.2rem;">
                         {{ _name[0]|upper }}
                       </div>
                     {% endif %}
