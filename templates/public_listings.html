@@ -251,7 +251,9 @@
          чтобы сохранить единый вид. */
       #nav_filter_form {
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
-        background-color: #ffffff !important;
+        /* Используем серый фон вместо белого, чтобы фильтры гармонировали с
+           основным фоном каталога и не создавали белых полос. */
+        background-color: #f0f2f5 !important;
         border-radius: 20px !important;
         padding: 0.5rem 1rem !important;
       }
@@ -268,6 +270,16 @@
       }
       nav.navbar .navbar-brand img {
         height: 60px !important;
+      }
+
+      /* Переопределяем стандартные классы Bootstrap .bg-white и .bg-light,
+         чтобы белый фон заменялся на наш фирменный серый #f0f2f5. Это
+         предотвращает появление белых областей в навигационной панели,
+         контейнерах и на самом body, даже если элементы используют
+         стандартные классы Bootstrap. */
+      .bg-white,
+      .bg-light {
+        background-color: #f0f2f5 !important;
       }
 
       /* Делаем фон верхней навигационной панели чуть темнее, чтобы она
