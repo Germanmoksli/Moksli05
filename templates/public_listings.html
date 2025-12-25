@@ -384,7 +384,7 @@
             <input type="hidden" id="nav_check_in" name="check_in" value="{{ request.args.get('check_in', '') }}">
             <input type="hidden" id="nav_check_out" name="check_out" value="{{ request.args.get('check_out', '') }}">
           </div>
-          <div id="nav_guests_wrapper" class="dropdown" data-bs-auto-close="outside" style="width: 200px;">
+          <div id="nav_guests_wrapper" class="dropdown" data-bs-auto-close="false" style="width: 200px;">
             <!-- Отображаем выбранное количество гостей; по умолчанию поле пустое. Используем
                  dropdown-toggle, чтобы открыть всплывающее меню выбора гостей. -->
             <input type="text" class="form-control dropdown-toggle" id="nav_guests_display"
@@ -393,8 +393,8 @@
             <!-- Скрытое поле, в котором хранится итоговое количество гостей для отправки формы -->
             <input type="hidden" id="nav_guests" name="guests" value="{{ request.args.get('guests', '') }}">
             <div class="dropdown-menu p-3" aria-labelledby="nav_guests_display">
-              <div class="fw-semibold mb-2">Кто едет?</div>
-              <div class="d-flex justify-content-between align-items-center mb-2">
+              <div class="fw-semibold mb-3">Кто едет?</div>
+              <div class="d-flex justify-content-between align-items-center mb-3">
                 <div>
                   <div>Взрослые</div>
                   <small class="text-muted">от 18 лет</small>
@@ -405,7 +405,7 @@
                   <button type="button" class="nav-guests-increment" data-target="adults">+</button>
                 </div>
               </div>
-              <div class="d-flex justify-content-between align-items-center mb-2">
+              <div class="d-flex justify-content-between align-items-center mb-3">
                 <div>
                   <div>Подростки</div>
                   <small class="text-muted">с 12 до 18 лет</small>
@@ -416,7 +416,7 @@
                   <button type="button" class="nav-guests-increment" data-target="teens">+</button>
                 </div>
               </div>
-              <div class="d-flex justify-content-between align-items-center mb-2">
+              <div class="d-flex justify-content-between align-items-center mb-3">
                 <div>
                   <div>Дети</div>
                   <small class="text-muted">до 12 лет</small>
@@ -427,7 +427,7 @@
                   <button type="button" class="nav-guests-increment" data-target="children">+</button>
                 </div>
               </div>
-              <div class="d-flex justify-content-between align-items-center mb-2">
+              <div class="d-flex justify-content-between align-items-center mb-3">
                 <span>Животные</span>
                 <div class="d-flex align-items-center">
                   <button type="button" class="nav-guests-decrement" data-target="animals">-</button>
@@ -858,14 +858,18 @@
           }
           updateDisplay();
           wrapper.querySelectorAll('.nav-guests-increment').forEach(function(btn) {
-            btn.addEventListener('click', function() {
+            btn.addEventListener('click', function(event) {
+              // Предотвращаем закрытие выпадающего меню при клике на кнопку
+              event.stopPropagation();
               var target = btn.getAttribute('data-target');
               counts[target] += 1;
               updateDisplay();
             });
           });
           wrapper.querySelectorAll('.nav-guests-decrement').forEach(function(btn) {
-            btn.addEventListener('click', function() {
+            btn.addEventListener('click', function(event) {
+              // Предотвращаем закрытие выпадающего меню при клике на кнопку
+              event.stopPropagation();
               var target = btn.getAttribute('data-target');
               if (counts[target] > 0) {
                 counts[target] -= 1;
