@@ -708,12 +708,14 @@
               <!-- Цена: отображаем за ночь или за выбранный период.  Форматируем число с пробелами. -->
               {% if room.get('price_per_night') is not none %}
                 {% if nights and room.get('price_total') %}
-                  <div class="mt-auto fw-bold" style="font-size: 1.25rem;">
+                  <!-- Делаем цену максимально жирной (font-weight: 900), но оставляем прежний размер шрифта -->
+                  <div class="mt-auto" style="font-size: 1.25rem; font-weight: 900 !important;">
                     {% if room.get('price_total_formatted') %}{{ room['price_total_formatted'] }} ₸{% else %}{{ room['price_total']|int }} ₸{% endif %}
                     <span class="text-muted" style="font-size: 0.8rem;">за {{ nights }} ночь{% if nights > 1 %}и{% endif %}</span>
                   </div>
                 {% else %}
-                  <div class="mt-auto fw-bold" style="font-size: 1.25rem;">
+                  <!-- Делаем цену максимально жирной (font-weight: 900), но оставляем прежний размер шрифта -->
+                  <div class="mt-auto" style="font-size: 1.25rem; font-weight: 900 !important;">
                     {% if room.get('price_per_night_formatted') %}{{ room['price_per_night_formatted'] }} ₸{% else %}{{ room['price_per_night']|int }} ₸{% endif %}
                     <span class="text-muted" style="font-size: 0.8rem;">за ночь</span>
                   </div>
