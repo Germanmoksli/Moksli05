@@ -464,15 +464,15 @@
                   {% if user_photo %}
                     {# Увеличиваем размер аватара до 48×48 пикселей, чтобы он совпадал с размером кнопки поиска #}
                     {% if user_photo.startswith('data:') %}
-                      <img src="{{ user_photo }}" class="rounded-circle" width="48" height="48" style="object-fit: cover; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);">
+                      <img src="{{ user_photo }}" class="rounded-circle" width="48" height="48" style="object-fit: cover; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;">
                     {% else %}
-                      <img src="{{ url_for('static', filename=user_photo) }}" class="rounded-circle" width="48" height="48" style="object-fit: cover; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);">
+                      <img src="{{ url_for('static', filename=user_photo) }}" class="rounded-circle" width="48" height="48" style="object-fit: cover; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;">
                     {% endif %}
                   {% else %}
                     {# Когда нет фотографии, показываем placeholder с первой буквой имени. Увеличиваем
                        размеры до 48×48 px и задаём line-height, чтобы буква была по центру #}
                     {% set _name = current_user_name if current_user_name else current_username %}
-                    <div class="avatar-placeholder d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; border-radius: 50%; font-size: 1.2rem; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);">
+                    <div class="avatar-placeholder d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; border-radius: 50%; font-size: 1.2rem; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;">
                       {{ _name[0]|upper }}
                     </div>
                   {% endif %}
