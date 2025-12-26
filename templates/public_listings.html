@@ -190,13 +190,16 @@
          уменьшенный размер шрифта и увеличенная жирность.  Используем
          техникy -webkit-line-clamp для обрезания текста с многоточием. */
       .room-title {
-        font-size: 1rem !important;
-        font-weight: 700 !important;
+        /* Уменьшаем размер шрифта для названия карточки и делаем его более жирным,
+           чтобы оно выглядело аккуратно и читалось на двух строках */
+        font-size: 0.9rem !important;
+        font-weight: 800 !important;
         display: -webkit-box !important;
         -webkit-line-clamp: 2 !important;
         -webkit-box-orient: vertical !important;
         overflow: hidden !important;
         text-overflow: ellipsis !important;
+        /* Поддерживаем минимальную высоту, чтобы две строки помещались корректно */
         min-height: calc(1.2em * 2) !important;
       }
 
