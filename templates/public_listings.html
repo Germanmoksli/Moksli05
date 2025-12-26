@@ -207,16 +207,18 @@
         min-height: calc(1.2em * 2) !important;
       }
 
-      /* Стили для плашки "Свободна сейчас".  Белый фон, зелёный текст и рамка,
-         скруглённые углы и небольшой внутренний отступ. */
+      /* Стили для плашки "Свободна сейчас".
+         Белый фон и тёмно‑зелёный текст без обводки.
+         Скруглённые углы и лёгкая тень, чтобы элемент выделялся. */
       .availability-badge {
         background-color: #ffffff !important;
-        color: var(--bs-success) !important;
-        border: 1px solid var(--bs-success) !important;
+        color: #198754 !important;            /* Bootstrap success dark */
+        border: none !important;
         border-radius: 20px !important;
         font-size: 0.75rem !important;
         font-weight: 600 !important;
         padding: 0.25rem 0.5rem !important;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
       }
 
       /*
@@ -649,9 +651,9 @@
         {% for room in rooms %}
         <div class="col mb-4">
           <!-- Объявление: карта сверху с изображением, бейджем и иконкой избранного; ниже описание и цена -->
-          <div class="card h-100 border-0 position-relative" style="border-radius: 16px !important; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); overflow: hidden;">
+          <div class="card h-100 border-0 position-relative" style="border-radius: 16px !important; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); overflow: hidden; background-color: transparent !important;">
             <!-- Обёртка для изображения. Высота фиксирована (200px). -->
-            <div class="position-relative" style="height: 200px;">
+            <div class="position-relative" style="height: 180px;">
               {% if room['photo_src'] %}
               <img src="{{ room['photo_src'] }}" alt="Фото квартиры" class="w-100 h-100" style="object-fit: cover;">
               {% else %}
@@ -679,7 +681,7 @@
             <!-- Ссылку на страницу квартиры помещаем внутри карточки с классом stretched-link. -->
             <a href="{{ url_for('view_room_public', room_id=room['id']) }}" class="stretched-link"></a>
             <!-- Тело карточки с описанием. Используем flex-column для равномерного растяжения. -->
-            <div class="card-body d-flex flex-column">
+            <div class="card-body d-flex flex-column" style="background-color: transparent !important; padding: 0.75rem !important;">
               <!-- Геопозиция: добавляем иконку геометки красного цвета слева от страны и города -->
               <div class="text-muted mb-1 small d-flex align-items-center">
                 <i class="bi bi-geo-alt-fill me-1" style="color: #dc3545;"></i>
