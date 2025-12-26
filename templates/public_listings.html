@@ -221,21 +221,6 @@
         box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
       }
 
-      /* Стили для бейджа рейтинга: жёлтый фон, чёрный текст и закруглённые края. */
-      .rating-badge {
-        display: inline-flex !important;
-        align-items: center !important;
-        background-color: #F5C518 !important; /* Золотой оттенок */
-        color: #000000 !important;
-        border-radius: 0.75rem !important;
-        font-size: 0.75rem !important;
-        font-weight: 600 !important;
-        padding: 0.25rem 0.5rem !important;
-      }
-      .rating-badge i {
-        color: inherit !important;
-      }
-
       /*
        * Задаём серый фон для страницы каталога и всей области html.
        * Используем тот же оттенок #f0f2f5, что и навигационная панель
@@ -666,9 +651,9 @@
         {% for room in rooms %}
         <div class="col mb-4">
           <!-- Объявление: карта сверху с изображением, бейджем и иконкой избранного; ниже описание и цена -->
-          <div class="card h-100 border-0 position-relative" style="border-radius: 16px !important; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); overflow: hidden; background-color: transparent !important;">
+          <div class="card h-100 border-0 position-relative" style="box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); background-color: transparent !important;">
             <!-- Обёртка для изображения. Высота фиксирована (200px). -->
-            <div class="position-relative" style="height: 180px;">
+            <div class="position-relative" style="height: 180px; border-radius: 16px; overflow: hidden;">
               {% if room['photo_src'] %}
               <img src="{{ room['photo_src'] }}" alt="Фото квартиры" class="w-100 h-100" style="object-fit: cover;">
               {% else %}
@@ -676,10 +661,14 @@
                 <span class="text-muted">Нет фото</span>
               </div>
               {% endif %}
-              <!-- Бейдж рейтинга в левом верхнем углу.  Показываем звезду и оценку, если она есть. -->
+              <!-- Бейджи в левом верхнем углу. Выбираем бейдж в зависимости от наличия скидки, рейтинга или по умолчанию. -->
               <div class="position-absolute top-0 start-0 m-2">
-                {% if room.get('rating') %}
-                  <span class="rating-badge"><i class="bi bi-star-fill me-1"></i>{{ '%.1f' % room['rating'] }}</span>
+                {% if room.get('discount') %}
+                  <span class="badge bg-danger">Скидка</span>
+                {% elif room.get('rating') and room['rating'] >= 4.5 %}
+                  <span class="badge bg-warning text-dark">Топ</span>
+                {% else %}
+                  <span class="badge availability-badge">Свободна сейчас</span>
                 {% endif %}
               </div>
               <!-- Иконка избранного в правом верхнем углу. Показываем только для авторизованных пользователей. -->
@@ -692,41 +681,32 @@
             <!-- Ссылку на страницу квартиры помещаем внутри карточки с классом stretched-link. -->
             <a href="{{ url_for('view_room_public', room_id=room['id']) }}" class="stretched-link"></a>
             <!-- Тело карточки с описанием. Используем flex-column для равномерного растяжения. -->
-            <div class="card-body d-flex flex-column" style="background-color: #ffffff !important; padding: 0.75rem !important;">
-              <!-- Геопозиция и тип жилья: иконка геометки красного цвета, тип жилья и город. -->
-              {% set type_map = {'flat': 'Квартира', 'studio': 'Студия', 'room': 'Комната', 'house': 'Дом', 'apartment': 'Апартаменты'} %}
-              <div class="mb-1 d-flex align-items-center" style="font-weight: 600; font-size: 1rem; color: #212529;">
+            <div class="card-body d-flex flex-column" style="background-color: transparent !important; padding: 0.75rem !important;">
+              <!-- Геопозиция: добавляем иконку геометки красного цвета слева от страны и города -->
+              <div class="text-muted mb-1 small d-flex align-items-center">
                 <i class="bi bi-geo-alt-fill me-1" style="color: #dc3545;"></i>
-                {% set t = type_map.get(room.get('housing_type')) %}
-                {% if t %}{{ t }}{% endif %}{% if t and room.get('city') %}, {% endif %}{% if room.get('city') %}{{ room['city'] }}{% endif %}
+                {% if room.get('country') %}{{ room['country'] }}{% endif %}{% if room.get('country') and room.get('city') %}, {% endif %}{% if room.get('city') %}{{ room['city'] }}{% endif %}
               </div>
               <!-- Дополнительная информация: количество комнат и гостей.
-                   Форматируем так: "N‑комн." и "M гость/гостя/гостей".  Если данные
-                   отсутствуют, выводим знак вопроса.  Используем более лёгкую пулю
-                   в качестве разделителя. -->
+                   Используем простую проверку truthy/falsey: если значение отсутствует
+                   (null, пустая строка, ноль), показываем знак вопроса.  Разделитель
+                   отображается всегда. -->
               <div class="text-muted mb-2 small d-flex align-items-center">
                 {% set nr = room.get('num_rooms') %}
                 {% set mg = room.get('max_guests') %}
-                <span>
-                  {% if nr %}
-                    {{ nr }}‑комн.
-                  {% else %}
-                    ?‑комн.
-                  {% endif %}
-                </span>
-                <span class="mx-1">•</span>
-                <span>
-                  {% if mg %}
-                    {{ mg }} {% if mg|int == 1 %}гость{% elif mg|int in [2,3,4] %}гостя{% else %}гостей{% endif %}
-                  {% else %}
-                    ? гостя
-                  {% endif %}
-                </span>
+                <span>{{ nr if nr else '?' }} ком.</span>
+                <span class="mx-1">●</span>
+                <span>{{ mg if mg else '?' }} гостя</span>
+              </div>
+              <!-- Иконки удобств -->
+              <div class="mb-2" style="font-size: 1rem; color: var(--bs-primary);">
+                {% set amenities_lower = (room.get('amenities') or '').lower().split(',') %}
+                {% if 'wifi' in amenities_lower or 'wi-fi' in amenities_lower or 'wi fi' in amenities_lower %}<i class="bi bi-wifi me-2" title="Wi-Fi"></i>{% endif %}
+                {# Иконку парковки убираем из каталога — она больше не отображается #}
+                {% if 'кондиционер' in amenities_lower or 'air conditioning' in amenities_lower or 'кондиционер' in amenities_lower %}<i class="bi bi-snow me-2" title="Кондиционер"></i>{% endif %}
               </div>
               <!-- Цена: отображаем за ночь или за выбранный период.  Форматируем число с пробелами. -->
               {% if room.get('price_per_night') is not none %}
-                <!-- Разделительная линия между описанием и ценой -->
-                <hr class="my-2" style="border-color: #e9ecef;">
                 {% if nights and room.get('price_total') %}
                   <div class="mt-auto fw-bold" style="font-size: 1.25rem;">
                     {% if room.get('price_total_formatted') %}{{ room['price_total_formatted'] }} ₸{% else %}{{ room['price_total']|int }} ₸{% endif %}
