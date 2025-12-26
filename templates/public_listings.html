@@ -685,17 +685,24 @@
                 <i class="bi bi-geo-alt-fill me-1" style="color: #dc3545;"></i>
                 {% if room.get('country') %}{{ room['country'] }}{% endif %}{% if room.get('country') and room.get('city') %}, {% endif %}{% if room.get('city') %}{{ room['city'] }}{% endif %}
               </div>
-              <!-- Дополнительная информация: количество комнат и гостей, выводим только указанные значения -->
+              <!-- Дополнительная информация: количество комнат и гостей.  
+                   Всегда выводим по одному значению; если данных нет, показываем знак вопроса. -->
               <div class="text-muted mb-2 small d-flex">
-                {% if room.get('num_rooms') %}
-                  <span>{{ room['num_rooms'] }} ком.</span>
-                {% endif %}
-                {% if room.get('num_rooms') and room.get('max_guests') %}
-                  <span class="mx-1">●</span>
-                {% endif %}
-                {% if room.get('max_guests') %}
-                  <span>{{ room['max_guests'] }} гостя</span>
-                {% endif %}
+                <span>
+                  {% if room.get('num_rooms') is not none %}
+                    {{ room['num_rooms'] }} ком.
+                  {% else %}
+                    ? ком.
+                  {% endif %}
+                </span>
+                <span class="mx-1">●</span>
+                <span>
+                  {% if room.get('max_guests') is not none %}
+                    {{ room['max_guests'] }} гостя
+                  {% else %}
+                    ? гостя
+                  {% endif %}
+                </span>
               </div>
               <!-- Иконки удобств -->
               <div class="mb-2" style="font-size: 1rem; color: var(--bs-primary);">
