@@ -8183,6 +8183,28 @@ def public_listings():
             except Exception:
                 # In case of any error during conversion, set total price to None
                 room['price_total'] = None
+    # After computing total price, format prices with spaces as thousand separators.
+    for room in rooms:
+        try:
+            price_night = room.get('price_per_night')
+            if price_night is not None:
+                # Cast to float then to int to handle values stored as strings or decimals
+                price_int = int(float(price_night))
+                room['price_per_night_formatted'] = '{:,}'.format(price_int).replace(',', ' ')
+            else:
+                room['price_per_night_formatted'] = None
+        except Exception:
+            room['price_per_night_formatted'] = None
+        try:
+            price_total_val = room.get('price_total')
+            if price_total_val is not None:
+                price_total_int = int(price_total_val)
+                room['price_total_formatted'] = '{:,}'.format(price_total_int).replace(',', ' ')
+            else:
+                room['price_total_formatted'] = None
+        except Exception:
+            room['price_total_formatted'] = None
+
     # If the user is logged in, gather their favorite rooms
     favorite_ids = set()
     if session.get('user_id'):

@@ -207,6 +207,18 @@
         min-height: calc(1.2em * 2) !important;
       }
 
+      /* Стили для плашки "Свободна сейчас".  Белый фон, зелёный текст и рамка,
+         скруглённые углы и небольшой внутренний отступ. */
+      .availability-badge {
+        background-color: #ffffff !important;
+        color: var(--bs-success) !important;
+        border: 1px solid var(--bs-success) !important;
+        border-radius: 20px !important;
+        font-size: 0.75rem !important;
+        font-weight: 600 !important;
+        padding: 0.25rem 0.5rem !important;
+      }
+
       /*
        * Задаём серый фон для страницы каталога и всей области html.
        * Используем тот же оттенок #f0f2f5, что и навигационная панель
@@ -654,7 +666,7 @@
                 {% elif room.get('rating') and room['rating'] >= 4.5 %}
                   <span class="badge bg-warning text-dark">Топ</span>
                 {% else %}
-                  <span class="badge bg-success">Свободно сегодня</span>
+                  <span class="badge availability-badge">Свободна сейчас</span>
                 {% endif %}
               </div>
               <!-- Иконка избранного в правом верхнем углу. Показываем только для авторизованных пользователей. -->
@@ -668,17 +680,22 @@
             <a href="{{ url_for('view_room_public', room_id=room['id']) }}" class="stretched-link"></a>
             <!-- Тело карточки с описанием. Используем flex-column для равномерного растяжения. -->
             <div class="card-body d-flex flex-column">
-              <!-- Название объекта: ограничено двумя строками -->
-              <h5 class="room-title mb-1">{{ room['room_number'] }}</h5>
-              <!-- Геопозиция: страна и город -->
-              <div class="text-muted mb-1 small">
+              <!-- Геопозиция: добавляем иконку геометки красного цвета слева от страны и города -->
+              <div class="text-muted mb-1 small d-flex align-items-center">
+                <i class="bi bi-geo-alt-fill me-1" style="color: #dc3545;"></i>
                 {% if room.get('country') %}{{ room['country'] }}{% endif %}{% if room.get('country') and room.get('city') %}, {% endif %}{% if room.get('city') %}{{ room['city'] }}{% endif %}
               </div>
-              <!-- Дополнительная информация: количество комнат и гостей -->
-              <div class="text-muted mb-2 small">
-                {% if room.get('num_rooms') %}{{ room['num_rooms'] }} ком.{% else %}? ком.{% endif %}
-                <span class="mx-1">●</span>
-                {% if room.get('max_guests') %}{{ room['max_guests'] }} гостя{% else %}? гостя{% endif %}
+              <!-- Дополнительная информация: количество комнат и гостей, выводим только указанные значения -->
+              <div class="text-muted mb-2 small d-flex">
+                {% if room.get('num_rooms') %}
+                  <span>{{ room['num_rooms'] }} ком.</span>
+                {% endif %}
+                {% if room.get('num_rooms') and room.get('max_guests') %}
+                  <span class="mx-1">●</span>
+                {% endif %}
+                {% if room.get('max_guests') %}
+                  <span>{{ room['max_guests'] }} гостя</span>
+                {% endif %}
               </div>
               <!-- Иконки удобств -->
               <div class="mb-2" style="font-size: 1rem; color: var(--bs-primary);">
@@ -687,16 +704,16 @@
                 {# Иконку парковки убираем из каталога — она больше не отображается #}
                 {% if 'кондиционер' in amenities_lower or 'air conditioning' in amenities_lower or 'кондиционер' in amenities_lower %}<i class="bi bi-snow me-2" title="Кондиционер"></i>{% endif %}
               </div>
-              <!-- Цена: отображаем за ночь или за выбранный период -->
+              <!-- Цена: отображаем за ночь или за выбранный период.  Форматируем число с пробелами. -->
               {% if room.get('price_per_night') is not none %}
                 {% if nights and room.get('price_total') %}
                   <div class="mt-auto fw-bold" style="font-size: 1.25rem;">
-                    {{ room['price_total']|int }} ₸
+                    {% if room.get('price_total_formatted') %}{{ room['price_total_formatted'] }} ₸{% else %}{{ room['price_total']|int }} ₸{% endif %}
                     <span class="text-muted" style="font-size: 0.8rem;">за {{ nights }} ночь{% if nights > 1 %}и{% endif %}</span>
                   </div>
                 {% else %}
                   <div class="mt-auto fw-bold" style="font-size: 1.25rem;">
-                    {{ room['price_per_night']|int }} ₸
+                    {% if room.get('price_per_night_formatted') %}{{ room['price_per_night_formatted'] }} ₸{% else %}{{ room['price_per_night']|int }} ₸{% endif %}
                     <span class="text-muted" style="font-size: 0.8rem;">за ночь</span>
                   </div>
                 {% endif %}
