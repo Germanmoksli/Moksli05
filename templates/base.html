@@ -16,7 +16,9 @@
          адаптации интерфейса под небольшие экраны (см. static/css/mobile.css) -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/mobile.css') }}">
     <!-- Подключаем шрифт Montserrat (Regular 400) для всего приложения -->
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400&display=swap" rel="stylesheet">
+    <!-- Подключаем Montserrat сразу с несколькими толщинами (400, 600, 700, 800, 900),
+         чтобы можно было использовать более «жирные» варианты для цены и заголовков. -->
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <style>
       /*
        * Цветовые переменные темы. Мы используем единую светлую тему во всём
