@@ -2,37 +2,35 @@
 {% block title %}{{ room['room_number'] }}{% endblock %}
 {% block content %}
 <div class="container py-4">
-  <!-- Название объекта и кнопки действий -->
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <!-- Display the room name provided by the host.  Align left of the gallery. -->
-    <h1 class="fw-bold fs-2 mb-0 text-start">{{ room['room_number'] }}</h1>
-    <div class="d-flex align-items-center">
-      <!-- Favorite toggle: shows filled heart if the room is already in favorites -->
-      <a href="{{ url_for('toggle_favorite', room_id=room['id']) }}" class="btn btn-link p-0 me-3" title="Избранное">
-        <i class="bi bi-heart{% if is_favorite %}-fill{% endif %} fs-3{% if is_favorite %} text-danger{% else %} text-primary{% endif %}"></i>
-      </a>
-      <!-- Share button: copies the current page URL to the clipboard -->
-      <button type="button" class="btn btn-link p-0" id="shareButton" title="Поделиться">
-        <i class="bi bi-share fs-3 text-primary"></i>
-      </button>
-    </div>
-  </div>
+  <!-- Заголовок и кнопки действий будут размещаться внутри галереи -->
   <div class="row justify-content-center">
     <!-- Левая колонка: галерея и дополнительные сведения -->
     <div class="col-lg-10">
       <div class="row">
         <div class="col-12 mb-3 mx-auto" style="max-width: 1200px;">
+          <!-- Заголовок квартиры и кнопки действий, выравнены по краям галереи -->
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h1 class="fw-bold fs-2 mb-0 text-start">{{ room['room_number'] }}</h1>
+            <div class="d-flex align-items-center">
+              <a href="{{ url_for('toggle_favorite', room_id=room['id']) }}" class="btn btn-link p-0 me-3" title="Избранное">
+                <i class="bi bi-heart{% if is_favorite %}-fill{% endif %} fs-3{% if is_favorite %} text-danger{% else %} text-primary{% endif %}"></i>
+              </a>
+              <button type="button" class="btn btn-link p-0" id="shareButton" title="Поделиться">
+                <i class="bi bi-share fs-3 text-primary"></i>
+              </button>
+            </div>
+          </div>
           {% if photos and photos|length > 0 %}
           <!-- Галерея: крупное изображение и миниатюры -->
           <div class="mb-3">
             <div class="position-relative mb-2">
-              <img id="mainImage" src="{{ photos[0] }}" class="img-fluid rounded shadow-sm w-100" alt="Фото квартиры" style="height: 500px; object-fit: cover;" onclick="openGalleryModal(currentPhotoIndex)">
+              <img id="mainImage" src="{{ photos[0] }}" class="img-fluid rounded shadow-sm w-100" alt="Фото квартиры" style="height: 500px; object-fit: contain; background-color: #f0f2f5;" onclick="openGalleryModal(currentPhotoIndex)">
               <!-- Стрелка влево -->
-              <button type="button" class="btn btn-light position-absolute top-50 start-0 translate-middle-y" style="opacity: 0.7;" onclick="prevPhoto()">
+              <button type="button" class="btn btn-light position-absolute top-50 start-0 translate-middle-y p-0 d-flex align-items-center justify-content-center rounded-circle" style="opacity: 0.7; width: 40px; height: 40px;" onclick="prevPhoto()">
                 <i class="bi bi-chevron-left"></i>
               </button>
               <!-- Стрелка вправо -->
-              <button type="button" class="btn btn-light position-absolute top-50 end-0 translate-middle-y" style="opacity: 0.7;" onclick="nextPhoto()">
+              <button type="button" class="btn btn-light position-absolute top-50 end-0 translate-middle-y p-0 d-flex align-items-center justify-content-center rounded-circle" style="opacity: 0.7; width: 40px; height: 40px;" onclick="nextPhoto()">
                 <i class="bi bi-chevron-right"></i>
               </button>
             </div>
@@ -184,10 +182,10 @@
     <div class="container h-100 d-flex flex-column justify-content-center align-items-center">
       <div class="position-relative w-100" style="max-width: 800px;">
         <img id="modalMainImage" src="" class="img-fluid rounded" style="width: 100%; max-height: 80vh; object-fit: contain;" alt="Фото">
-        <button type="button" class="btn btn-light position-absolute top-50 start-0 translate-middle-y" style="opacity: 0.7;" onclick="prevPhoto(true)">
+        <button type="button" class="btn btn-light position-absolute top-50 start-0 translate-middle-y p-0 d-flex align-items-center justify-content-center rounded-circle" style="opacity: 0.7; width: 40px; height: 40px;" onclick="prevPhoto(true)">
           <i class="bi bi-chevron-left"></i>
         </button>
-        <button type="button" class="btn btn-light position-absolute top-50 end-0 translate-middle-y" style="opacity: 0.7;" onclick="nextPhoto(true)">
+        <button type="button" class="btn btn-light position-absolute top-50 end-0 translate-middle-y p-0 d-flex align-items-center justify-content-center rounded-circle" style="opacity: 0.7; width: 40px; height: 40px;" onclick="nextPhoto(true)">
           <i class="bi bi-chevron-right"></i>
         </button>
         <button type="button" class="btn btn-light position-absolute top-0 end-0 m-2" onclick="closeGalleryModal()">×</button>
