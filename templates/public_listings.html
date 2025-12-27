@@ -692,32 +692,34 @@
               <!-- Дополнительная информация: количество комнат и гостей.
                    Используем простую проверку truthy/falsey: если значение отсутствует
                    (null, пустая строка, ноль), показываем знак вопроса.  Разделитель
-                   отображается всегда. -->
-              <div class="text-muted mb-2 small d-flex align-items-center">
+                   отображается всегда.  Уменьшаем нижний отступ до mb-1, чтобы
+                   расстояние между геопозицией и этой строкой и расстояние до цены
+                   было одинаковым. -->
+              <div class="text-muted mb-1 small d-flex align-items-center">
                 {% set nr = room.get('num_rooms') %}
                 {% set mg = room.get('max_guests') %}
                 <span>{{ nr if nr else '?' }} ком.</span>
                 <span class="mx-1">●</span>
                 <span>{{ mg if mg else '?' }} гостя</span>
               </div>
-              <!-- Иконки удобств -->
-              <div class="mb-2" style="font-size: 1rem; color: var(--bs-primary);">
-                {% set amenities_lower = (room.get('amenities') or '').lower().split(',') %}
-                {% if 'wifi' in amenities_lower or 'wi-fi' in amenities_lower or 'wi fi' in amenities_lower %}<i class="bi bi-wifi me-2" title="Wi-Fi"></i>{% endif %}
-                {# Иконку парковки убираем из каталога — она больше не отображается #}
-                {% if 'кондиционер' in amenities_lower or 'air conditioning' in amenities_lower or 'кондиционер' in amenities_lower %}<i class="bi bi-snow me-2" title="Кондиционер"></i>{% endif %}
-              </div>
+              {# Удаляем отображение иконок удобств (Wi-Fi, кондиционер), чтобы карточка
+                 выглядела лаконично и цена располагалась ближе к дополнительной
+                 информации, как в эталонном дизайне. #}
               <!-- Цена: отображаем за ночь или за выбранный период.  Форматируем число с пробелами. -->
               {% if room.get('price_per_night') is not none %}
                 {% if nights and room.get('price_total') %}
-                  <!-- Делаем цену полужирной: устанавливаем font-weight на 600 (примерно эквивалент 550) и оставляем прежний размер -->
-                  <div class="mt-auto" style="font-size: 1.25rem; font-weight: 600 !important;">
+                  <!-- Делаем цену полужирной: устанавливаем font-weight на 600 (примерно эквивалент 550)
+                       и помещаем её ближе к дополнительной информации. Используем mt-1 вместо mt-auto,
+                       чтобы убрать автоматическое выравнивание по низу и задать небольшой отступ сверху. -->
+                  <div class="mt-1" style="font-size: 1.25rem; font-weight: 600 !important;">
                     {% if room.get('price_total_formatted') %}{{ room['price_total_formatted'] }} ₸{% else %}{{ room['price_total']|int }} ₸{% endif %}
                     <span class="text-muted" style="font-size: 0.8rem;">за {{ nights }} ночь{% if nights > 1 %}и{% endif %}</span>
                   </div>
                 {% else %}
-                  <!-- Делаем цену полужирной: устанавливаем font-weight на 600 (примерно эквивалент 550) и оставляем прежний размер -->
-                  <div class="mt-auto" style="font-size: 1.25rem; font-weight: 600 !important;">
+                  <!-- Делаем цену полужирной: устанавливаем font-weight на 600 (примерно эквивалент 550)
+                       и помещаем её ближе к дополнительной информации. Используем mt-1 вместо mt-auto,
+                       чтобы убрать автоматическое выравнивание по низу и задать небольшой отступ сверху. -->
+                  <div class="mt-1" style="font-size: 1.25rem; font-weight: 600 !important;">
                     {% if room.get('price_per_night_formatted') %}{{ room['price_per_night_formatted'] }} ₸{% else %}{{ room['price_per_night']|int }} ₸{% endif %}
                     <span class="text-muted" style="font-size: 0.8rem;">за ночь</span>
                   </div>
