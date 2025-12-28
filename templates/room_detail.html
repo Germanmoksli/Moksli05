@@ -56,7 +56,7 @@
                   <div id="booking-calendar"></div>
                   <div class="mt-3">
                     <!-- Цена: по умолчанию за ночь; будет обновляться скриптом -->
-                    <h4 class="fw-bold text-dark mb-2" id="priceDisplay">{{ room['price_per_night'] }} ₸/сутки</h4>
+                    <h4 class="fw-bold text-dark mb-2 text-end" id="priceDisplay">{{ room['price_per_night'] }} ₸/сутки</h4>
                     <form method="post" action="#">
                       <!-- скрытые поля для передачи выбранных дат -->
                       <input type="hidden" id="checkin_date" name="checkin_date">
@@ -356,6 +356,9 @@
     /* Стили календаря бронирования: сетка, дни недели и подсветка выбранного диапазона. */
     #booking-calendar {
       user-select: none;
+      /* Уменьшаем размер календаря: масштабируем его на ~67% для уменьшения в 1.5 раза */
+      transform: scale(0.67);
+      transform-origin: top left;
     }
     #booking-calendar .calendar-nav {
       display: flex;
