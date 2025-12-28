@@ -50,7 +50,7 @@
           <div class="row mb-3">
             <!-- Календарь бронирования -->
             <div class="col-md-6 mb-3">
-              <div class="card shadow-sm h-100">
+              <div class="card shadow-sm h-100" id="calendar-card">
                 <div class="card-body">
                   <!-- Контейнер для генерации календаря -->
                   <div id="booking-calendar"></div>
@@ -356,9 +356,11 @@
     /* Стили календаря бронирования: сетка, дни недели и подсветка выбранного диапазона. */
     #booking-calendar {
       user-select: none;
-      /* Уменьшаем размер календаря: масштабируем его на ~67% для уменьшения в 1.5 раза */
-      transform: scale(0.67);
-      transform-origin: top left;
+    }
+    /* Уменьшаем ширину карточки с календарём до 80% от исходного размера */
+    #calendar-card {
+      /* уменьшаем ширину всего блока (карточка, календарь, цена и кнопка) */
+      width: 80%;
     }
     #booking-calendar .calendar-nav {
       display: flex;
@@ -381,6 +383,8 @@
       text-align: center;
       padding: 0.5rem 0;
       font-size: 0.9rem;
+      /* увеличиваем жирность для лучшей читаемости */
+      font-weight: 700;
     }
     #booking-calendar .calendar-date {
       cursor: pointer;
