@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ room['room_number'] }}{% endblock %}
 {% block content %}
+{# удаляем тестовый комментарий, добавленный ранее #}
 <div class="container py-4">
   <!-- Заголовок и кнопки действий будут размещаться внутри галереи -->
   <div class="row justify-content-center">
@@ -23,18 +24,19 @@
           {% if photos and photos|length > 0 %}
           <!-- Галерея: крупное изображение и миниатюры -->
           <div class="mb-3">
-            <div class="position-relative mb-2">
+            <!-- Оборачиваем изображение контейнером с overflow: hidden, чтобы слайды оставались в пределах галереи -->
+            <div class="position-relative mb-2" style="overflow: hidden;">
               <img id="mainImage" src="{{ photos[0] }}" class="img-fluid rounded w-100" alt="Фото квартиры"
                    style="height: 500px; object-fit: contain; background-color: #f0f2f5;" onclick="openGalleryModal(currentPhotoIndex)">
               <!-- Стрелка влево -->
               <button type="button" class="btn btn-light position-absolute top-50 p-0 d-flex align-items-center justify-content-center rounded-circle"
-                      style="opacity: 0.7; width: 56px; height: 56px; left: 2rem; transform: translateY(-50%);"
+                      style="opacity: 0.7; width: 56px; height: 56px; left: 1rem; transform: translateY(-50%);"
                       onclick="stopAutoSwitch(); prevPhoto(false)">
                 <i class="bi bi-chevron-left fs-3"></i>
               </button>
               <!-- Стрелка вправо -->
               <button type="button" class="btn btn-light position-absolute top-50 p-0 d-flex align-items-center justify-content-center rounded-circle"
-                      style="opacity: 0.7; width: 56px; height: 56px; right: 2rem; transform: translateY(-50%);"
+                      style="opacity: 0.7; width: 56px; height: 56px; right: 1rem; transform: translateY(-50%);"
                       onclick="stopAutoSwitch(); nextPhoto(false)">
                 <i class="bi bi-chevron-right fs-3"></i>
               </button>
@@ -43,32 +45,38 @@
           </div>
           {% endif %}
 
-          <!-- Блок с ценой и бронированием размещён под галереей. Сокращён до меньшей ширины -->
-          <div class="card shadow-sm mb-3" style="max-width: 450px;">
-            <div class="card-body">
-            {#
-            Отображаем форму бронирования. Поля даты выровнены в один ряд и помещены
-            на место бывшей цены. Метка цены перенесена ниже полей ввода и
-            отображается жирным чёрным текстом. Кнопка бронирования использует
-            синий контур и белый фон. Кнопка звонка владельцу удалена.
-            #}
-            <form method="post" action="#">
-              <div class="d-flex gap-2 mb-2">
-                <input type="date" class="form-control" id="checkin_date" name="checkin_date" placeholder="Заезд">
-                <input type="date" class="form-control" id="checkout_date" name="checkout_date" placeholder="Выезд">
+          <!-- Блок выбора дат и описание владельца. Календарь занимает левую часть, а текстовое
+               описание от владельца располагается справа. -->
+          <div class="row mb-3">
+            <!-- Календарь бронирования -->
+            <div class="col-md-6 mb-3">
+              <div class="card shadow-sm h-100">
+                <div class="card-body">
+                  <!-- Контейнер для генерации календаря -->
+                  <div id="booking-calendar"></div>
+                  <div class="mt-3">
+                    <!-- Цена: по умолчанию за ночь; будет обновляться скриптом -->
+                    <h4 class="fw-bold text-dark mb-2" id="priceDisplay">{{ room['price_per_night'] }} ₸/сутки</h4>
+                    <form method="post" action="#">
+                      <!-- скрытые поля для передачи выбранных дат -->
+                      <input type="hidden" id="checkin_date" name="checkin_date">
+                      <input type="hidden" id="checkout_date" name="checkout_date">
+                      <button type="submit" class="btn btn-outline-primary w-100">Забронировать</button>
+                    </form>
+                    {% if room['owner_messenger'] %}
+                    <a href="{{ room['owner_messenger'] }}" class="btn btn-outline-secondary w-100 mt-2">Написать владельцу</a>
+                    {% endif %}
+                  </div>
+                </div>
               </div>
-              {% if room['price_per_night'] %}
-              <div class="mb-3">
-                <h4 class="fw-bold text-dark mb-0">{{ room['price_per_night'] }} ₸/сутки</h4>
-              </div>
-              {% endif %}
-              <button type="submit" class="btn btn-outline-primary w-100">Забронировать</button>
-            </form>
-            {% if room['owner_messenger'] %}
-            <a href="{{ room['owner_messenger'] }}" class="btn btn-outline-secondary w-100 mt-2">Написать владельцу</a>
-            {% endif %}
             </div>
-
+            <!-- Описание от владельца -->
+            <div class="col-md-6 mb-3">
+              {% if room['description'] %}
+              <h5 class="fw-bold mb-3">Описание от владельца</h5>
+              <p class="mb-0">{{ room['description'] }}</p>
+              {% endif %}
+            </div>
           </div>
           {% if room['owner_name'] %}
           <div class="card shadow-sm mb-3" style="max-width: 450px;">
@@ -159,15 +167,7 @@
           {% endif %}
         </div>
       </div>
-      <!-- Описание от владельца -->
-      {% if room['description'] %}
-      <div class="card shadow-sm mb-3">
-        <div class="card-body">
-          <h5 class="fw-bold mb-3">Описание от владельца</h5>
-          <p class="mb-0">{{ room['description'] }}</p>
-        </div>
-      </div>
-      {% endif %}
+      {# Описание от владельца перенесено в блок рядом с календарём. #}
     </div>
     {# Правая колонка удалена. Информация о доме, карта и отзывы будут показаны под галереей в основной колонке. #}
   </div>
@@ -350,6 +350,190 @@
           }
         });
       }
+    });
+  </script>
+  <style>
+    /* Стили календаря бронирования: сетка, дни недели и подсветка выбранного диапазона. */
+    #booking-calendar {
+      user-select: none;
+    }
+    #booking-calendar .calendar-nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+    #booking-calendar .calendar-title {
+      font-weight: 600;
+      text-align: center;
+      flex-grow: 1;
+    }
+    #booking-calendar .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 0.25rem;
+    }
+    #booking-calendar .calendar-day,
+    #booking-calendar .calendar-date {
+      text-align: center;
+      padding: 0.5rem 0;
+      font-size: 0.9rem;
+    }
+    #booking-calendar .calendar-date {
+      cursor: pointer;
+      border-radius: 10px;
+    }
+    #booking-calendar .calendar-date.disabled {
+      color: #ced4da;
+      pointer-events: none;
+    }
+    #booking-calendar .calendar-date.selected {
+      background-color: var(--bs-primary);
+      color: #ffffff;
+    }
+    #booking-calendar .calendar-date.in-range {
+      background-color: rgba(var(--bs-primary-rgb), 0.1);
+      color: var(--bs-primary);
+    }
+  </style>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      var calendarContainer = document.getElementById('booking-calendar');
+      if (!calendarContainer) return;
+      var priceDisplay = document.getElementById('priceDisplay');
+      var checkinInput = document.getElementById('checkin_date');
+      var checkoutInput = document.getElementById('checkout_date');
+      var rawPrice = '{{ room["price_per_night"] }}';
+      // Убираем все символы кроме цифр и точек, чтобы получить числовое значение цены
+      var pricePerNight = parseFloat(rawPrice.replace(/[^0-9.]/g, '')) || 0;
+      var months = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+      var days = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+      var today = new Date();
+      var currentMonth = today.getMonth();
+      var currentYear = today.getFullYear();
+      var startDate = null;
+      var endDate = null;
+      function isSameDate(a, b) {
+        return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+      }
+      function formatDate(date) {
+        var y = date.getFullYear();
+        var m = (date.getMonth() + 1).toString().padStart(2, '0');
+        var d = date.getDate().toString().padStart(2, '0');
+        return y + '-' + m + '-' + d;
+      }
+      function updateSelection() {
+        if (startDate && !endDate) {
+          checkinInput.value = formatDate(startDate);
+          checkoutInput.value = '';
+          // показываем исходную цену за ночь
+          priceDisplay.innerText = rawPrice + ' ₸/сутки';
+        } else if (startDate && endDate) {
+          checkinInput.value = formatDate(startDate);
+          checkoutInput.value = formatDate(endDate);
+          var nights = Math.round((endDate - startDate) / (1000 * 60 * 60 * 24));
+          var total = nights * pricePerNight;
+          priceDisplay.innerText = total + ' ₸ за ' + nights + ' ' + (nights === 1 ? 'ночь' : 'ночей');
+        } else {
+          checkinInput.value = '';
+          checkoutInput.value = '';
+          priceDisplay.innerText = rawPrice + ' ₸/сутки';
+        }
+      }
+      function onDateClick(date) {
+        if (!startDate || (startDate && endDate)) {
+          startDate = date;
+          endDate = null;
+        } else {
+          if (date < startDate) {
+            startDate = date;
+            endDate = null;
+          } else if (isSameDate(date, startDate)) {
+            startDate = null;
+            endDate = null;
+          } else {
+            endDate = date;
+          }
+        }
+        updateSelection();
+        renderCalendar();
+      }
+      function renderCalendar() {
+        calendarContainer.innerHTML = '';
+        // навигационная панель
+        var nav = document.createElement('div');
+        nav.classList.add('calendar-nav');
+        var prevBtn = document.createElement('button');
+        prevBtn.type = 'button';
+        prevBtn.className = 'btn btn-light btn-sm rounded-circle d-flex align-items-center justify-content-center';
+        prevBtn.innerHTML = '<i class="bi bi-chevron-left"></i>';
+        prevBtn.onclick = function() {
+          if (currentMonth === 0) { currentMonth = 11; currentYear--; } else { currentMonth--; }
+          renderCalendar();
+        };
+        var nextBtn = document.createElement('button');
+        nextBtn.type = 'button';
+        nextBtn.className = 'btn btn-light btn-sm rounded-circle d-flex align-items-center justify-content-center';
+        nextBtn.innerHTML = '<i class="bi bi-chevron-right"></i>';
+        nextBtn.onclick = function() {
+          if (currentMonth === 11) { currentMonth = 0; currentYear++; } else { currentMonth++; }
+          renderCalendar();
+        };
+        var title = document.createElement('div');
+        title.classList.add('calendar-title');
+        title.innerText = months[currentMonth] + ' ' + currentYear;
+        nav.appendChild(prevBtn);
+        nav.appendChild(title);
+        nav.appendChild(nextBtn);
+        calendarContainer.appendChild(nav);
+        // заголовки дней недели
+        var grid = document.createElement('div');
+        grid.classList.add('calendar-grid');
+        days.forEach(function(label) {
+          var dayCell = document.createElement('div');
+          dayCell.classList.add('calendar-day', 'fw-semibold');
+          dayCell.innerText = label;
+          grid.appendChild(dayCell);
+        });
+        // вычисление начала месяца (смещение для понедельника)
+        var firstDate = new Date(currentYear, currentMonth, 1);
+        var startIndex = firstDate.getDay();
+        startIndex = (startIndex + 6) % 7;
+        var lastDate = new Date(currentYear, currentMonth + 1, 0).getDate();
+        // пустые ячейки до начала месяца
+        for (var i = 0; i < startIndex; i++) {
+          var empty = document.createElement('div');
+          empty.classList.add('calendar-date', 'disabled');
+          empty.innerText = '';
+          grid.appendChild(empty);
+        }
+        // дни месяца
+        for (var d = 1; d <= lastDate; d++) {
+          (function(day) {
+            var cell = document.createElement('div');
+            cell.classList.add('calendar-date');
+            cell.innerText = day;
+            var cellDate = new Date(currentYear, currentMonth, day);
+            if (startDate && isSameDate(cellDate, startDate)) {
+              cell.classList.add('selected');
+            }
+            if (startDate && endDate && cellDate > startDate && cellDate < endDate) {
+              cell.classList.add('in-range');
+            }
+            if (startDate && endDate && isSameDate(cellDate, endDate)) {
+              cell.classList.add('selected');
+            }
+            cell.onclick = function() {
+              onDateClick(cellDate);
+            };
+            grid.appendChild(cell);
+          })(d);
+        }
+        calendarContainer.appendChild(grid);
+      }
+      // первая отрисовка и вывод цены
+      updateSelection();
+      renderCalendar();
     });
   </script>
 {% endblock %}
