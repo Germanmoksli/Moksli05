@@ -61,7 +61,9 @@
                       <!-- скрытые поля для передачи выбранных дат -->
                       <input type="hidden" id="checkin_date" name="checkin_date">
                       <input type="hidden" id="checkout_date" name="checkout_date">
-                      <button type="submit" class="btn btn-outline-primary w-100">Забронировать</button>
+                      <!-- Добавляем класс mt-3 для отступа сверху, равного
+                           отступу между календарём и ценой -->
+                      <button type="submit" class="btn btn-outline-primary w-100 mt-3">Забронировать</button>
                     </form>
                     {% if room['owner_messenger'] %}
                     <a href="{{ room['owner_messenger'] }}" class="btn btn-outline-secondary w-100 mt-2">Написать владельцу</a>
@@ -205,6 +207,12 @@
   </div>
 
   <script>
+    /*
+      Список занятых дат для данного объявления.  Сгенерирован на
+      сервере на основе существующих бронирований и передан в шаблон
+      как JavaScript‑массив.  Каждый элемент имеет формат YYYY‑MM‑DD.
+    */
+    const bookedDates = {{ booked_dates|tojson|safe }};
     // Prepare photos array for JavaScript
     var photos = [
       {% for photo_src in photos %}
@@ -357,10 +365,11 @@
     #booking-calendar {
       user-select: none;
     }
-    /* Уменьшаем ширину карточки с календарём до 80% от исходного размера */
+    /* Уменьшаем ширину карточки с календарём.  После первой итерации ширина
+       составляла 80%% от исходного размера.  В рамках текущего требования
+       снижаем её ещё на 20%%, то есть примерно до 64%% от базовой ширины. */
     #calendar-card {
-      /* уменьшаем ширину всего блока (карточка, календарь, цена и кнопка) */
-      width: 80%;
+      width: 64%;
     }
     #booking-calendar .calendar-nav {
       display: flex;
@@ -369,7 +378,9 @@
       margin-bottom: 0.5rem;
     }
     #booking-calendar .calendar-title {
-      font-weight: 600;
+      /* Заголовок месяца и года отображаем таким же жирным шрифтом, как и
+         дни и даты, чтобы улучшить читаемость */
+      font-weight: 700;
       text-align: center;
       flex-grow: 1;
     }
@@ -392,6 +403,14 @@
     }
     #booking-calendar .calendar-date.disabled {
       color: #ced4da;
+      pointer-events: none;
+    }
+    /* Дополнительный стиль для дат, которые уже забронированы: делаем
+       текст и фон серыми и отключаем возможность клика.  Этот класс
+       применяется из JavaScript в ходе построения календаря. */
+    #booking-calendar .calendar-date.booked-date {
+      color: #adb5bd;
+      background-color: #f5f5f5;
       pointer-events: none;
     }
     #booking-calendar .calendar-date.selected {
@@ -473,7 +492,8 @@
         var prevBtn = document.createElement('button');
         prevBtn.type = 'button';
         prevBtn.className = 'btn btn-light btn-sm rounded-circle d-flex align-items-center justify-content-center';
-        prevBtn.innerHTML = '<i class="bi bi-chevron-left"></i>';
+        // Добавляем класс fw-bold к иконке стрелки, чтобы она была жирной
+        prevBtn.innerHTML = '<i class="bi bi-chevron-left fw-bold"></i>';
         prevBtn.onclick = function() {
           if (currentMonth === 0) { currentMonth = 11; currentYear--; } else { currentMonth--; }
           renderCalendar();
@@ -481,7 +501,8 @@
         var nextBtn = document.createElement('button');
         nextBtn.type = 'button';
         nextBtn.className = 'btn btn-light btn-sm rounded-circle d-flex align-items-center justify-content-center';
-        nextBtn.innerHTML = '<i class="bi bi-chevron-right"></i>';
+        // Добавляем класс fw-bold к иконке стрелки, чтобы она была жирной
+        nextBtn.innerHTML = '<i class="bi bi-chevron-right fw-bold"></i>';
         nextBtn.onclick = function() {
           if (currentMonth === 11) { currentMonth = 0; currentYear++; } else { currentMonth++; }
           renderCalendar();
@@ -498,7 +519,9 @@
         grid.classList.add('calendar-grid');
         days.forEach(function(label) {
           var dayCell = document.createElement('div');
-          dayCell.classList.add('calendar-day', 'fw-semibold');
+          // Используем класс fw-bold вместо fw-semibold, чтобы названия дней недели
+          // были такими же жирными, как цифры и заголовок месяца
+          dayCell.classList.add('calendar-day', 'fw-bold');
           dayCell.innerText = label;
           grid.appendChild(dayCell);
         });
@@ -521,18 +544,27 @@
             cell.classList.add('calendar-date');
             cell.innerText = day;
             var cellDate = new Date(currentYear, currentMonth, day);
-            if (startDate && isSameDate(cellDate, startDate)) {
-              cell.classList.add('selected');
+            // Преобразуем дату в строку формата YYYY-MM-DD, чтобы сравнить с массивом
+            var cellDateStr = cellDate.toISOString().split('T')[0];
+            // Если дата забронирована, отмечаем её как недоступную
+            if (bookedDates && Array.isArray(bookedDates) && bookedDates.includes(cellDateStr)) {
+              cell.classList.add('booked-date');
+            } else {
+              // Выделяем выбранный диапазон дат
+              if (startDate && isSameDate(cellDate, startDate)) {
+                cell.classList.add('selected');
+              }
+              if (startDate && endDate && cellDate > startDate && cellDate < endDate) {
+                cell.classList.add('in-range');
+              }
+              if (startDate && endDate && isSameDate(cellDate, endDate)) {
+                cell.classList.add('selected');
+              }
+              // Только доступные даты реагируют на клики
+              cell.onclick = function() {
+                onDateClick(cellDate);
+              };
             }
-            if (startDate && endDate && cellDate > startDate && cellDate < endDate) {
-              cell.classList.add('in-range');
-            }
-            if (startDate && endDate && isSameDate(cellDate, endDate)) {
-              cell.classList.add('selected');
-            }
-            cell.onclick = function() {
-              onDateClick(cellDate);
-            };
             grid.appendChild(cell);
           })(d);
         }

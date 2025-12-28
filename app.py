@@ -8351,11 +8351,91 @@ def view_room_public(room_id: int):
             conn2.close()
         except Exception:
             is_favorite = False
+    # ---------------------------------------------------------------------
+    # Compute a list of dates that are already booked for this room.  When
+    # rendering the interactive calendar on the room detail page, these dates
+    # should be displayed as disabled so that guests cannot select them.  We
+    # consider all bookings associated with this room and treat every date
+    # from check‑in (inclusive) to check‑out (exclusive) as unavailable.
+    booked_dates: list[str] = []
+    try:
+        from datetime import datetime, date, timedelta
+        # Pull all booking ranges for this room.  We don't filter by status
+        # because any existing reservation should prevent the room from being
+        # booked by another guest.  If your business logic distinguishes
+        # between statuses (e.g., cancelled), adjust the WHERE clause
+        # accordingly.
+        try:
+            booking_rows = conn.execute(
+                "SELECT check_in_date, check_out_date FROM bookings WHERE room_id = ?",
+                (room_id,)
+            ).fetchall()
+        except Exception:
+            booking_rows = []
+        for br in booking_rows:
+            # Extract the check‑in and check‑out values.  They may be strings
+            # or date objects depending on the database driver.  Attempt
+            # conversion to Python date objects; skip any rows that cannot
+            # be parsed.
+            ci = None
+            co = None
+            try:
+                ci = br["check_in_date"] if isinstance(br, dict) else br[0]
+            except Exception:
+                try:
+                    ci = br[0]
+                except Exception:
+                    pass
+            try:
+                co = br["check_out_date"] if isinstance(br, dict) else br[1]
+            except Exception:
+                try:
+                    co = br[1]
+                except Exception:
+                    pass
+            if not ci or not co:
+                continue
+            try:
+                # Convert to date if not already.  Strings are expected in
+                # YYYY‑MM‑DD format.  If conversion fails, skip this booking.
+                if isinstance(ci, date):
+                    start_date = ci
+                else:
+                    start_date = datetime.strptime(str(ci), "%Y-%m-%d").date()
+                if isinstance(co, date):
+                    end_date = co
+                else:
+                    end_date = datetime.strptime(str(co), "%Y-%m-%d").date()
+                # Only iterate when start is strictly before end.  The
+                # booking convention in this application is that check_out_date
+                # is the date of departure and is therefore not an occupied
+                # night.  Iterate through each occupied night and add to
+                # the list in ISO (YYYY‑MM‑DD) format.
+                current = start_date
+                while current < end_date:
+                    try:
+                        booked_dates.append(current.isoformat())
+                    except Exception:
+                        booked_dates.append(str(current))
+                    current += timedelta(days=1)
+            except Exception:
+                # If any parsing error occurs, skip this booking entry
+                continue
+    except Exception:
+        booked_dates = []
+
     # Close the original connection used for loading the room and photos
     conn.close()
     # Pass Google Maps API key to the detail page so that Google Maps can be loaded
     google_maps_api_key = os.environ.get("GOOGLE_MAPS_API_KEY")
-    return render_template('room_detail.html', room=room, photos=photos, google_maps_api_key=google_maps_api_key, is_favorite=is_favorite)
+    return render_template(
+        'room_detail.html',
+        room=room,
+        photos=photos,
+        google_maps_api_key=google_maps_api_key,
+        is_favorite=is_favorite,
+        booked_dates=booked_dates,
+    )
 
 
 # ---------------------------------------------------------------------------
