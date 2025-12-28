@@ -24,14 +24,19 @@
           <!-- Галерея: крупное изображение и миниатюры -->
           <div class="mb-3">
             <div class="position-relative mb-2">
-              <img id="mainImage" src="{{ photos[0] }}" class="img-fluid rounded shadow-sm w-100" alt="Фото квартиры" style="height: 500px; object-fit: contain; background-color: #f0f2f5;" onclick="openGalleryModal(currentPhotoIndex)">
+              <img id="mainImage" src="{{ photos[0] }}" class="img-fluid rounded w-100" alt="Фото квартиры"
+                   style="height: 500px; object-fit: contain; background-color: #f0f2f5;" onclick="openGalleryModal(currentPhotoIndex)">
               <!-- Стрелка влево -->
-              <button type="button" class="btn btn-light position-absolute top-50 start-0 translate-middle-y p-0 d-flex align-items-center justify-content-center rounded-circle" style="opacity: 0.7; width: 40px; height: 40px;" onclick="stopAutoSwitch(); prevPhoto()">
-                <i class="bi bi-chevron-left"></i>
+              <button type="button" class="btn btn-light position-absolute top-50 p-0 d-flex align-items-center justify-content-center rounded-circle"
+                      style="opacity: 0.7; width: 56px; height: 56px; left: 2rem; transform: translateY(-50%);"
+                      onclick="stopAutoSwitch(); prevPhoto(false)">
+                <i class="bi bi-chevron-left fs-3"></i>
               </button>
               <!-- Стрелка вправо -->
-              <button type="button" class="btn btn-light position-absolute top-50 end-0 translate-middle-y p-0 d-flex align-items-center justify-content-center rounded-circle" style="opacity: 0.7; width: 40px; height: 40px;" onclick="stopAutoSwitch(); nextPhoto()">
-                <i class="bi bi-chevron-right"></i>
+              <button type="button" class="btn btn-light position-absolute top-50 p-0 d-flex align-items-center justify-content-center rounded-circle"
+                      style="opacity: 0.7; width: 56px; height: 56px; right: 2rem; transform: translateY(-50%);"
+                      onclick="stopAutoSwitch(); nextPhoto(false)">
+                <i class="bi bi-chevron-right fs-3"></i>
               </button>
             </div>
             {# Удаляем миниатюры под основной фотографией.  Галерея на странице содержит только одно фото; перелистывание осуществляется стрелками. #}
@@ -175,12 +180,19 @@
   <div id="galleryModal" class="d-none" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1050;">
     <div class="container h-100 d-flex flex-column justify-content-center align-items-center">
       <div class="position-relative w-100" style="max-width: 800px;">
-        <img id="modalMainImage" src="" class="img-fluid rounded" style="width: 100%; max-height: 80vh; object-fit: contain;" alt="Фото">
-        <button type="button" class="btn btn-light position-absolute top-50 start-0 translate-middle-y p-0 d-flex align-items-center justify-content-center rounded-circle" style="opacity: 0.7; width: 40px; height: 40px;" onclick="stopAutoSwitch(); prevPhoto(true)">
-          <i class="bi bi-chevron-left"></i>
+        <img id="modalMainImage" src="" class="img-fluid rounded"
+             style="width: 100%; max-height: 80vh; object-fit: contain;" alt="Фото">
+        <button type="button"
+                class="btn btn-light position-absolute top-50 p-0 d-flex align-items-center justify-content-center rounded-circle"
+                style="opacity: 0.7; width: 56px; height: 56px; left: 2rem; transform: translateY(-50%);"
+                onclick="stopAutoSwitch(); prevPhoto(true)">
+          <i class="bi bi-chevron-left fs-3"></i>
         </button>
-        <button type="button" class="btn btn-light position-absolute top-50 end-0 translate-middle-y p-0 d-flex align-items-center justify-content-center rounded-circle" style="opacity: 0.7; width: 40px; height: 40px;" onclick="stopAutoSwitch(); nextPhoto(true)">
-          <i class="bi bi-chevron-right"></i>
+        <button type="button"
+                class="btn btn-light position-absolute top-50 p-0 d-flex align-items-center justify-content-center rounded-circle"
+                style="opacity: 0.7; width: 56px; height: 56px; right: 2rem; transform: translateY(-50%);"
+                onclick="stopAutoSwitch(); nextPhoto(true)">
+          <i class="bi bi-chevron-right fs-3"></i>
         </button>
         <button type="button" class="btn btn-light position-absolute top-0 end-0 m-2" onclick="closeGalleryModal()">×</button>
       </div>
@@ -238,13 +250,60 @@
         modalThumbs.children[index].scrollIntoView({inline: 'center', behavior: 'smooth'});
       }
     }
+    /**
+     * Выполняет анимацию слайдера для основной фотографии. Текущая картинка
+     * уходит за пределы видимой области, после чего загружается новое
+     * изображение и плавно появляется с противоположной стороны.
+     * @param {string} nextSrc Ссылка на изображение, которое нужно показать
+     * @param {string} direction Направление сдвига: 'left' для
+     *     переключения вперёд, 'right' для переключения назад.
+     */
+    function animateSlide(nextSrc, direction) {
+      var img = document.getElementById('mainImage');
+      if (!img) return;
+      var duration = 400; // длительность анимации в мс
+      // Подготовка: задаём переход и уводим текущее изображение
+      img.style.transition = 'transform ' + duration + 'ms ease';
+      img.style.transform = direction === 'left' ? 'translateX(-100%)' : 'translateX(100%)';
+      // После завершения первой фазы переносим изображение за край и меняем src
+      setTimeout(function() {
+        // отключаем анимацию временно, чтобы не было плавности при переносе и смене src
+        img.style.transition = 'none';
+        // переносим изображение в противоположный край
+        img.style.transform = direction === 'left' ? 'translateX(100%)' : 'translateX(-100%)';
+        // меняем картинку
+        img.src = nextSrc;
+        // принудительно перерисовываем элемент
+        void img.offsetWidth;
+        // включаем плавный возврат к центру
+        img.style.transition = 'transform ' + duration + 'ms ease';
+        img.style.transform = 'translateX(0)';
+      }, duration);
+    }
+
     function nextPhoto(inModal) {
-      currentPhotoIndex = (currentPhotoIndex + 1) % photos.length;
-      showPhoto(currentPhotoIndex, inModal);
+      var newIndex = (currentPhotoIndex + 1) % photos.length;
+      if (!inModal) {
+        // Сначала обновляем текущий индекс и миниатюры/модальное окно,
+        // но не обновляем основное изображение (передаём true).
+        currentPhotoIndex = newIndex;
+        showPhoto(newIndex, true);
+        animateSlide(photos[newIndex], 'left');
+      } else {
+        currentPhotoIndex = newIndex;
+        showPhoto(newIndex, true);
+      }
     }
     function prevPhoto(inModal) {
-      currentPhotoIndex = (currentPhotoIndex - 1 + photos.length) % photos.length;
-      showPhoto(currentPhotoIndex, inModal);
+      var newIndex = (currentPhotoIndex - 1 + photos.length) % photos.length;
+      if (!inModal) {
+        currentPhotoIndex = newIndex;
+        showPhoto(newIndex, true);
+        animateSlide(photos[newIndex], 'right');
+      } else {
+        currentPhotoIndex = newIndex;
+        showPhoto(newIndex, true);
+      }
     }
     function openGalleryModal(index) {
       showPhoto(index || 0, true);
