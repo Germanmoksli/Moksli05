@@ -26,21 +26,15 @@
             <div class="position-relative mb-2">
               <img id="mainImage" src="{{ photos[0] }}" class="img-fluid rounded shadow-sm w-100" alt="Фото квартиры" style="height: 500px; object-fit: contain; background-color: #f0f2f5;" onclick="openGalleryModal(currentPhotoIndex)">
               <!-- Стрелка влево -->
-              <button type="button" class="btn btn-light position-absolute top-50 start-0 translate-middle-y p-0 d-flex align-items-center justify-content-center rounded-circle" style="opacity: 0.7; width: 40px; height: 40px;" onclick="prevPhoto()">
+              <button type="button" class="btn btn-light position-absolute top-50 start-0 translate-middle-y p-0 d-flex align-items-center justify-content-center rounded-circle" style="opacity: 0.7; width: 40px; height: 40px;" onclick="stopAutoSwitch(); prevPhoto()">
                 <i class="bi bi-chevron-left"></i>
               </button>
               <!-- Стрелка вправо -->
-              <button type="button" class="btn btn-light position-absolute top-50 end-0 translate-middle-y p-0 d-flex align-items-center justify-content-center rounded-circle" style="opacity: 0.7; width: 40px; height: 40px;" onclick="nextPhoto()">
+              <button type="button" class="btn btn-light position-absolute top-50 end-0 translate-middle-y p-0 d-flex align-items-center justify-content-center rounded-circle" style="opacity: 0.7; width: 40px; height: 40px;" onclick="stopAutoSwitch(); nextPhoto()">
                 <i class="bi bi-chevron-right"></i>
               </button>
             </div>
-            <div class="d-flex flex-nowrap overflow-auto gap-2" style="white-space: nowrap;">
-              {% for photo_src in photos %}
-              <img src="{{ photo_src }}" class="img-thumbnail" alt="Фото квартиры"
-                   style="width: 120px; height: 80px; object-fit: cover; cursor: pointer; flex: 0 0 auto;"
-                   onclick="openGalleryModal({{ loop.index0 }})">
-              {% endfor %}
-            </div>
+            {# Удаляем миниатюры под основной фотографией.  Галерея на странице содержит только одно фото; перелистывание осуществляется стрелками. #}
           </div>
           {% endif %}
 
@@ -182,10 +176,10 @@
     <div class="container h-100 d-flex flex-column justify-content-center align-items-center">
       <div class="position-relative w-100" style="max-width: 800px;">
         <img id="modalMainImage" src="" class="img-fluid rounded" style="width: 100%; max-height: 80vh; object-fit: contain;" alt="Фото">
-        <button type="button" class="btn btn-light position-absolute top-50 start-0 translate-middle-y p-0 d-flex align-items-center justify-content-center rounded-circle" style="opacity: 0.7; width: 40px; height: 40px;" onclick="prevPhoto(true)">
+        <button type="button" class="btn btn-light position-absolute top-50 start-0 translate-middle-y p-0 d-flex align-items-center justify-content-center rounded-circle" style="opacity: 0.7; width: 40px; height: 40px;" onclick="stopAutoSwitch(); prevPhoto(true)">
           <i class="bi bi-chevron-left"></i>
         </button>
-        <button type="button" class="btn btn-light position-absolute top-50 end-0 translate-middle-y p-0 d-flex align-items-center justify-content-center rounded-circle" style="opacity: 0.7; width: 40px; height: 40px;" onclick="nextPhoto(true)">
+        <button type="button" class="btn btn-light position-absolute top-50 end-0 translate-middle-y p-0 d-flex align-items-center justify-content-center rounded-circle" style="opacity: 0.7; width: 40px; height: 40px;" onclick="stopAutoSwitch(); nextPhoto(true)">
           <i class="bi bi-chevron-right"></i>
         </button>
         <button type="button" class="btn btn-light position-absolute top-0 end-0 m-2" onclick="closeGalleryModal()">×</button>
@@ -206,6 +200,23 @@
       {% endfor %}
     ];
     var currentPhotoIndex = 0;
+
+    // Автоматическое переключение фотографий в галерее: каждые 5 секунд
+    // вызываем функцию nextPhoto(false).  Храним идентификатор
+    // интервала, чтобы его можно было остановить при ручном переключении.
+    var autoSwitchInterval = setInterval(function() {
+      // переключаемся на следующую фотографию на странице (не в модальном окне)
+      nextPhoto(false);
+    }, 5000);
+
+    // Останавливаем автоматическое переключение.  Вызывается при
+    // клике на стрелки переключения фотографий.
+    function stopAutoSwitch() {
+      if (autoSwitchInterval) {
+        clearInterval(autoSwitchInterval);
+        autoSwitchInterval = null;
+      }
+    }
     function showPhoto(index, inModal) {
       currentPhotoIndex = index;
       var mainImage = document.getElementById('mainImage');
