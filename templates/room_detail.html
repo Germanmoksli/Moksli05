@@ -561,10 +561,13 @@
         el.dataset.index = photoIndex;
         el.src = photos[photoIndex];
       }
-      // Применяем новое расположение.  Поскольку стили top/left/width/height
-      // имеют плавные переходы, элементы будут плавно двигаться и
-      // изменять размер.
-      applyAbsoluteLayout();
+      // Применяем новое расположение.  Используем requestAnimationFrame,
+      // чтобы браузер сначала применил изменения классов и источников,
+      // а затем начал анимацию.  Это предотвращает ситуацию, когда
+      // анимация срабатывает только один раз.
+      requestAnimationFrame(function() {
+        applyAbsoluteLayout();
+      });
       // Обновляем текущий индекс главного кадра
       currentGalleryIndex = newIndex;
     }
