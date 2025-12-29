@@ -18,27 +18,32 @@
             <h1 class="fw-bold fs-2 mb-0">{{ room['room_number'] }}</h1>
           </div>
           {% if photos and photos|length > 0 %}
-          <!-- Галерея: крупное изображение и миниатюры -->
-          <!-- Галерея: увеличиваем отступ снизу, чтобы создать пространство между галереей и следующими блоками -->
+          <!-- Галерея: новая сетка из пяти фотографий.  Первая фотография занимает левую половину галереи,
+               а четыре другие отображаются в виде двух столбцов по две фотографии справа.  В правом
+               верхнем углу размещена кнопка увеличения. -->
           <div class="mb-5">
-            <!-- Оборачиваем изображение контейнером с overflow: hidden, чтобы слайды оставались в пределах галереи -->
-            <div class="position-relative mb-2" style="overflow: hidden;">
-              <img id="mainImage" src="{{ photos[0] }}" class="img-fluid rounded w-100" alt="Фото квартиры"
-                   style="height: 500px; object-fit: contain; background-color: #f0f2f5;" onclick="openGalleryModal(currentPhotoIndex)">
-              <!-- Стрелка влево -->
+            <div id="galleryGrid" class="position-relative gallery-grid">
+              <!-- Большая фотография слева -->
+              <img id="imgBig" class="gallery-img big" src="{{ photos[0] if photos else '' }}" data-index="0" onclick="openGalleryModal(this.dataset.index)">
+              <!-- Четыре маленьких фотографии справа.  Изначально источники задаются в скрипте -->
+              <img id="imgSmall1" class="gallery-img small1" src="" data-index="" onclick="openGalleryModal(this.dataset.index)">
+              <img id="imgSmall2" class="gallery-img small2" src="" data-index="" onclick="openGalleryModal(this.dataset.index)">
+              <img id="imgSmall3" class="gallery-img small3" src="" data-index="" onclick="openGalleryModal(this.dataset.index)">
+              <img id="imgSmall4" class="gallery-img small4" src="" data-index="" onclick="openGalleryModal(this.dataset.index)">
+              <!-- Кнопка для открытия модальной галереи (увеличение) -->
+              <button type="button" class="btn btn-light position-absolute p-0" style="top: 10px; right: 10px; border-radius: 50%;" onclick="openGalleryModal(currentGalleryIndex)">
+                <i class="bi bi-arrows-fullscreen fs-4"></i>
+              </button>
+              <!-- Стрелки для ручного переключения фотографий (используют новую логику) -->
               <button type="button" class="btn btn-light position-absolute top-50 p-0 d-flex align-items-center justify-content-center rounded-circle"
-                      style="opacity: 0.7; width: 56px; height: 56px; left: 0.5rem; transform: translateY(-50%);"
-                      onclick="stopAutoSwitch(); prevPhoto(false)">
+                      style="opacity: 0.7; width: 56px; height: 56px; left: 0.5rem; transform: translateY(-50%);" onclick="stopAutoGallery(); prevGallery()">
                 <i class="bi bi-chevron-left fs-3"></i>
               </button>
-              <!-- Стрелка вправо -->
               <button type="button" class="btn btn-light position-absolute top-50 p-0 d-flex align-items-center justify-content-center rounded-circle"
-                      style="opacity: 0.7; width: 56px; height: 56px; right: 0.5rem; transform: translateY(-50%);"
-                      onclick="stopAutoSwitch(); nextPhoto(false)">
+                      style="opacity: 0.7; width: 56px; height: 56px; right: 0.5rem; transform: translateY(-50%);" onclick="stopAutoGallery(); nextGallery()">
                 <i class="bi bi-chevron-right fs-3"></i>
               </button>
             </div>
-            {# Удаляем миниатюры под основной фотографией.  Галерея на странице содержит только одно фото; перелистывание осуществляется стрелками. #}
           </div>
           {% endif %}
 
@@ -377,13 +382,13 @@
         <button type="button"
                 class="btn btn-light position-absolute top-50 p-0 d-flex align-items-center justify-content-center rounded-circle"
                 style="opacity: 0.7; width: 56px; height: 56px; left: 2rem; transform: translateY(-50%);"
-                onclick="stopAutoSwitch(); prevPhoto(true)">
+                onclick="stopAutoGallery(); prevPhoto(true)">
           <i class="bi bi-chevron-left fs-3"></i>
         </button>
         <button type="button"
                 class="btn btn-light position-absolute top-50 p-0 d-flex align-items-center justify-content-center rounded-circle"
                 style="opacity: 0.7; width: 56px; height: 56px; right: 2rem; transform: translateY(-50%);"
-                onclick="stopAutoSwitch(); nextPhoto(true)">
+                onclick="stopAutoGallery(); nextPhoto(true)">
           <i class="bi bi-chevron-right fs-3"></i>
         </button>
         <button type="button" class="btn btn-light position-absolute top-0 end-0 m-2" onclick="closeGalleryModal()">×</button>
@@ -410,31 +415,125 @@
       {% endfor %}
     ];
     var currentPhotoIndex = 0;
+    // Индекс текущей фотографии для основной галереи (левый большой кадр)
+    var currentGalleryIndex = 0;
 
-    // Автоматическое переключение фотографий в галерее: каждые 5 секунд
-    // вызываем функцию nextPhoto(false).  Храним идентификатор
+    // Автоматическая прокрутка для новой галереи: каждые 5 секунд
+    // переключаемся на следующую фотографию.  Храним идентификатор
     // интервала, чтобы его можно было остановить при ручном переключении.
-    var autoSwitchInterval = setInterval(function() {
-      // переключаемся на следующую фотографию на странице (не в модальном окне)
-      nextPhoto(false);
-    }, 5000);
-
-    // Останавливаем автоматическое переключение.  Вызывается при
-    // клике на стрелки переключения фотографий.
-    function stopAutoSwitch() {
-      if (autoSwitchInterval) {
-        clearInterval(autoSwitchInterval);
-        autoSwitchInterval = null;
+    var autoGalleryInterval = null;
+    function startAutoGallery() {
+      if (autoGalleryInterval) return;
+      autoGalleryInterval = setInterval(function() {
+        nextGallery();
+      }, 5000);
+    }
+    function stopAutoGallery() {
+      if (autoGalleryInterval) {
+        clearInterval(autoGalleryInterval);
+        autoGalleryInterval = null;
       }
+    }
+
+    /**
+     * Обновляет отображение галереи: выбирает главную (большую) фотографию
+     * и четыре следующих миниатюры в соответствии с текущим индексом.  Все
+     * изображения получают правильные атрибуты src и data-index, чтобы
+     * по клику можно было открыть модальную галерею на нужной фотографии.
+     */
+    function renderGallery() {
+      if (!photos || photos.length === 0) return;
+      var total = photos.length;
+      // главная фотография
+      var bigImg = document.getElementById('imgBig');
+      var bigIndex = currentGalleryIndex % total;
+      if (bigImg) {
+        bigImg.src = photos[bigIndex];
+        bigImg.dataset.index = bigIndex;
+      }
+      // четыре миниатюры
+      var offsets = [1, 2, 3, 4];
+      var ids = ['imgSmall1','imgSmall2','imgSmall3','imgSmall4'];
+      for (var i = 0; i < ids.length; i++) {
+        var img = document.getElementById(ids[i]);
+        if (img) {
+          var photoIndex = (currentGalleryIndex + offsets[i]) % total;
+          img.src = photos[photoIndex];
+          img.dataset.index = photoIndex;
+        }
+      }
+    }
+
+    /**
+     * Выполняет анимацию слайдера для большой фотографии.  Текущее
+     * изображение уходит за пределы видимой области, после чего
+     * загружается новое изображение и плавно появляется с противоположной
+     * стороны.  Используется для анимированного переключения между
+     * изображениями в пятифотографной галерее.
+     * @param {string} nextSrc Ссылка на изображение, которое нужно показать
+     * @param {string} direction Направление сдвига: 'left' для
+     *     переключения вперёд, 'right' для переключения назад.
+     */
+    function animateBigImage(nextSrc, direction) {
+      var img = document.getElementById('imgBig');
+      if (!img) return;
+      var duration = 400;
+      // начальная фаза: плавно уводим текущее изображение в сторону
+      img.style.transition = 'transform ' + duration + 'ms ease';
+      img.style.transform = direction === 'left' ? 'translateX(-100%)' : 'translateX(100%)';
+      setTimeout(function() {
+        // быстро переносим картинку в противоположный край и меняем src
+        img.style.transition = 'none';
+        img.style.transform = direction === 'left' ? 'translateX(100%)' : 'translateX(-100%)';
+        img.src = nextSrc;
+        // вызываем reflow
+        void img.offsetWidth;
+        // плавное возвращение к центру
+        img.style.transition = 'transform ' + duration + 'ms ease';
+        img.style.transform = 'translateX(0)';
+      }, duration);
+    }
+
+    /**
+     * Переключает галерею на следующую фотографию.  Обновляет
+     * currentGalleryIndex, запускает анимацию для большой фотографии и
+     * затем перерисовывает миниатюры.  Используется как в автоматическом
+     * режиме, так и при ручном переключении.
+     */
+    function nextGallery() {
+      if (!photos || photos.length === 0) return;
+      var newIndex = (currentGalleryIndex + 1) % photos.length;
+      // выполните анимацию только если элемент существует
+      if (document.getElementById('imgBig')) {
+        animateBigImage(photos[newIndex], 'left');
+      }
+      currentGalleryIndex = newIndex;
+      // Перерисовываем миниатюры после небольшой задержки, чтобы не
+      // мешать анимации
+      setTimeout(function() {
+        renderGallery();
+      }, 400);
+    }
+
+    /**
+     * Переключает галерею на предыдущую фотографию.  Логика аналогична
+     * nextGallery(), но направление смещения обратное.
+     */
+    function prevGallery() {
+      if (!photos || photos.length === 0) return;
+      var newIndex = (currentGalleryIndex - 1 + photos.length) % photos.length;
+      if (document.getElementById('imgBig')) {
+        animateBigImage(photos[newIndex], 'right');
+      }
+      currentGalleryIndex = newIndex;
+      setTimeout(function() {
+        renderGallery();
+      }, 400);
     }
     function showPhoto(index, inModal) {
       currentPhotoIndex = index;
-      var mainImage = document.getElementById('mainImage');
       var modalMainImage = document.getElementById('modalMainImage');
       var src = photos[index];
-      if (!inModal && mainImage) {
-        mainImage.src = src;
-      }
       if (modalMainImage) {
         modalMainImage.src = src;
       }
@@ -512,6 +611,16 @@
       var modal = document.getElementById('galleryModal');
       if (modal) modal.classList.add('d-none');
     }
+
+    // После загрузки DOM и определения массива фотографий
+    // инициализируем галерею и запускаем автоматическую прокрутку.
+    document.addEventListener('DOMContentLoaded', function() {
+      // Только если элемент сетки существует и массив фотографий не пустой
+      if (document.getElementById('galleryGrid') && photos && photos.length > 0) {
+        renderGallery();
+        startAutoGallery();
+      }
+    });
   </script>
 </div>
 {% if room['latitude'] and room['longitude'] %}
@@ -629,6 +738,37 @@
       border-bottom: 3px solid var(--bs-primary);
       font-weight: 600;
     }
+
+    /*
+      Грид‑галерея для отображения пяти фотографий.  Первая фотография
+      (большая) занимает весь левый столбец и обе строки.  Четыре
+      оставшиеся изображения располагаются в двух столбцах по две
+      фотографии.  Это обеспечивает композицию вида: одна высокая
+      фотография слева и две колонки маленьких фото справа.  Высота
+      задаётся фиксированно для сохранения пропорций.
+    */
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      gap: 0.25rem;
+      width: 100%;
+      height: 500px;
+      overflow: hidden;
+    }
+    /* Общие стили для картинок галереи */
+    .gallery-grid .gallery-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      cursor: pointer;
+    }
+    /* Расположение каждой картинки в сетке */
+    .gallery-grid .big { grid-area: 1 / 1 / span 2 / span 1; }
+    .gallery-grid .small1 { grid-area: 1 / 2 / span 1 / span 1; }
+    .gallery-grid .small2 { grid-area: 2 / 2 / span 1 / span 1; }
+    .gallery-grid .small3 { grid-area: 1 / 3 / span 1 / span 1; }
+    .gallery-grid .small4 { grid-area: 2 / 3 / span 1 / span 1; }
   </style>
   <script>
     document.addEventListener('DOMContentLoaded', function() {
