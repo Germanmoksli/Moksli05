@@ -533,9 +533,9 @@
         el.style.transformOrigin = 'top left';
         // Начальное состояние: элемент находится в старой позиции и масштабе
         el.style.transform = 'translate(' + dx + 'px, ' + dy + 'px) scale(' + scaleX + ', ' + scaleY + ')';
-        // Задаём плавный переход. Увеличиваем длительность до 2.5 секунд,
-        // чтобы анимация была заметной. Используем кривую ease‑in‑out.
-        el.style.transition = 'transform 2.5s cubic-bezier(0.42, 0.0, 0.58, 1)';
+        // Задаём плавный переход. Уменьшаем длительность до 1 секунды,
+        // чтобы анимация была более динамичной. Используем кривую ease‑in‑out.
+        el.style.transition = 'transform 1s cubic-bezier(0.42, 0.0, 0.58, 1)';
         (function(element) {
           var onEnd = function() {
             element.style.transition = '';
@@ -561,8 +561,9 @@
     function startAutoGallery() {
       if (autoGalleryInterval) return;
       autoGalleryInterval = setInterval(function() {
+        // Переключаемся каждые 4 секунды вместо 5, чтобы цикл был чуть бодрее
         nextGallery();
-      }, 5000);
+      }, 4000);
     }
     function stopAutoGallery() {
       if (autoGalleryInterval) {
