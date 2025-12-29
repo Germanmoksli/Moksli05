@@ -30,18 +30,24 @@
               <img id="imgSmall2" class="gallery-img small2" src="" data-index="" onclick="openGalleryModal(this.dataset.index)">
               <img id="imgSmall3" class="gallery-img small3" src="" data-index="" onclick="openGalleryModal(this.dataset.index)">
               <img id="imgSmall4" class="gallery-img small4" src="" data-index="" onclick="openGalleryModal(this.dataset.index)">
-              <!-- Кнопка для открытия модальной галереи (увеличение) -->
-              <button type="button" class="btn btn-light position-absolute p-0" style="top: 10px; right: 10px; border-radius: 50%;" onclick="openGalleryModal(currentGalleryIndex)">
-                <i class="bi bi-arrows-fullscreen fs-4"></i>
+              <!-- Кнопка для открытия модальной галереи (увеличение): делаем её круглой
+                   и такого же размера, как стрелки.  Используем те же классы
+                   rounded-circle, d-flex и размеры 56x56, чтобы кнопка была
+                   идеально круглой. -->
+              <button type="button"
+                      class="btn btn-light position-absolute top-0 end-0 p-0 d-flex align-items-center justify-content-center rounded-circle"
+                      style="opacity: 0.7; width: 56px; height: 56px; margin: 0.5rem;"
+                      onclick="openGalleryModal(currentGalleryIndex)">
+                <i class="bi bi-arrows-fullscreen fs-3 fw-bold"></i>
               </button>
               <!-- Стрелки для ручного переключения фотографий (используют новую логику) -->
               <button type="button" class="btn btn-light position-absolute top-50 p-0 d-flex align-items-center justify-content-center rounded-circle"
                       style="opacity: 0.7; width: 56px; height: 56px; left: 0.5rem; transform: translateY(-50%);" onclick="stopAutoGallery(); prevGallery()">
-                <i class="bi bi-chevron-left fs-3"></i>
+                <i class="bi bi-chevron-left fs-3 fw-bold"></i>
               </button>
               <button type="button" class="btn btn-light position-absolute top-50 p-0 d-flex align-items-center justify-content-center rounded-circle"
                       style="opacity: 0.7; width: 56px; height: 56px; right: 0.5rem; transform: translateY(-50%);" onclick="stopAutoGallery(); nextGallery()">
-                <i class="bi bi-chevron-right fs-3"></i>
+                <i class="bi bi-chevron-right fs-3 fw-bold"></i>
               </button>
             </div>
           </div>
@@ -465,6 +471,27 @@
     }
 
     /**
+     * Обновляет только миниатюры в галерее, не трогая главное изображение.
+     * Используется для синхронной смены маленьких фотографий во время
+     * анимации перемещения главной фотографии.
+     * @param {number} startIndex Индекс будущей главной фотографии.
+     */
+    function updateSmallImages(startIndex) {
+      if (!photos || photos.length === 0) return;
+      var total = photos.length;
+      var offsets = [1, 2, 3, 4];
+      var ids = ['imgSmall1','imgSmall2','imgSmall3','imgSmall4'];
+      for (var i = 0; i < ids.length; i++) {
+        var img = document.getElementById(ids[i]);
+        if (img) {
+          var photoIndex = (startIndex + offsets[i]) % total;
+          img.src = photos[photoIndex];
+          img.dataset.index = photoIndex;
+        }
+      }
+    }
+
+    /**
      * Выполняет анимацию слайдера для большой фотографии.  Текущее
      * изображение уходит за пределы видимой области, после чего
      * загружается новое изображение и плавно появляется с противоположной
@@ -478,8 +505,9 @@
       var img = document.getElementById('imgBig');
       if (!img) return;
       var duration = 400;
-      // начальная фаза: плавно уводим текущее изображение в сторону
-      img.style.transition = 'transform ' + duration + 'ms ease';
+      // начальная фаза: плавно уводим текущее изображение в сторону.
+      // Используем cubic-bezier для плавного начала и конца анимации
+      img.style.transition = 'transform ' + duration + 'ms cubic-bezier(0.42, 0, 0.58, 1)';
       img.style.transform = direction === 'left' ? 'translateX(-100%)' : 'translateX(100%)';
       setTimeout(function() {
         // быстро переносим картинку в противоположный край и меняем src
@@ -489,7 +517,7 @@
         // вызываем reflow
         void img.offsetWidth;
         // плавное возвращение к центру
-        img.style.transition = 'transform ' + duration + 'ms ease';
+        img.style.transition = 'transform ' + duration + 'ms cubic-bezier(0.42, 0, 0.58, 1)';
         img.style.transform = 'translateX(0)';
       }, duration);
     }
@@ -503,13 +531,14 @@
     function nextGallery() {
       if (!photos || photos.length === 0) return;
       var newIndex = (currentGalleryIndex + 1) % photos.length;
-      // выполните анимацию только если элемент существует
+      // Сначала обновляем миниатюры, чтобы они менялись одновременно с анимацией
+      updateSmallImages(newIndex);
+      // Выполняем анимацию для главной фотографии
       if (document.getElementById('imgBig')) {
         animateBigImage(photos[newIndex], 'left');
       }
       currentGalleryIndex = newIndex;
-      // Перерисовываем миниатюры после небольшой задержки, чтобы не
-      // мешать анимации
+      // После завершения анимации обновляем главную фотографию и её dataset
       setTimeout(function() {
         renderGallery();
       }, 400);
@@ -522,6 +551,8 @@
     function prevGallery() {
       if (!photos || photos.length === 0) return;
       var newIndex = (currentGalleryIndex - 1 + photos.length) % photos.length;
+      // Обновляем миниатюры перед запуском анимации
+      updateSmallImages(newIndex);
       if (document.getElementById('imgBig')) {
         animateBigImage(photos[newIndex], 'right');
       }
@@ -754,7 +785,9 @@
       gap: 0.25rem;
       width: 100%;
       height: 500px;
-      overflow: hidden;
+      /* не скрываем содержимое, чтобы нижние картинки оставались
+         полностью видимыми; высота контейнера ограничивает размер галереи */
+      overflow: visible;
     }
     /* Общие стили для картинок галереи */
     .gallery-grid .gallery-img {
