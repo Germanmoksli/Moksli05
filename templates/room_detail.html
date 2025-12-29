@@ -429,6 +429,110 @@
     // Индекс текущей фотографии для основной галереи (левый большой кадр)
     var currentGalleryIndex = 0;
 
+    // Порядок элементов галереи (большое фото и четыре миниатюры).  Мы будем
+    // вращать этот массив при переключении вперёд/назад, чтобы
+    // анимировать перемещение изображений.  Порядок совпадает с
+    // исходной разметкой: первый элемент — большая фотография, далее
+    // миниатюры 1–4.  Классы из galleryClassOrder определяют области
+    // сетки для каждого элемента.
+    var galleryElements = [];
+    var galleryClassOrder = ['big','small1','small2','small3','small4'];
+
+    /**
+     * Инициализирует массив galleryElements, заполняя его DOM‑элементами
+     * изображений галереи в исходном порядке. Вызывается после
+     * рендеринга галереи, когда элементы уже существуют на странице.
+     */
+    function setupGallery() {
+      galleryElements = [
+        document.getElementById('imgBig'),
+        document.getElementById('imgSmall1'),
+        document.getElementById('imgSmall2'),
+        document.getElementById('imgSmall3'),
+        document.getElementById('imgSmall4')
+      ];
+    }
+
+    /**
+     * Выполняет анимированное переключение галереи в указанном направлении.
+     * Использует технику FLIP (First‑Last Invert‑Play) для плавного
+     * перемещения и масштабирования элементов между областями сетки.
+     * @param {string} direction Направление: 'next' для вперёд,
+     *                           'prev' для назад.
+     */
+    function flipGallery(direction) {
+      if (!photos || photos.length === 0 || galleryElements.length === 0) return;
+      var total = photos.length;
+      // Определяем индекс будущей главной фотографии
+      var newIndex = direction === 'next'
+        ? (currentGalleryIndex + 1) % total
+        : (currentGalleryIndex - 1 + total) % total;
+      // Рассчитываем, какие фотографии должны оказаться в каждой области
+      var newPhotoIndices = [];
+      for (var i = 0; i < galleryClassOrder.length; i++) {
+        newPhotoIndices.push((newIndex + i) % total);
+      }
+      // Сохраняем текущие положения и размеры элементов
+      var oldRects = galleryElements.map(function(el) {
+        return el.getBoundingClientRect();
+      });
+      // Меняем порядок элементов в массиве в зависимости от направления
+      if (direction === 'next') {
+        var firstEl = galleryElements.shift();
+        galleryElements.push(firstEl);
+      } else {
+        var lastEl = galleryElements.pop();
+        galleryElements.unshift(lastEl);
+      }
+      // Обновляем классы, которые отвечают за расположение элементов в сетке
+      for (var i = 0; i < galleryElements.length; i++) {
+        var el = galleryElements[i];
+        // Удаляем старые позиционные классы
+        for (var j = 0; j < galleryClassOrder.length; j++) {
+          el.classList.remove(galleryClassOrder[j]);
+        }
+        // Добавляем новый класс
+        el.classList.add(galleryClassOrder[i]);
+      }
+      // Обновляем источники и data-index для каждого элемента
+      for (var i = 0; i < galleryElements.length; i++) {
+        var el = galleryElements[i];
+        var photoIndex = newPhotoIndices[i];
+        el.dataset.index = photoIndex;
+        el.src = photos[photoIndex];
+      }
+      // Получаем новые положения после смены классов/фотографий
+      var newRects = galleryElements.map(function(el) {
+        return el.getBoundingClientRect();
+      });
+      // Применяем обратное преобразование к каждому элементу и задаём анимацию
+      for (var i = 0; i < galleryElements.length; i++) {
+        var el = galleryElements[i];
+        var oldRect = oldRects[i];
+        var newRect = newRects[i];
+        var dx = oldRect.left - newRect.left;
+        var dy = oldRect.top - newRect.top;
+        var scaleX = oldRect.width / newRect.width;
+        var scaleY = oldRect.height / newRect.height;
+        // Используем top left как точку трансформации, чтобы корректно
+        // просчитать смещение и масштабирование
+        el.style.transformOrigin = 'top left';
+        // Начальное состояние: элемент находится в старом месте и старом размере
+        el.style.transform = 'translate(' + dx + 'px, ' + dy + 'px) scale(' + scaleX + ', ' + scaleY + ')';
+        // Задаём плавный переход для трансформации
+        el.style.transition = 'transform 0.6s cubic-bezier(0.4, 0.0, 0.2, 1)';
+      }
+      // Следующий кадр: убираем transform, позволяя CSS‑переходу
+      // плавно переместить элемент на новую позицию и размер
+      requestAnimationFrame(function() {
+        for (var i = 0; i < galleryElements.length; i++) {
+          galleryElements[i].style.transform = '';
+        }
+      });
+      // Обновляем текущий индекс главной фотографии
+      currentGalleryIndex = newIndex;
+    }
+
     // Автоматическая прокрутка для новой галереи: каждые 5 секунд
     // переключаемся на следующую фотографию.  Храним идентификатор
     // интервала, чтобы его можно было остановить при ручном переключении.
@@ -534,19 +638,8 @@
      * режиме, так и при ручном переключении.
      */
     function nextGallery() {
-      if (!photos || photos.length === 0) return;
-      var newIndex = (currentGalleryIndex + 1) % photos.length;
-      // Сначала обновляем миниатюры, чтобы они менялись одновременно с анимацией
-      updateSmallImages(newIndex);
-      // Выполняем анимацию для главной фотографии
-      if (document.getElementById('imgBig')) {
-        animateBigImage(photos[newIndex], 'left');
-      }
-      currentGalleryIndex = newIndex;
-      // После завершения анимации обновляем главную фотографию и её dataset
-      setTimeout(function() {
-        renderGallery();
-      }, 400);
+      // Переключаем галерею с помощью FLIP‑анимации в направлении вперёд
+      flipGallery('next');
     }
 
     /**
@@ -554,17 +647,8 @@
      * nextGallery(), но направление смещения обратное.
      */
     function prevGallery() {
-      if (!photos || photos.length === 0) return;
-      var newIndex = (currentGalleryIndex - 1 + photos.length) % photos.length;
-      // Обновляем миниатюры перед запуском анимации
-      updateSmallImages(newIndex);
-      if (document.getElementById('imgBig')) {
-        animateBigImage(photos[newIndex], 'right');
-      }
-      currentGalleryIndex = newIndex;
-      setTimeout(function() {
-        renderGallery();
-      }, 400);
+      // Переключаем галерею с помощью FLIP‑анимации в направлении назад
+      flipGallery('prev');
     }
     function showPhoto(index, inModal) {
       currentPhotoIndex = index;
@@ -654,6 +738,8 @@
       // Только если элемент сетки существует и массив фотографий не пустой
       if (document.getElementById('galleryGrid') && photos && photos.length > 0) {
         renderGallery();
+        // Инициализируем массив элементов галереи и задаём исходный порядок
+        setupGallery();
         startAutoGallery();
       }
     });
@@ -812,6 +898,8 @@
          был симметричным. */
       object-position: center center;
       cursor: pointer;
+      /* Скругляем углы изображений, чтобы соответствовать другим элементам интерфейса. */
+      border-radius: 1rem;
     }
 
     /* Маленькие фотографии справа всегда должны иметь одинаковую
