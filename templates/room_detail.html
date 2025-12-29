@@ -35,25 +35,17 @@
               <img id="imgSmall2" class="gallery-img small2" src="" data-index="" onclick="openGalleryModal(this.dataset.index)">
               <img id="imgSmall3" class="gallery-img small3" src="" data-index="" onclick="openGalleryModal(this.dataset.index)">
               <img id="imgSmall4" class="gallery-img small4" src="" data-index="" onclick="openGalleryModal(this.dataset.index)">
-              <!-- Кнопка для открытия модальной галереи (увеличение): делаем её круглой
-                   и такого же размера, как стрелки.  Используем те же классы
-                   rounded-circle, d-flex и размеры 56x56, чтобы кнопка была
-                   идеально круглой. -->
+              <!-- Кнопка для открытия модальной галереи: отображаем иконку в виде четырёх
+                   квадратиков и подпись «Показать все фотографии».  Кнопка больше не круглая,
+                   чтобы вместить текст. -->
               <button type="button"
-                      class="btn btn-light position-absolute top-0 end-0 p-0 d-flex align-items-center justify-content-center rounded-circle"
-                      style="opacity: 0.7; width: 56px; height: 56px; margin: 0.5rem;"
+                      class="btn btn-light position-absolute top-0 end-0 d-flex align-items-center"
+                      style="opacity: 0.7; margin: 0.5rem; padding: 0.5rem 1rem; border-radius: 0.75rem;"
                       onclick="openGalleryModal(currentGalleryIndex)">
-                <i class="bi bi-arrows-fullscreen fs-3 fw-bold"></i>
+                <i class="bi bi-grid-3x3-gap-fill fs-4 me-2"></i>
+                <span>Показать все фотографии</span>
               </button>
-              <!-- Стрелки для ручного переключения фотографий (используют новую логику) -->
-              <button type="button" class="btn btn-light position-absolute top-50 p-0 d-flex align-items-center justify-content-center rounded-circle"
-                      style="opacity: 0.7; width: 56px; height: 56px; left: 0.5rem; transform: translateY(-50%);" onclick="stopAutoGallery(); prevGallery()">
-                <i class="bi bi-chevron-left fs-3 fw-bold"></i>
-              </button>
-              <button type="button" class="btn btn-light position-absolute top-50 p-0 d-flex align-items-center justify-content-center rounded-circle"
-                      style="opacity: 0.7; width: 56px; height: 56px; right: 0.5rem; transform: translateY(-50%);" onclick="stopAutoGallery(); nextGallery()">
-                <i class="bi bi-chevron-right fs-3 fw-bold"></i>
-              </button>
+              <!-- Удалены стрелки для ручного переключения фотографий -->
             </div>
           </div>
           {% endif %}
@@ -476,13 +468,24 @@
       var oldRects = galleryElements.map(function(el) {
         return el.getBoundingClientRect();
       });
-      // Меняем порядок элементов в массиве в зависимости от направления
+      // Меняем порядок элементов в массиве и DOM в зависимости от направления
+      var containerEl = document.getElementById('galleryGrid');
       if (direction === 'next') {
+        // Перемещаем первый элемент в конец
         var firstEl = galleryElements.shift();
         galleryElements.push(firstEl);
+        // Также перемещаем этот элемент в конец списка дочерних узлов контейнера
+        if (containerEl && firstEl) {
+          containerEl.appendChild(firstEl);
+        }
       } else {
+        // Перемещаем последний элемент в начало
         var lastEl = galleryElements.pop();
         galleryElements.unshift(lastEl);
+        // Вставляем элемент первым ребёнком контейнера
+        if (containerEl && lastEl) {
+          containerEl.insertBefore(lastEl, containerEl.firstChild);
+        }
       }
       // Обновляем классы, которые отвечают за расположение элементов в сетке
       for (var i = 0; i < galleryElements.length; i++) {
@@ -519,8 +522,17 @@
         el.style.transformOrigin = 'top left';
         // Начальное состояние: элемент находится в старом месте и старом размере
         el.style.transform = 'translate(' + dx + 'px, ' + dy + 'px) scale(' + scaleX + ', ' + scaleY + ')';
-        // Задаём плавный переход для трансформации
+        // Задаём плавный переход для трансформации. После завершения
+        // анимации очищаем свойство transition, чтобы оно не мешало
+        // последующим изменениям.
         el.style.transition = 'transform 0.6s cubic-bezier(0.4, 0.0, 0.2, 1)';
+        (function(element) {
+          var onEnd = function() {
+            element.style.transition = '';
+            element.removeEventListener('transitionend', onEnd);
+          };
+          element.addEventListener('transitionend', onEnd);
+        })(el);
       }
       // Следующий кадр: убираем transform, позволяя CSS‑переходу
       // плавно переместить элемент на новую позицию и размер
