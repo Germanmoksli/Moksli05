@@ -12,14 +12,7 @@
           <!-- Заголовок квартиры и кнопки действий, выравнены по краям галереи -->
           <div class="d-flex justify-content-between align-items-center mb-3">
             <h1 class="fw-bold fs-2 mb-0 text-start">{{ room['room_number'] }}</h1>
-            <div class="d-flex align-items-center">
-              <a href="{{ url_for('toggle_favorite', room_id=room['id']) }}" class="btn btn-link p-0 me-3" title="Избранное">
-                <i class="bi bi-heart{% if is_favorite %}-fill{% endif %} fs-3{% if is_favorite %} text-danger{% else %} text-primary{% endif %}"></i>
-              </a>
-              <button type="button" class="btn btn-link p-0" id="shareButton" title="Поделиться">
-                <i class="bi bi-share fs-3 text-primary"></i>
-              </button>
-            </div>
+            {# Переместили кнопки избранного и поделиться ближе к календарю, поэтому здесь их удаляем #}
           </div>
           {% if photos and photos|length > 0 %}
           <!-- Галерея: крупное изображение и миниатюры -->
@@ -47,9 +40,9 @@
 
           <!-- Блок выбора дат и описание владельца. Календарь занимает левую часть, а текстовое
                описание от владельца располагается справа. -->
-          <!-- Добавляем класс gx-1, чтобы уменьшить горизонтальные отступы между колонками и
-               тем самым приблизить описание к календарю -->
-          <div class="row mb-3 gx-1">
+          <!-- Добавляем класс gx-0, чтобы устранить горизонтальные отступы между колонками и
+               тем самым сильнее приблизить описание к календарю -->
+          <div class="row mb-3 gx-0">
             <!-- Календарь бронирования -->
             <div class="col-md-6 mb-3">
               <div class="card shadow-sm h-100" id="calendar-card">
@@ -96,7 +89,14 @@
               {% else %}
                 {% set reviews_label = 'отзывов' %}
               {% endif %}
-              {% set rating_value = '%.1f' % room.get('rating', 0) %}
+              {# Рассчитываем значение рейтинга с двумя знаками после запятой.  Если рейтинг
+                 не определён или равен нулю, используем стандартное значение 5.00. #}
+              {% set rv_tmp = room.get('rating') %}
+              {% if rv_tmp %}
+                {% set rating_value = '%.2f' % rv_tmp %}
+              {% else %}
+                {% set rating_value = '5.00' %}
+              {% endif %}
               {% set bc = booking_count or 0 %}
               {% set bc_mod10 = bc % 10 %}
               {% set bc_mod100 = bc % 100 %}
@@ -109,16 +109,23 @@
               {% else %}
                 {% set booking_label = 'бронирований' %}
               {% endif %}
-              <div class="d-flex justify-content-end flex-wrap gap-3 mb-2">
+              <div class="d-flex justify-content-end align-items-center flex-wrap gap-4 mb-2">
                 <div class="info-stat text-end">
                   {{ reviews_count }} {{ reviews_label }}
                 </div>
-                <div class="info-stat text-end">
+                <div class="info-stat text-end d-flex align-items-center">
+                  <i class="bi bi-star-fill text-warning me-1"></i>
                   {{ rating_value }}
                 </div>
                 <div class="info-stat text-end">
                   {{ bc }} {{ booking_label }}
                 </div>
+                <a href="{{ url_for('toggle_favorite', room_id=room['id']) }}" class="btn btn-link p-0 me-3" title="Избранное">
+                  <i class="bi bi-heart{% if is_favorite %}-fill{% endif %} fs-4{% if is_favorite %} text-danger{% else %} text-primary{% endif %}"></i>
+                </a>
+                <button type="button" class="btn btn-link p-0" id="shareButton" title="Поделиться">
+                  <i class="bi bi-share fs-4 text-primary"></i>
+                </button>
               </div>
               {% if room['description'] %}
               <p class="mb-0">{{ room['description'] }}</p>
@@ -414,7 +421,9 @@
        составляла 80%% от исходного размера.  В рамках текущего требования
        снижаем её ещё на 20%%, то есть примерно до 64%% от базовой ширины. */
     #calendar-card {
-      width: 64%;
+      /* Увеличиваем ширину карточки до 80% колонки, чтобы уменьшить пустое
+         пространство между календарём и описанием */
+      width: 80%;
     }
     #booking-calendar .calendar-nav {
       display: flex;
