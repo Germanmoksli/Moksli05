@@ -78,6 +78,48 @@
                  оставляем только текст описания.  Отступы между колонками уменьшены классом gx-1,
                  поэтому отдельный отступ слева для текста не требуется. -->
             <div class="col-md-6 mb-3">
+              {#
+                Информационные блоки: количество отзывов, рейтинг и количество бронирований.
+                Эти блоки выводятся в одну строку и выровнены по правому краю.  Каждый блок
+                подчёркивается жирной синей линией.  Текст не имеет отдельной карточки или
+                фона и размещается прямо на основном сером фоне страницы.
+              #}
+              {% set reviews_count = room.get('review_count', 0) %}
+              {% set reviews_mod10 = reviews_count % 10 %}
+              {% set reviews_mod100 = reviews_count % 100 %}
+              {% if 11 <= reviews_mod100 <= 14 %}
+                {% set reviews_label = 'отзывов' %}
+              {% elif reviews_mod10 == 1 %}
+                {% set reviews_label = 'отзыв' %}
+              {% elif reviews_mod10 in [2, 3, 4] %}
+                {% set reviews_label = 'отзыва' %}
+              {% else %}
+                {% set reviews_label = 'отзывов' %}
+              {% endif %}
+              {% set rating_value = '%.1f' % room.get('rating', 0) %}
+              {% set bc = booking_count or 0 %}
+              {% set bc_mod10 = bc % 10 %}
+              {% set bc_mod100 = bc % 100 %}
+              {% if 11 <= bc_mod100 <= 14 %}
+                {% set booking_label = 'бронирований' %}
+              {% elif bc_mod10 == 1 %}
+                {% set booking_label = 'бронирование' %}
+              {% elif bc_mod10 in [2, 3, 4] %}
+                {% set booking_label = 'бронирования' %}
+              {% else %}
+                {% set booking_label = 'бронирований' %}
+              {% endif %}
+              <div class="d-flex justify-content-end flex-wrap gap-3 mb-2">
+                <div class="info-stat text-end">
+                  {{ reviews_count }} {{ reviews_label }}
+                </div>
+                <div class="info-stat text-end">
+                  {{ rating_value }}
+                </div>
+                <div class="info-stat text-end">
+                  {{ bc }} {{ booking_label }}
+                </div>
+              </div>
               {% if room['description'] %}
               <p class="mb-0">{{ room['description'] }}</p>
               {% endif %}
@@ -423,6 +465,14 @@
     #booking-calendar .calendar-date.in-range {
       background-color: rgba(var(--bs-primary-rgb), 0.1);
       color: var(--bs-primary);
+    }
+
+    /* Информационные блоки (количество отзывов, рейтинг, бронирования) подчеркиваются
+       жирной синей линией и не имеют своего собственного фона или рамок.  Выравнивание
+       текста осуществляется по правому краю. */
+    .info-stat {
+      border-bottom: 3px solid var(--bs-primary);
+      font-weight: 600;
     }
   </style>
   <script>

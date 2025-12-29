@@ -8358,6 +8358,7 @@ def view_room_public(room_id: int):
     # consider all bookings associated with this room and treat every date
     # from check‑in (inclusive) to check‑out (exclusive) as unavailable.
     booked_dates: list[str] = []
+    booking_count: int = 0
     try:
         from datetime import datetime, date, timedelta
         # Pull all booking ranges for this room.  We don't filter by status
@@ -8368,10 +8369,26 @@ def view_room_public(room_id: int):
         try:
             booking_rows = conn.execute(
                 "SELECT check_in_date, check_out_date FROM bookings WHERE room_id = ?",
-                (room_id,)
+                (room_id,),
             ).fetchall()
         except Exception:
             booking_rows = []
+        # Compute total number of bookings for this room.  If the query
+        # fails, fallback to zero.  We count each booking row regardless
+        # of status; adjust the WHERE clause for status filtering if needed.
+        try:
+            count_row = conn.execute(
+                "SELECT COUNT(*) FROM bookings WHERE room_id = ?",
+                (room_id,),
+            ).fetchone()
+            # SQLite returns a tuple, Row or dict; handle accordingly
+            if count_row is not None:
+                try:
+                    booking_count = count_row[0] if not isinstance(count_row, dict) else list(count_row.values())[0]
+                except Exception:
+                    booking_count = count_row[0] if isinstance(count_row, (list, tuple)) else 0
+        except Exception:
+            booking_count = 0
         for br in booking_rows:
             # Extract the check‑in and check‑out values.  They may be strings
             # or date objects depending on the database driver.  Attempt
@@ -8423,6 +8440,7 @@ def view_room_public(room_id: int):
                 continue
     except Exception:
         booked_dates = []
+        booking_count = 0
 
     # Close the original connection used for loading the room and photos
     conn.close()
@@ -8435,6 +8453,7 @@ def view_room_public(room_id: int):
         google_maps_api_key=google_maps_api_key,
         is_favorite=is_favorite,
         booked_dates=booked_dates,
+        booking_count=booking_count,
     )
 
 
