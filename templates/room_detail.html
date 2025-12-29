@@ -434,6 +434,69 @@
     var galleryElements = [];
     var galleryClassOrder = ['big','small1','small2','small3','small4'];
 
+    // Храним вычисленные позиции для каждой области сетки.  Позиции
+    // рассчитываются относительно контейнера галереи и обновляются
+    // при инициализации или изменении размеров контейнера.
+    var galleryPositions = {};
+
+    /**
+     * Рассчитывает координаты и размеры для каждой ячейки галереи на основе
+     * текущей ширины и высоты контейнера.  Эти значения затем используются
+     * для размещения изображений через абсолютные координаты.
+     */
+    function calculatePositions() {
+      var container = document.getElementById('galleryGrid');
+      if (!container) return;
+      var width = container.clientWidth;
+      var height = container.clientHeight;
+      // Ширина большой фотографии занимает половину контейнера (2 части из 4)
+      var bigW = width * 0.5;
+      // Каждая маленькая фотография занимает 1/4 ширины контейнера
+      var smallW = width * 0.25;
+      // Высота каждой строки (для маленьких фотографий) равна половине высоты
+      var halfH = height * 0.5;
+      galleryPositions.big = { top: 0, left: 0, width: bigW, height: height };
+      galleryPositions.small1 = { top: 0, left: bigW, width: smallW, height: halfH };
+      galleryPositions.small2 = { top: halfH, left: bigW, width: smallW, height: halfH };
+      galleryPositions.small3 = { top: 0, left: bigW + smallW, width: smallW, height: halfH };
+      galleryPositions.small4 = { top: halfH, left: bigW + smallW, width: smallW, height: halfH };
+    }
+
+    /**
+     * Применяет абсолютное позиционирование к элементам галереи в соответствии
+     * с их текущим классом (big, small1, ...).  Используется как
+     * начальная установка, так и после переключения фотографий.
+     */
+    function applyAbsoluteLayout() {
+      var container = document.getElementById('galleryGrid');
+      if (!container) return;
+      // Обновляем позиции каждый раз перед размещением, чтобы учесть
+      // возможные изменения размера контейнера (например, при
+      // изменении ширины окна).
+      calculatePositions();
+      // Для каждого элемента устанавливаем абсолютные координаты и размеры
+      for (var i = 0; i < galleryElements.length; i++) {
+        var el = galleryElements[i];
+        // Определяем, какой позиционной области соответствует элемент
+        var clsName = null;
+        for (var j = 0; j < galleryClassOrder.length; j++) {
+          var cname = galleryClassOrder[j];
+          if (el.classList.contains(cname)) {
+            clsName = cname;
+            break;
+          }
+        }
+        if (!clsName) continue;
+        var pos = galleryPositions[clsName];
+        if (!pos) continue;
+        el.style.position = 'absolute';
+        el.style.top = pos.top + 'px';
+        el.style.left = pos.left + 'px';
+        el.style.width = pos.width + 'px';
+        el.style.height = pos.height + 'px';
+      }
+    }
+
     /**
      * Инициализирует массив galleryElements, заполняя его DOM‑элементами
      * изображений галереи в исходном порядке. Вызывается после
@@ -447,6 +510,11 @@
         document.getElementById('imgSmall3'),
         document.getElementById('imgSmall4')
       ];
+      // После инициализации элементов рассчитываем позиции и применяем
+      // абсолютное размещение.  Это делается один раз при загрузке
+      // страницы, чтобы задать исходные координаты.
+      calculatePositions();
+      applyAbsoluteLayout();
     }
 
     /**
@@ -457,100 +525,47 @@
      *                           'prev' для назад.
      */
     function flipGallery(direction) {
+      // Ничего не делаем, если нет фотографий или элементов галереи
       if (!photos || photos.length === 0 || galleryElements.length === 0) return;
       var total = photos.length;
-      // Индекс будущей главной фотографии
+      // Вычисляем индекс новой главной фотографии
       var newIndex = direction === 'next'
         ? (currentGalleryIndex + 1) % total
         : (currentGalleryIndex - 1 + total) % total;
-      // Список индексов фотографий после переключения
+      // Формируем массив индексов фотографий для каждой позиции после
+      // переключения.  Порядок соответствует galleryClassOrder: [big, small1, ...]
       var newPhotoIndices = [];
       for (var i = 0; i < galleryClassOrder.length; i++) {
         newPhotoIndices.push((newIndex + i) % total);
       }
-      // Сохраняем текущие позиции и размеры элементов
-      var oldRects = galleryElements.map(function(el) {
-        return el.getBoundingClientRect();
-      });
-      var containerEl = document.getElementById('galleryGrid');
-      // При переключении вперёд удаляем первый элемент (текущую большую фото) и переносим в конец
-      // При переключении назад наоборот, перемещаем последний в начало
-      var leavingEl = null;
+      // В зависимости от направления сдвигаем массив элементов
       if (direction === 'next') {
-        leavingEl = galleryElements[0];
-        var firstEl = galleryElements.shift();
-        galleryElements.push(firstEl);
-        if (containerEl && firstEl) {
-          containerEl.appendChild(firstEl);
-        }
+        var first = galleryElements.shift();
+        galleryElements.push(first);
       } else {
-        leavingEl = galleryElements[galleryElements.length - 1];
-        var lastEl = galleryElements.pop();
-        galleryElements.unshift(lastEl);
-        if (containerEl && lastEl) {
-          containerEl.insertBefore(lastEl, containerEl.firstChild);
-        }
+        var last = galleryElements.pop();
+        galleryElements.unshift(last);
       }
-      // Обновляем классы расположения на сетке
+      // Обновляем классы, источники и data‑index. После этого вызова
+      // applyAbsoluteLayout() использует классы для определения позиций.
       for (var i = 0; i < galleryElements.length; i++) {
         var el = galleryElements[i];
+        // Удаляем старые позиционные классы
         for (var j = 0; j < galleryClassOrder.length; j++) {
           el.classList.remove(galleryClassOrder[j]);
         }
+        // Назначаем новый класс в соответствии с порядком
         el.classList.add(galleryClassOrder[i]);
-      }
-      // Обновляем источники фотографий и data-index
-      for (var i = 0; i < galleryElements.length; i++) {
-        var el = galleryElements[i];
+        // Обновляем источник изображения и индекс
         var photoIndex = newPhotoIndices[i];
         el.dataset.index = photoIndex;
         el.src = photos[photoIndex];
       }
-      // Получаем новые позиции после смены классов/фотографий
-      var newRects = galleryElements.map(function(el) {
-        return el.getBoundingClientRect();
-      });
-      // Контейнер для расчёта высоты при уходе фото вверх
-      var containerRect = containerEl ? containerEl.getBoundingClientRect() : null;
-      // Для каждого элемента задаём исходное состояние и анимацию
-      for (var i = 0; i < galleryElements.length; i++) {
-        var el = galleryElements[i];
-        var oldRect = oldRects[i];
-        var newRect = newRects[i];
-        var dx = oldRect.left - newRect.left;
-        var dy = oldRect.top - newRect.top;
-        var scaleX = oldRect.width / newRect.width;
-        var scaleY = oldRect.height / newRect.height;
-        // Если это элемент, который покидает большую позицию, задаём ему
-        // смещение вверх за пределы контейнера. Это создаёт эффект
-        // «ухода вверх», при этом элемент затем плавно появляется на
-        // новой позиции (внизу справа) после завершения анимации.
-        if (el === leavingEl && containerRect) {
-          // Смещаем элемент на высоту контейнера + собственную высоту вверх
-          dy = (oldRect.top - newRect.top) - (containerRect.height);
-        }
-        // Устанавливаем начало трансформации в верхний левый угол
-        el.style.transformOrigin = 'top left';
-        // Начальное состояние: элемент находится в старой позиции и масштабе
-        el.style.transform = 'translate(' + dx + 'px, ' + dy + 'px) scale(' + scaleX + ', ' + scaleY + ')';
-        // Задаём плавный переход. Увеличиваем длительность до 2.5 секунд,
-        // чтобы анимация была заметной. Используем кривую ease‑in‑out.
-        el.style.transition = 'transform 2.5s cubic-bezier(0.42, 0.0, 0.58, 1)';
-        (function(element) {
-          var onEnd = function() {
-            element.style.transition = '';
-            element.removeEventListener('transitionend', onEnd);
-          };
-          element.addEventListener('transitionend', onEnd);
-        })(el);
-      }
-      // Во втором кадре удаляем transform, чтобы элементы плавно переместились
-      requestAnimationFrame(function() {
-        for (var i = 0; i < galleryElements.length; i++) {
-          galleryElements[i].style.transform = '';
-        }
-      });
-      // Обновляем текущий индекс главной фотографии
+      // Применяем новое расположение.  Поскольку стили top/left/width/height
+      // имеют плавные переходы, элементы будут плавно двигаться и
+      // изменять размер.
+      applyAbsoluteLayout();
+      // Обновляем текущий индекс главного кадра
       currentGalleryIndex = newIndex;
     }
 
@@ -753,14 +768,22 @@
       if (modal) modal.classList.add('d-none');
     }
 
-    // После загрузки DOM и определения массива фотографий
-    // инициализируем галерею и запускаем автоматическую прокрутку.
+    // После загрузки DOM и определения массива фотографий инициализируем
+    // галерею.  Вызываем renderGallery(), затем setupGallery(),
+    // calculatePositions(), applyAbsoluteLayout() и запускаем
+    // автоматическую прокрутку.
     document.addEventListener('DOMContentLoaded', function() {
-      // Только если элемент сетки существует и массив фотографий не пустой
-      if (document.getElementById('galleryGrid') && photos && photos.length > 0) {
+      var container = document.getElementById('galleryGrid');
+      if (container && photos && photos.length > 0) {
+        // Перерисовываем галерею с актуальными изображениями
         renderGallery();
-        // Инициализируем массив элементов галереи и задаём исходный порядок
+        // Собираем элементы галереи, рассчитываем позиции и применяем абсолютное размещение
         setupGallery();
+        // Обновляем расположение на случай, если размеры контейнера изменились с момента
+        // расчёта (например, из‑за загрузки изображений)
+        calculatePositions();
+        applyAbsoluteLayout();
+        // Запускаем автоматическое переключение фотографий
         startAutoGallery();
       }
     });
@@ -891,54 +914,42 @@
       задаётся фиксированно для сохранения пропорций.
     */
     .gallery-grid {
-      display: grid;
-      grid-template-columns: 2fr 1fr 1fr;
-      grid-template-rows: 1fr 1fr;
-      gap: 0.25rem;
+      /* Вместо CSS‑сетки используем позиционирование относительно контейнера.
+         Контейнер имеет фиксированную высоту и ширину 100%, что позволяет
+         нам располагать изображения произвольно через абсолютные координаты. */
+      position: relative;
       width: 100%;
       height: 500px;
-      /* возвращаем скрытие содержимого, чтобы галерея оставалась прежнего размера;
-         при высоте 500px две строки умещаются целиком, так что нижние
-         изображения будут видны полностью, а сам блок не разрастётся */
       overflow: hidden;
     }
-    /* Общие стили для картинок галереи */
+    /* Общие стили для картинок галереи.  Используем абсолютное
+       позиционирование и задаём плавные переходы для координат и
+       размеров.  Скругляем углы, чтобы фотографии соответствовали
+       остальным элементам интерфейса. */
     .gallery-grid .gallery-img {
-      /* Запрещаем изображениям влиять на размеры ячеек. Без min-width/height 0
-         элементам-сеткам не позволяется уменьшаться и они вылазят за пределы
-         контейнера. */
-      min-width: 0;
-      min-height: 0;
-      display: block;
-      width: 100%;
-      height: 100%;
-      /* Растягиваем изображение так, чтобы оно целиком заполняло свою
-         ячейку, лишнее обрезалось. */
+      position: absolute;
       object-fit: cover;
-      /* Размещаем центр фотографии в центре видимой зоны, чтобы кадр
-         был симметричным. */
       object-position: center center;
       cursor: pointer;
-      /* Скругляем углы изображений, чтобы соответствовать другим элементам интерфейса. */
       border-radius: 1rem;
+      transition: top 2.5s cubic-bezier(0.42, 0.0, 0.58, 1),
+                  left 2.5s cubic-bezier(0.42, 0.0, 0.58, 1),
+                  width 2.5s cubic-bezier(0.42, 0.0, 0.58, 1),
+                  height 2.5s cubic-bezier(0.42, 0.0, 0.58, 1),
+                  opacity 2.5s cubic-bezier(0.42, 0.0, 0.58, 1);
     }
 
-    /* Маленькие фотографии справа всегда должны иметь одинаковую
-       видимую область и не выходить за пределы своих ячеек.
-       Переполнение скрываем, чтобы изображения не вылезали за
-       границы сетки. */
+    /* Слои по оси z: большая фотография должна перекрывать маленькие,
+       поэтому задаём большему изображению более высокий z-index. */
+    .gallery-grid .big {
+      z-index: 2;
+    }
     .gallery-grid .small1,
     .gallery-grid .small2,
     .gallery-grid .small3,
     .gallery-grid .small4 {
-      overflow: hidden;
+      z-index: 1;
     }
-    /* Расположение каждой картинки в сетке */
-    .gallery-grid .big { grid-area: 1 / 1 / span 2 / span 1; }
-    .gallery-grid .small1 { grid-area: 1 / 2 / span 1 / span 1; }
-    .gallery-grid .small2 { grid-area: 2 / 2 / span 1 / span 1; }
-    .gallery-grid .small3 { grid-area: 1 / 3 / span 1 / span 1; }
-    .gallery-grid .small4 { grid-area: 2 / 3 / span 1 / span 1; }
   </style>
   <script>
     document.addEventListener('DOMContentLoaded', function() {
