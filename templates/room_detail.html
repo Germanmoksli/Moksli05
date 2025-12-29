@@ -38,11 +38,15 @@
               <!-- Кнопка для открытия модальной галереи: отображаем иконку в виде четырёх
                    квадратиков и подпись «Показать все фотографии».  Кнопка больше не круглая,
                    чтобы вместить текст. -->
+              <!-- Кнопка «Показать все фотографии» перенесена в левый верхний угол и
+                   уменьшена в размерах.  Вместо правой привязки (end‑0) используем
+                   start‑0 для позиционирования слева.  Отступы, размер шрифта и
+                   паддинги уменьшены, чтобы кнопка выглядела компактнее. -->
               <button type="button"
-                      class="btn btn-light position-absolute top-0 end-0 d-flex align-items-center"
-                      style="opacity: 0.7; margin: 0.5rem; padding: 0.5rem 1rem; border-radius: 0.75rem;"
+                      class="btn btn-light position-absolute top-0 start-0 d-flex align-items-center"
+                      style="opacity: 0.7; margin: 0.5rem; padding: 0.25rem 0.5rem; border-radius: 0.5rem; font-size: 0.85rem;"
                       onclick="openGalleryModal(currentGalleryIndex)">
-                <i class="bi bi-grid-3x3-gap-fill fs-4 me-2"></i>
+                <i class="bi bi-grid-3x3-gap-fill me-2" style="font-size: 1rem;"></i>
                 <span>Показать все фотографии</span>
               </button>
               <!-- Удалены стрелки для ручного переключения фотографий -->
@@ -455,60 +459,60 @@
     function flipGallery(direction) {
       if (!photos || photos.length === 0 || galleryElements.length === 0) return;
       var total = photos.length;
-      // Определяем индекс будущей главной фотографии
+      // Индекс будущей главной фотографии
       var newIndex = direction === 'next'
         ? (currentGalleryIndex + 1) % total
         : (currentGalleryIndex - 1 + total) % total;
-      // Рассчитываем, какие фотографии должны оказаться в каждой области
+      // Список индексов фотографий после переключения
       var newPhotoIndices = [];
       for (var i = 0; i < galleryClassOrder.length; i++) {
         newPhotoIndices.push((newIndex + i) % total);
       }
-      // Сохраняем текущие положения и размеры элементов
+      // Сохраняем текущие позиции и размеры элементов
       var oldRects = galleryElements.map(function(el) {
         return el.getBoundingClientRect();
       });
-      // Меняем порядок элементов в массиве и DOM в зависимости от направления
       var containerEl = document.getElementById('galleryGrid');
+      // При переключении вперёд удаляем первый элемент (текущую большую фото) и переносим в конец
+      // При переключении назад наоборот, перемещаем последний в начало
+      var leavingEl = null;
       if (direction === 'next') {
-        // Перемещаем первый элемент в конец
+        leavingEl = galleryElements[0];
         var firstEl = galleryElements.shift();
         galleryElements.push(firstEl);
-        // Также перемещаем этот элемент в конец списка дочерних узлов контейнера
         if (containerEl && firstEl) {
           containerEl.appendChild(firstEl);
         }
       } else {
-        // Перемещаем последний элемент в начало
+        leavingEl = galleryElements[galleryElements.length - 1];
         var lastEl = galleryElements.pop();
         galleryElements.unshift(lastEl);
-        // Вставляем элемент первым ребёнком контейнера
         if (containerEl && lastEl) {
           containerEl.insertBefore(lastEl, containerEl.firstChild);
         }
       }
-      // Обновляем классы, которые отвечают за расположение элементов в сетке
+      // Обновляем классы расположения на сетке
       for (var i = 0; i < galleryElements.length; i++) {
         var el = galleryElements[i];
-        // Удаляем старые позиционные классы
         for (var j = 0; j < galleryClassOrder.length; j++) {
           el.classList.remove(galleryClassOrder[j]);
         }
-        // Добавляем новый класс
         el.classList.add(galleryClassOrder[i]);
       }
-      // Обновляем источники и data-index для каждого элемента
+      // Обновляем источники фотографий и data-index
       for (var i = 0; i < galleryElements.length; i++) {
         var el = galleryElements[i];
         var photoIndex = newPhotoIndices[i];
         el.dataset.index = photoIndex;
         el.src = photos[photoIndex];
       }
-      // Получаем новые положения после смены классов/фотографий
+      // Получаем новые позиции после смены классов/фотографий
       var newRects = galleryElements.map(function(el) {
         return el.getBoundingClientRect();
       });
-      // Применяем обратное преобразование к каждому элементу и задаём анимацию
+      // Контейнер для расчёта высоты при уходе фото вверх
+      var containerRect = containerEl ? containerEl.getBoundingClientRect() : null;
+      // Для каждого элемента задаём исходное состояние и анимацию
       for (var i = 0; i < galleryElements.length; i++) {
         var el = galleryElements[i];
         var oldRect = oldRects[i];
@@ -517,15 +521,21 @@
         var dy = oldRect.top - newRect.top;
         var scaleX = oldRect.width / newRect.width;
         var scaleY = oldRect.height / newRect.height;
-        // Используем top left как точку трансформации, чтобы корректно
-        // просчитать смещение и масштабирование
+        // Если это элемент, который покидает большую позицию, задаём ему
+        // смещение вверх за пределы контейнера. Это создаёт эффект
+        // «ухода вверх», при этом элемент затем плавно появляется на
+        // новой позиции (внизу справа) после завершения анимации.
+        if (el === leavingEl && containerRect) {
+          // Смещаем элемент на высоту контейнера + собственную высоту вверх
+          dy = (oldRect.top - newRect.top) - (containerRect.height);
+        }
+        // Устанавливаем начало трансформации в верхний левый угол
         el.style.transformOrigin = 'top left';
-        // Начальное состояние: элемент находится в старом месте и старом размере
+        // Начальное состояние: элемент находится в старой позиции и масштабе
         el.style.transform = 'translate(' + dx + 'px, ' + dy + 'px) scale(' + scaleX + ', ' + scaleY + ')';
-        // Задаём плавный переход для трансформации. После завершения
-        // анимации очищаем свойство transition, чтобы оно не мешало
-        // последующим изменениям.
-        el.style.transition = 'transform 0.6s cubic-bezier(0.4, 0.0, 0.2, 1)';
+        // Задаём плавный переход. Увеличиваем длительность до 2.5 секунд,
+        // чтобы анимация была заметной. Используем кривую ease‑in‑out.
+        el.style.transition = 'transform 2.5s cubic-bezier(0.42, 0.0, 0.58, 1)';
         (function(element) {
           var onEnd = function() {
             element.style.transition = '';
@@ -534,8 +544,7 @@
           element.addEventListener('transitionend', onEnd);
         })(el);
       }
-      // Следующий кадр: убираем transform, позволяя CSS‑переходу
-      // плавно переместить элемент на новую позицию и размер
+      // Во втором кадре удаляем transform, чтобы элементы плавно переместились
       requestAnimationFrame(function() {
         for (var i = 0; i < galleryElements.length; i++) {
           galleryElements[i].style.transform = '';
