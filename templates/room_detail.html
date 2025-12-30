@@ -389,13 +389,13 @@
         <button type="button"
                 class="btn btn-light position-absolute top-50 p-0 d-flex align-items-center justify-content-center rounded-circle"
                 style="opacity: 0.7; width: 56px; height: 56px; left: 2rem; transform: translateY(-50%);"
-                onclick="stopAutoGallery(); prevPhoto(true)">
+                onclick="stopAutoScroll(); prevPhoto(true)">
           <i class="bi bi-chevron-left fs-3"></i>
         </button>
         <button type="button"
                 class="btn btn-light position-absolute top-50 p-0 d-flex align-items-center justify-content-center rounded-circle"
                 style="opacity: 0.7; width: 56px; height: 56px; right: 2rem; transform: translateY(-50%);"
-                onclick="stopAutoGallery(); nextPhoto(true)">
+                onclick="stopAutoScroll(); nextPhoto(true)">
           <i class="bi bi-chevron-right fs-3"></i>
         </button>
         <button type="button" class="btn btn-light position-absolute top-0 end-0 m-2" onclick="closeGalleryModal()">×</button>
@@ -555,27 +555,37 @@
       currentGalleryIndex = newIndex;
     }
 
-    // Автоматическая прокрутка для новой галереи.  Вместо setInterval используем
-    // цепочку setTimeout, чтобы новая анимация начиналась только после
-    // завершения предыдущей.  Время задержки совпадает с длительностью
-    // анимации (4 секунды), поэтому фотографии постоянно находятся в движении.
-    var autoGalleryTimeout = null;
-    function startAutoGallery() {
-      if (autoGalleryTimeout) return;
-      function cycle() {
-        // Запускаем следующий переход галереи
-        nextGallery();
-        // Планируем следующий цикл спустя 4 секунды
-        autoGalleryTimeout = setTimeout(cycle, 4000);
-      }
-      // Стартуем через 4 секунды после активации.  Если нужно начать
-      // немедленно, можно вызвать cycle() прямо здесь.
-      autoGalleryTimeout = setTimeout(cycle, 4000);
+    // Переменная для хранения интервала автоматической прокрутки.
+    // Мы используем setInterval, чтобы на протяжении всего времени пребывания
+    // пользователя на странице фотографии циклично сменялись с плавной анимацией.
+    var autoScrollInterval = null;
+
+    /**
+     * Запускает автоматическую прокрутку галереи. При каждом срабатывании
+     * таймера вызывается flipGallery('next'), что обеспечивает плавное
+     * перемещение: большая фотография уходит вверх, следующая миниатюра
+     * увеличивается и занимает её место, а остальные миниатюры сдвигаются.
+     * Интервал равен 4 секундам, что соответствует длительности анимации.
+     */
+    function startAutoScroll() {
+      // Если прокрутка уже запущена, ничего не делаем
+      if (autoScrollInterval) return;
+      // Начинаем цикл: каждые 4 секунды вызываем flipGallery('next')
+      autoScrollInterval = setInterval(function() {
+        flipGallery('next');
+      }, 4000);
+      // Запускаем первую итерацию сразу, чтобы галерея сразу вошла в движение
+      flipGallery('next');
     }
-    function stopAutoGallery() {
-      if (autoGalleryTimeout) {
-        clearTimeout(autoGalleryTimeout);
-        autoGalleryTimeout = null;
+
+    /**
+     * Останавливает автоматическую прокрутку галереи. Используется при
+     * открытии модального окна, чтобы изображения не менялись в фоне.
+     */
+    function stopAutoScroll() {
+      if (autoScrollInterval) {
+        clearInterval(autoScrollInterval);
+        autoScrollInterval = null;
       }
     }
 
@@ -752,6 +762,9 @@
       }
     }
     function openGalleryModal(index) {
+      // При открытии модального окна приостанавливаем автоматическую прокрутку,
+      // чтобы изображения не менялись в фоне.
+      stopAutoScroll();
       showPhoto(index || 0, true);
       var modal = document.getElementById('galleryModal');
       if (modal) modal.classList.remove('d-none');
@@ -764,7 +777,7 @@
       // прокрутку галереи, если она была остановлена.  Это гарантирует,
       // что плавная анимация будет продолжаться на странице основного
       // объявления даже после просмотра фотографий в модальном окне.
-      startAutoGallery();
+      startAutoScroll();
     }
 
     // После загрузки DOM и определения массива фотографий
@@ -775,7 +788,7 @@
         renderGallery();
         // Инициализируем массив элементов галереи и задаём исходный порядок
         setupGallery();
-        startAutoGallery();
+        startAutoScroll();
       }
     });
 
@@ -786,9 +799,9 @@
     // приостанавливаем анимацию, чтобы она не продолжала в фоновом режиме.
     document.addEventListener('visibilitychange', function() {
       if (!document.hidden) {
-        startAutoGallery();
+        startAutoScroll();
       } else {
-        stopAutoGallery();
+        stopAutoScroll();
       }
     });
   </script>
