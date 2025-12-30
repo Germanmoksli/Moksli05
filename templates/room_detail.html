@@ -714,6 +714,8 @@
       autoScrollInterval = setInterval(function() {
         flipGallery('next');
       }, 8000);
+      // Запускаем первую итерацию сразу, чтобы анимация началась без задержки
+      flipGallery('next');
     }
 
     /**
