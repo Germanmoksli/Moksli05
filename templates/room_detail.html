@@ -468,10 +468,13 @@
       for (var i = 0; i < galleryClassOrder.length; i++) {
         newPhotoIndices.push((newIndex + i) % total);
       }
-      // Сохраняем текущие позиции и размеры элементов
-      var oldRects = galleryElements.map(function(el) {
-        return el.getBoundingClientRect();
-      });
+      // Сохраняем текущие позиции и размеры элементов в карту, чтобы
+      // сохранить соответствие между элементом и его исходным прямоугольником.
+      var oldRectsMap = new Map();
+      for (var i = 0; i < galleryElements.length; i++) {
+        var el = galleryElements[i];
+        oldRectsMap.set(el, el.getBoundingClientRect());
+      }
       var containerEl = document.getElementById('galleryGrid');
       // При переключении вперёд удаляем первый элемент (текущую большую фото) и переносим в конец
       // При переключении назад наоборот, перемещаем последний в начало
@@ -506,17 +509,15 @@
         el.dataset.index = photoIndex;
         el.src = photos[photoIndex];
       }
-      // Получаем новые позиции после смены классов/фотографий
-      var newRects = galleryElements.map(function(el) {
-        return el.getBoundingClientRect();
-      });
       // Контейнер для расчёта высоты при уходе фото вверх
       var containerRect = containerEl ? containerEl.getBoundingClientRect() : null;
       // Для каждого элемента задаём исходное состояние и анимацию
       for (var i = 0; i < galleryElements.length; i++) {
         var el = galleryElements[i];
-        var oldRect = oldRects[i];
-        var newRect = newRects[i];
+        // Получаем исходный прямоугольник для данного элемента
+        var oldRect = oldRectsMap.get(el);
+        // Получаем новый прямоугольник после смены расположения/размера
+        var newRect = el.getBoundingClientRect();
         var dx = oldRect.left - newRect.left;
         var dy = oldRect.top - newRect.top;
         var scaleX = oldRect.width / newRect.width;
