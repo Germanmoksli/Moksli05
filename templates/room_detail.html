@@ -555,23 +555,27 @@
       currentGalleryIndex = newIndex;
     }
 
-    // Автоматическая прокрутка для новой галереи: каждые 5 секунд
-    // переключаемся на следующую фотографию.  Храним идентификатор
-    // интервала, чтобы его можно было остановить при ручном переключении.
-    var autoGalleryInterval = null;
+    // Автоматическая прокрутка для новой галереи.  Вместо setInterval используем
+    // цепочку setTimeout, чтобы новая анимация начиналась только после
+    // завершения предыдущей.  Время задержки совпадает с длительностью
+    // анимации (4 секунды), поэтому фотографии постоянно находятся в движении.
+    var autoGalleryTimeout = null;
     function startAutoGallery() {
-      if (autoGalleryInterval) return;
-      autoGalleryInterval = setInterval(function() {
-        // Переключаемся каждые 4 секунды — это соответствует
-        // длительности анимации, поэтому фотографии двигаются
-        // непрерывно без пауз между циклами.
+      if (autoGalleryTimeout) return;
+      function cycle() {
+        // Запускаем следующий переход галереи
         nextGallery();
-      }, 4000);
+        // Планируем следующий цикл спустя 4 секунды
+        autoGalleryTimeout = setTimeout(cycle, 4000);
+      }
+      // Стартуем через 4 секунды после активации.  Если нужно начать
+      // немедленно, можно вызвать cycle() прямо здесь.
+      autoGalleryTimeout = setTimeout(cycle, 4000);
     }
     function stopAutoGallery() {
-      if (autoGalleryInterval) {
-        clearInterval(autoGalleryInterval);
-        autoGalleryInterval = null;
+      if (autoGalleryTimeout) {
+        clearTimeout(autoGalleryTimeout);
+        autoGalleryTimeout = null;
       }
     }
 
