@@ -169,8 +169,11 @@
                 Показать полностью
               </span>
 
-              {# Отображаем удобства под описанием объявления. Выравниваем по левому краю описания. #}
-              {% set selected_amenities = (room.get('amenities') or '').split(',') %}
+              {# Отображаем удобства под описанием объявления — перемещён ниже блока описания для
+                 корректного отображения даже если описание отсутствует. #}
+              {% endif %}
+              {# Определяем список выбранных удобств и выводим их независимо от наличия описания. #}
+              {% set selected_amenities = ((room.get('amenities') or '').replace(' ', '')).split(',') if room.get('amenities') else [] %}
               {% set amenities_categories = [
                 {
                   'name': 'Базовые удобства',
@@ -296,7 +299,6 @@
               {% if selected_amenities and selected_amenities|length > 0 %}
               <div class="mt-4 ms-md-n6 ps-md-4">
                 {% for category in amenities_categories %}
-                  {# Выбираем опции, которые присутствуют среди выбранных удобств пользователя #}
                   {% set options_in_category = category.options | selectattr('value', 'in', selected_amenities) | list %}
                   {% if options_in_category %}
                     <h5 class="fw-bold mt-4">{{ category.name }}</h5>
@@ -311,7 +313,6 @@
                   {% endif %}
                 {% endfor %}
               </div>
-              {% endif %}
               {% endif %}
             </div>
           </div>
