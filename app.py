@@ -8272,6 +8272,44 @@ def view_room_public(room_id: int):
                     room[key] = room_row[key]
                 except Exception:
                     pass
+    # Before loading photos, normalise the amenities field for the room.  On
+    # PostgreSQL, TEXT columns may be returned as ``memoryview`` or ``bytes``
+    # objects rather than plain strings.  Joining and splitting on these
+    # binary types in the Jinja template can silently fail because Jinja
+    # treats ``memoryview`` as a sequence of numbers.  To ensure that
+    # amenities are displayed correctly in the template, convert any
+    # non‑string value to a UTF‑8 string.  If the value is a list (as can
+    # happen when Postgres returns an array), join the elements with commas.
+    raw_amenities = None
+    try:
+        raw_amenities = room.get('amenities')
+    except Exception:
+        raw_amenities = None
+    if raw_amenities:
+        try:
+            # If a list or tuple, join its elements into a comma‑separated string
+            if isinstance(raw_amenities, (list, tuple)):
+                raw_amenities = ','.join([str(x) for x in raw_amenities])
+            # If a memoryview (returned by some DB adapters for large TEXT)
+            elif isinstance(raw_amenities, memoryview):
+                try:
+                    raw_amenities = raw_amenities.tobytes().decode('utf-8', errors='ignore')
+                except Exception:
+                    raw_amenities = str(raw_amenities)
+            # If bytes, decode to string
+            elif isinstance(raw_amenities, (bytes, bytearray)):
+                try:
+                    raw_amenities = raw_amenities.decode('utf-8', errors='ignore')
+                except Exception:
+                    raw_amenities = str(raw_amenities)
+            # Otherwise, leave as‑is; Jinja will handle plain strings
+        finally:
+            # Update the room dict so that the template can process amenities
+            try:
+                room['amenities'] = raw_amenities
+            except Exception:
+                pass
+
     # Load all photos for the room.  Prefer selecting both filename and
     # base64 data from the ``room_photos`` table.  If the ``image_data``
     # column does not exist (legacy deployments), fall back to selecting

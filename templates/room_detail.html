@@ -173,7 +173,42 @@
                  корректного отображения даже если описание отсутствует. #}
               {% endif %}
               {# Определяем список выбранных удобств и выводим их независимо от наличия описания. #}
-              {% set selected_amenities = ((room.get('amenities') or '').replace(' ', '')).split(',') if room.get('amenities') else [] %}
+              {% set raw_amenities = room.get('amenities') %}
+              {# Определяем строковое представление удобств. Если значение уже строка, используем его.
+                 Если это список (например, возвращён из PostgreSQL как массив), объединяем элементы
+                 через запятую. В противном случае получаем пустую строку. #}
+              {% if raw_amenities %}
+                {% if raw_amenities is string %}
+                  {% set amenities_string = raw_amenities %}
+                {% elif raw_amenities is sequence %}
+                  {% set amenities_string = raw_amenities|join(',') %}
+                {% else %}
+                  {% set amenities_string = '' %}
+                {% endif %}
+              {% else %}
+                {% set amenities_string = '' %}
+              {% endif %}
+              {#
+                Разбираем строку удобств в список.  Удаляем пробелы и
+                символы новой строки из каждого значения и отбрасываем
+                пустые элементы.  Такой подход надёжнее, чем простое
+                удаление пробелов перед разделением, поскольку данные
+                могут содержать непредвиденные пробелы, табуляции или
+                перевод строки (например, если PostgreSQL вернул
+                значение как ``memoryview`` или со вставками).
+              #}
+              {% if amenities_string %}
+                {% set _temp_list = amenities_string.split(',') %}
+                {% set selected_amenities = [] %}
+                {% for item in _temp_list %}
+                  {% set itm = item.strip() %}
+                  {% if itm %}
+                    {% set selected_amenities = selected_amenities + [itm] %}
+                  {% endif %}
+                {% endfor %}
+              {% else %}
+                {% set selected_amenities = [] %}
+              {% endif %}
               {% set amenities_categories = [
                 {
                   'name': 'Базовые удобства',
