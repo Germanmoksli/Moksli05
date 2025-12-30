@@ -165,9 +165,9 @@
               </div>
               <!-- Кнопка для раскрытия/свертывания описания. Синий цвет и синяя полоска
                    реализованы через пользовательский класс toggle-description-btn. -->
-              <button id="toggleDescriptionBtn" type="button" class="btn toggle-description-btn mt-4 ms-md-n6 ps-md-4">
+              <span id="toggleDescriptionBtn" class="toggle-description-text mt-4 ms-md-n6 ps-md-4">
                 Показать полностью
-              </button>
+              </span>
 
               {# Отображаем удобства под описанием объявления. Выравниваем по левому краю описания. #}
               {% set selected_amenities = (room.get('amenities') or '').split(',') %}
@@ -1082,24 +1082,20 @@
     /* Кнопка раскрытия описания. Используем прозрачный фон и основной синий цвет.
        Добавляем синюю полоску снизу вместо рамки. Убираем лишние отступы и
        подчёркивания, чтобы кнопка выглядела как текстовая ссылка с полоской. */
-    .toggle-description-btn {
-      background-color: transparent;
+    .toggle-description-text {
       color: var(--bs-primary);
-      border: none;
-      /* Толщина линии совпадает с блоком отзывов/рейтинга (3px) */
       border-bottom: 3px solid var(--bs-primary);
-      padding: 0;
-      border-radius: 0;
-      /* Размер и жирность шрифта совпадают с инфо‑статистикой */
       font-size: 1rem;
       font-weight: 600;
+      cursor: pointer;
+      padding: 0;
+      display: inline-block;
     }
-    .toggle-description-btn:hover,
-    .toggle-description-btn:focus {
+    .toggle-description-text:hover,
+    .toggle-description-text:focus {
+      text-decoration: none;
       color: var(--bs-primary);
       border-bottom-color: var(--bs-primary);
-      text-decoration: none;
-      box-shadow: none;
     }
 
     /* Плитка для удобств: небольшие карточки со скруглёнными углами, лёгкой рамкой
