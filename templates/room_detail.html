@@ -649,6 +649,14 @@
         el.src = photos[photoIndex];
       }
       // Контейнер для расчёта высоты при уходе фото вверх
+      // Прежде чем вычислять новые прямоугольники для каждого элемента,
+      // принудительно вызываем reflow, чтобы браузер применил новую
+      // верстку после перестановки элементов и изменения классов.
+      // Чтение offsetHeight заставит браузер пересчитать макет.
+      if (containerEl) {
+        // присваиваем в временную переменную, чтобы предотвратить оптимизацию
+        var _unusedHeight = containerEl.offsetHeight;
+      }
       var containerRect = containerEl ? containerEl.getBoundingClientRect() : null;
       // Для каждого элемента задаём исходное состояние и анимацию
       for (var i = 0; i < galleryElements.length; i++) {
@@ -685,11 +693,18 @@
           element.addEventListener('transitionend', onEnd);
         })(el);
       }
-      // Во втором кадре удаляем transform, чтобы элементы плавно переместились
+      // Во втором и третьем кадрах удаляем transform, чтобы элементы плавно переместились.
+      // Используем двойной requestAnimationFrame, чтобы браузер успел применить
+      // начальные значения transform и transition перед их сбросом. Такой подход
+      // гарантирует, что анимация запускается на каждом цикле, даже когда
+      // страница не теряет фокус. Без двойного rAF браузер может проигнорировать
+      // изменение transform и переход, если layout ещё не завершён.
       requestAnimationFrame(function() {
-        for (var i = 0; i < galleryElements.length; i++) {
-          galleryElements[i].style.transform = '';
-        }
+        requestAnimationFrame(function() {
+          for (var i = 0; i < galleryElements.length; i++) {
+            galleryElements[i].style.transform = '';
+          }
+        });
       });
       // Обновляем текущий индекс главной фотографии
       currentGalleryIndex = newIndex;
@@ -926,8 +941,13 @@
         renderGallery();
         // Инициализируем массив элементов галереи и задаём исходный порядок
         setupGallery();
-        // Запускаем автоматическую прокрутку галереи с интервалом 8 секунд
-        startAutoScroll();
+        // Запускаем автоматическую прокрутку галереи с интервалом 8 секунд.
+        // Используем requestAnimationFrame, чтобы дождаться завершения
+        // первоначальной отрисовки галереи, иначе первый вызов может
+        // происходить до полной разметки и нарушать анимацию.
+        requestAnimationFrame(function() {
+          startAutoScroll();
+        });
       }
     });
 
