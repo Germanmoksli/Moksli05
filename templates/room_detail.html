@@ -152,13 +152,13 @@
                    все отступы и переносы строк, как они были введены пользователем.  Ограничиваем
                    высоту описания, чтобы отображать только первые 10 строк. Остальная часть
                    скрывается до нажатия кнопки «Показать полностью». -->
-              <div id="descriptionContainer" class="mt-4 mb-0 ms-md-n5 ps-md-5"
+              <div id="descriptionContainer" class="mt-4 mb-0 ms-md-n6 ps-md-4"
                    style="white-space: pre-wrap; overflow: hidden;">
                 {{ room['description'] }}
               </div>
               <!-- Кнопка для раскрытия/свертывания описания. Синий цвет и синяя полоска
                    реализованы через пользовательский класс toggle-description-btn. -->
-              <button id="toggleDescriptionBtn" type="button" class="btn toggle-description-btn mt-2 ms-md-n5 ps-md-5">
+              <button id="toggleDescriptionBtn" type="button" class="btn toggle-description-btn mt-3 ms-md-n6 ps-md-4">
                 Показать полностью
               </button>
 
@@ -287,18 +287,20 @@
                 },
               ] %}
               {% if selected_amenities and selected_amenities|length > 0 %}
-              <div class="mt-3 ms-md-n5 ps-md-5">
+              <div class="mt-4 ms-md-n6 ps-md-4">
                 {% for category in amenities_categories %}
                   {# Выбираем опции, которые присутствуют среди выбранных удобств пользователя #}
                   {% set options_in_category = category.options | selectattr('value', 'in', selected_amenities) | list %}
                   {% if options_in_category %}
-                    <h5 class="fw-bold mt-3">{{ category.name }}</h5>
-                    {% for option in options_in_category %}
-                      <div class="d-flex align-items-center mb-2">
-                        <i class="bi {{ option.icon }} fs-5 me-2 text-primary"></i>
-                        <span>{{ option.label }}</span>
-                      </div>
-                    {% endfor %}
+                    <h5 class="fw-bold mt-4">{{ category.name }}</h5>
+                    <div class="d-flex flex-wrap gap-2">
+                      {% for option in options_in_category %}
+                        <div class="amenity-tile d-flex align-items-center">
+                          <i class="bi {{ option.icon }} me-2 text-primary"></i>
+                          <span>{{ option.label }}</span>
+                        </div>
+                      {% endfor %}
+                    </div>
                   {% endif %}
                 {% endfor %}
               </div>
@@ -1097,7 +1099,9 @@
       border: none;
       border-bottom: 2px solid var(--bs-primary);
       padding: 0;
-      font-weight: 500;
+      border-radius: 0;
+      font-size: inherit;
+      font-weight: inherit;
     }
     .toggle-description-btn:hover,
     .toggle-description-btn:focus {
@@ -1105,6 +1109,16 @@
       border-bottom-color: var(--bs-primary);
       text-decoration: none;
       box-shadow: none;
+    }
+
+    /* Плитка для удобств: небольшие карточки со скруглёнными углами, лёгкой рамкой
+       и фоном. Иконка и текст располагаются в одной строке. */
+    .amenity-tile {
+      background-color: #f8f9fa;
+      border: 1px solid #e0e0e0;
+      border-radius: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.95rem;
     }
     #booking-calendar .calendar-grid {
       display: grid;
