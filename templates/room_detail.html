@@ -62,8 +62,8 @@
           <!-- Увеличиваем отступ сверху, чтобы создать пространство между галереей и календарём/инфо-блоками -->
           <div class="row mb-3 mt-5 gx-0">
             <!-- Календарь бронирования -->
-            <div class="col-md-6 mb-3">
-              <div class="card shadow-sm h-100" id="calendar-card">
+            <div class="col-md-6 mb-3 align-self-start">
+              <div class="card shadow-sm" id="calendar-card">
                 <div class="card-body">
                   <!-- Контейнер для генерации календаря -->
                   <div id="booking-calendar"></div>
@@ -148,11 +148,19 @@
                 </button>
               </div>
               {% if room['description'] %}
-              <!-- Добавляем вертикальный отступ сверху для описания, чтобы оно располагалось ниже
-                   информационных блоков и между ними оставалось свободное пространство.  Также сдвигаем
-                   описание влево относительно своей колонки на 1.5 рем (ms-md-n4) и добавляем такой же
-                   внутренний отступ слева (ps-md-4), чтобы текст оставался на комфортном расстоянии от края. -->
-              <p class="mt-4 mb-0 ms-md-n5 ps-md-5">{{ room['description'] }}</p>
+              <!-- Контейнер для описания. Используем white-space: pre-wrap, чтобы сохранять
+                   все отступы и переносы строк, как они были введены пользователем.  Ограничиваем
+                   высоту описания, чтобы отображать только первые 10 строк. Остальная часть
+                   скрывается до нажатия кнопки «Показать полностью». -->
+              <div id="descriptionContainer" class="mt-4 mb-0 ms-md-n5 ps-md-5"
+                   style="white-space: pre-wrap; overflow: hidden;">
+                {{ room['description'] }}
+              </div>
+              <!-- Кнопка для раскрытия/свертывания описания. Синий цвет и синяя полоска
+                   реализованы через пользовательский класс toggle-description-btn. -->
+              <button id="toggleDescriptionBtn" type="button" class="btn toggle-description-btn mt-2 ms-md-n5 ps-md-5">
+                Показать полностью
+              </button>
 
               {# Отображаем удобства под описанием объявления. Выравниваем по левому краю описания. #}
               {% set selected_amenities = (room.get('amenities') or '').split(',') %}
@@ -281,14 +289,17 @@
               {% if selected_amenities and selected_amenities|length > 0 %}
               <div class="mt-3 ms-md-n5 ps-md-5">
                 {% for category in amenities_categories %}
-                  {% for option in category.options %}
-                    {% if option.value in selected_amenities %}
+                  {# Выбираем опции, которые присутствуют среди выбранных удобств пользователя #}
+                  {% set options_in_category = category.options | selectattr('value', 'in', selected_amenities) | list %}
+                  {% if options_in_category %}
+                    <h5 class="fw-bold mt-3">{{ category.name }}</h5>
+                    {% for option in options_in_category %}
                       <div class="d-flex align-items-center mb-2">
                         <i class="bi {{ option.icon }} fs-5 me-2 text-primary"></i>
                         <span>{{ option.label }}</span>
                       </div>
-                    {% endif %}
-                  {% endfor %}
+                    {% endfor %}
+                  {% endif %}
                 {% endfor %}
               </div>
               {% endif %}
@@ -996,6 +1007,53 @@
       }
     });
   </script>
+
+  <!-- Скрипт для управления отображением описания объявления. Скрывает
+       строки после первых десяти и добавляет кнопку «Показать полностью» для
+       разворачивания. При повторном нажатии описание сворачивается. -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      var descContainer = document.getElementById('descriptionContainer');
+      var toggleBtn = document.getElementById('toggleDescriptionBtn');
+      if (descContainer && toggleBtn) {
+        // Получаем фактическую высоту строки. Если line-height не указана в пикселях,
+        // используем parseFloat для извлечения числового значения.
+        var computedStyle = window.getComputedStyle(descContainer);
+        var lineHeightStr = computedStyle.lineHeight;
+        var lineHeight = parseFloat(lineHeightStr);
+        // Если line-height выражена в 'normal', приблизительно рассчитываем
+        // на основе размера шрифта
+        if (isNaN(lineHeight)) {
+          var fontSize = parseFloat(computedStyle.fontSize);
+          lineHeight = fontSize * 1.2;
+        }
+        var maxLines = 10;
+        var collapsedHeight = lineHeight * maxLines;
+        // Если описание длиннее, чем 10 строк, отображаем кнопку.
+        if (descContainer.scrollHeight > collapsedHeight) {
+          descContainer.style.maxHeight = collapsedHeight + 'px';
+          descContainer.style.overflow = 'hidden';
+          var expanded = false;
+          toggleBtn.addEventListener('click', function() {
+            expanded = !expanded;
+            if (expanded) {
+              // Раскрываем: убираем ограничение высоты
+              descContainer.style.maxHeight = '';
+              toggleBtn.textContent = 'Свернуть';
+            } else {
+              descContainer.style.maxHeight = collapsedHeight + 'px';
+              toggleBtn.textContent = 'Показать полностью';
+              // Скролл к началу описания после сворачивания
+              descContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+          });
+        } else {
+          // Если описание короткое, скрываем кнопку
+          toggleBtn.style.display = 'none';
+        }
+      }
+    });
+  </script>
   <style>
     /* Стили календаря бронирования: сетка, дни недели и подсветка выбранного диапазона. */
     #booking-calendar {
@@ -1028,6 +1086,25 @@
        панели календаря */
     #booking-calendar .calendar-nav .bi {
       font-weight: 700;
+    }
+
+    /* Кнопка раскрытия описания. Используем прозрачный фон и основной синий цвет.
+       Добавляем синюю полоску снизу вместо рамки. Убираем лишние отступы и
+       подчёркивания, чтобы кнопка выглядела как текстовая ссылка с полоской. */
+    .toggle-description-btn {
+      background-color: transparent;
+      color: var(--bs-primary);
+      border: none;
+      border-bottom: 2px solid var(--bs-primary);
+      padding: 0;
+      font-weight: 500;
+    }
+    .toggle-description-btn:hover,
+    .toggle-description-btn:focus {
+      color: var(--bs-primary);
+      border-bottom-color: var(--bs-primary);
+      text-decoration: none;
+      box-shadow: none;
     }
     #booking-calendar .calendar-grid {
       display: grid;
