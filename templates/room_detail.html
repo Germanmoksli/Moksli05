@@ -331,7 +331,27 @@
                   ],
                 },
               ] %}
-              {# Блок удобств внутри описания удалён по просьбе пользователя #}
+              {# Блок удобств: выводит выбранные удобства из шага 3 под описанием.
+                 Используем данные room['filtered_amenity_categories'], подготовленные
+                 на сервере. Блок выравниваем по левому краю описания, используя
+                 те же классы ms-md-n6 и ps-md-4. Удобства отображаются плитками
+                 с иконками. #}
+              {% if room.get('filtered_amenity_categories') and room['filtered_amenity_categories']|length > 0 %}
+              <div class="mt-4 ms-md-n6 ps-md-4">
+                <h5 class="fw-bold mb-3">Удобства</h5>
+                {% for category in room['filtered_amenity_categories'] %}
+                  <h6 class="fw-bold mt-3 mb-2">{{ category.name }}</h6>
+                  <div class="d-flex flex-wrap gap-2">
+                    {% for option in category.options %}
+                      <div class="amenity-tile d-flex align-items-center">
+                        <i class="bi {{ option.icon }} me-2 text-primary"></i>
+                        <span>{{ option.label }}</span>
+                      </div>
+                    {% endfor %}
+                  </div>
+                {% endfor %}
+              </div>
+              {% endif %}
             </div>
           </div>
           {% if room['owner_name'] %}
@@ -361,7 +381,7 @@
       </div>
       {# Блок отзывов и рейтинга под календарём удалён по просьбе пользователя #}
 
-      {# Блок удобств удалён по просьбе пользователя #}
+      {# Блок удобств выводится под описанием объявления #}
 
 
       <!-- Дополнительные сведения: Информация о доме, карта и последние отзывы -->
