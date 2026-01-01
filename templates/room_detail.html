@@ -331,24 +331,7 @@
                   ],
                 },
               ] %}
-              {% if selected_amenities and selected_amenities|length > 0 %}
-              <div class="mt-4 ms-md-n6 ps-md-4 d-none">
-                {% for category in amenities_categories %}
-                  {% set options_in_category = category.options | selectattr('value', 'in', selected_amenities) | list %}
-                  {% if options_in_category %}
-                    <h5 class="fw-bold mt-4">{{ category.name }}</h5>
-                    <div class="d-flex flex-wrap gap-2">
-                      {% for option in options_in_category %}
-                        <div class="amenity-tile d-flex align-items-center">
-                          <i class="bi {{ option.icon }} me-2 text-primary"></i>
-                          <span>{{ option.label }}</span>
-                        </div>
-                      {% endfor %}
-                    </div>
-                  {% endif %}
-                {% endfor %}
-              </div>
-              {% endif %}
+              {# Блок удобств внутри описания удалён по просьбе пользователя #}
             </div>
           </div>
           {% if room['owner_name'] %}
@@ -378,28 +361,7 @@
       </div>
       {# Блок отзывов и рейтинга под календарём удалён по просьбе пользователя #}
 
-      {# Новый блок удобств: выводим выбранные удобства по категориям, используя
-         данные, подготовленные во view_room_public.  Список категорий с
-         выбранными опциями находится в room['filtered_amenity_categories'].
-         Блок выравнивается по левому краю описания, используя те же
-         отрицательные отступы (ms-md-n6) и внутренние отступы (ps-md-4).
-         Если удобств нет, блок не отображается. #}
-      {% if room.get('filtered_amenity_categories') and room['filtered_amenity_categories']|length > 0 %}
-      <div class="mb-4 ms-md-n6 ps-md-4">
-        <h5 class="fw-bold mb-3">Удобства</h5>
-        {% for category in room['filtered_amenity_categories'] %}
-          <h6 class="fw-bold mt-3 mb-2">{{ category.name }}</h6>
-          <div class="d-flex flex-wrap gap-3 mb-2">
-            {% for option in category.options %}
-              <div class="d-flex align-items-center me-4 mb-2">
-                <i class="bi {{ option.icon }} fs-5 me-2 text-primary"></i>
-                <span>{{ option.label }}</span>
-              </div>
-            {% endfor %}
-          </div>
-        {% endfor %}
-      </div>
-      {% endif %}
+      {# Блок удобств удалён по просьбе пользователя #}
 
 
       <!-- Дополнительные сведения: Информация о доме, карта и последние отзывы -->
