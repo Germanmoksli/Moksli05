@@ -346,7 +346,11 @@
                   {% endfor %}
                 </div>
                 {% if room.get('more_amenities') %}
-                <button type="button" class="btn btn-link px-0 fw-bold text-primary" data-bs-toggle="modal" data-bs-target="#amenitiesModal">Показать все удобства</button>
+                <!-- Кнопка «Показать все удобства»: белый фон без подчёркивания.  Используем
+                     собственный класс show-amenities-btn для визуального согласования
+                     с остальными элементами интерфейса и предотвращения выхода текста
+                     за пределы рамки. -->
+                <button type="button" class="show-amenities-btn" data-bs-toggle="modal" data-bs-target="#amenitiesModal">Показать все удобства</button>
                 {% endif %}
               </div>
               {% endif %}
@@ -970,13 +974,37 @@
     }
 
     /* Плитка для удобств: небольшие карточки со скруглёнными углами, лёгкой рамкой
-       и фоном. Иконка и текст располагаются в одной строке. */
+       и фоном. Иконка и текст располагаются в одной строке.  Округление углов
+       синхронизировано с другими элементами приложения, поэтому используем
+       одинаковое значение радиуса. */
     .amenity-tile {
       background-color: #f8f9fa;
       border: 1px solid #e0e0e0;
+      /* Используем тот же радиус, что и другие кнопки/карточки в интерфейсе */
       border-radius: 0.5rem;
       padding: 0.5rem 0.75rem;
       font-size: 0.95rem;
+    }
+
+    /* Кнопка для отображения всех удобств. Белый фон, лёгкая рамка и
+       более широкая горизонтальная «подушка», чтобы текст не выходил
+       за пределы рамки. Отсутствует подчёркивание текста. */
+    .show-amenities-btn {
+      background-color: #ffffff;
+      color: var(--bs-primary);
+      border: 1px solid #e0e0e0;
+      border-radius: 0.5rem;
+      padding: 0.5rem 1rem;
+      font-weight: 600;
+      font-size: 0.95rem;
+      text-decoration: none;
+      white-space: nowrap;
+      display: inline-block;
+    }
+    .show-amenities-btn:hover,
+    .show-amenities-btn:focus {
+      text-decoration: none;
+      background-color: #f8f9fa;
     }
 
     /* Стиль для кнопки «Назад в каталог». Белый фон, синяя стрелка, увеличенный размер. */
