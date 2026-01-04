@@ -980,8 +980,9 @@
     .amenity-tile {
       background-color: #f8f9fa;
       border: 1px solid #e0e0e0;
-      /* Используем тот же радиус, что и другие кнопки/карточки в интерфейсе */
-      border-radius: 0.5rem;
+      /* Синхронизируем скругление углов с элементами календаря и кнопками,
+         используем 10px (0.625rem) как усреднённое значение. */
+      border-radius: 10px;
       padding: 0.5rem 0.75rem;
       font-size: 0.95rem;
     }
@@ -993,7 +994,8 @@
       background-color: #ffffff;
       color: var(--bs-primary);
       border: 1px solid #e0e0e0;
-      border-radius: 0.5rem;
+      /* Скругляем углы аналогично плиткам и календарю */
+      border-radius: 10px;
       padding: 0.5rem 1rem;
       font-weight: 600;
       font-size: 0.95rem;
