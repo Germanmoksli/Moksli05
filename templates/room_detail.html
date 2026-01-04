@@ -360,25 +360,30 @@
               <div class="modal fade" id="amenitiesModal" tabindex="-1" aria-labelledby="amenitiesModalLabel" aria-hidden="true">
                 <div class="modal-dialog modal-dialog-scrollable">
                   <div class="modal-content">
+                    <!-- Убираем нижнюю кнопку закрытия и делаем скруглённые углы -->
                     <div class="modal-header">
-                      <h5 class="modal-title" id="amenitiesModalLabel">Все удобства</h5>
-                      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                      <h5 class="modal-title fw-bold" id="amenitiesModalLabel">Все удобства</h5>
+                      <!-- Синий крестик для закрытия модального окна -->
+                      <button type="button" class="btn p-0 text-primary" data-bs-dismiss="modal" aria-label="Close">
+                        <i class="bi bi-x-lg" style="font-size: 1.5rem;"></i>
+                      </button>
                     </div>
                     <div class="modal-body">
-                      {% for category in room['filtered_amenity_categories'] %}
-                        <h6 class="fw-bold mt-3">{{ category.name }}</h6>
-                        <ul class="list-unstyled mb-2">
-                          {% for option in category.options %}
+                      <div class="row">
+                        {% for category in room['filtered_amenity_categories'] %}
+                        <div class="col-12 col-md-6 mb-4">
+                          <h6 class="fw-bold fs-5">{{ category.name }}</h6>
+                          <ul class="list-unstyled mb-0">
+                            {% for option in category.options %}
                             <li class="d-flex align-items-center py-1">
                               <i class="bi {{ option.icon }} me-2 text-primary"></i>
                               <span>{{ option.label }}</span>
                             </li>
-                          {% endfor %}
-                        </ul>
-                      {% endfor %}
-                    </div>
-                    <div class="modal-footer">
-                      <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                            {% endfor %}
+                          </ul>
+                        </div>
+                        {% endfor %}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1007,6 +1012,21 @@
     .show-amenities-btn:focus {
       text-decoration: none;
       background-color: #f8f9fa;
+    }
+
+    /* Стили для модального окна удобств.  Окно имеет скруглённые углы,
+       верхняя граница без линии.  Кнопка закрытия оформлена без
+       стандартных рамок и фонов. */
+    #amenitiesModal .modal-content {
+      border-radius: 10px;
+    }
+    #amenitiesModal .modal-header {
+      border-bottom: none;
+    }
+    #amenitiesModal .modal-header .btn {
+      border: none;
+      background: transparent;
+      box-shadow: none;
     }
 
     /* Стиль для кнопки «Назад в каталог». Белый фон, синяя стрелка, увеличенный размер. */

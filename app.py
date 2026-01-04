@@ -8331,9 +8331,9 @@ def view_room_public(room_id: int):
         # and icons.  If new amenities are added to the wizard, this list
         # should be updated accordingly.
         amenities_categories_full = [
-            # Удобства (основные опции)
+            # Основное (основные опции)
             {
-                'name': 'Удобства',
+                'name': 'Основное',
                 'options': [
                     {'value': 'internet', 'label': 'Интернет', 'icon': 'bi-router'},
                     {'value': 'television', 'label': 'Телевизор', 'icon': 'bi-tv'},
@@ -8345,6 +8345,21 @@ def view_room_public(room_id: int):
                     {'value': 'dishwasher', 'label': 'Посудомоечная машина', 'icon': 'bi-droplet-half'},
                     {'value': 'elevator', 'label': 'Лифт', 'icon': 'bi-arrow-up-square'},
                     {'value': 'coffee_machine', 'label': 'Кофеварка', 'icon': 'bi-cup-hot'},
+                ],
+            },
+            # Ванная комната
+            {
+                'name': 'Ванная комната',
+                'options': [
+                    {'value': 'shower', 'label': 'Душевая кабина', 'icon': 'bi-shower'},
+                    {'value': 'bath', 'label': 'Ванна', 'icon': 'bi-droplet'},
+                    {'value': 'jacuzzi', 'label': 'Джакузи', 'icon': 'bi-droplet-half'},
+                    {'value': 'towels', 'label': 'Полотенца', 'icon': 'bi-emoji-smile'},
+                    {'value': 'bathrobe', 'label': 'Халат', 'icon': 'bi-person'},
+                    {'value': 'slippers', 'label': 'Тапочки', 'icon': 'bi-handbag'},
+                    {'value': 'hairdryer', 'label': 'Фен', 'icon': 'bi-wind'},
+                    {'value': 'shampoo', 'label': 'Шампунь', 'icon': 'bi-droplet-half'},
+                    {'value': 'shower_gel', 'label': 'Гель для душа', 'icon': 'bi-droplet-fill'},
                 ],
             },
             # Безопасность
@@ -8361,21 +8376,6 @@ def view_room_public(room_id: int):
                     {'value': 'fire_extinguisher', 'label': 'Огнетушитель', 'icon': 'bi-fire'},
                     {'value': 'first_aid_kit', 'label': 'Аптечка', 'icon': 'bi-plus-square'},
                     {'value': 'gated_courtyard', 'label': 'Закрытый двор', 'icon': 'bi-shield-lock'},
-                ],
-            },
-            # Ванная комната
-            {
-                'name': 'Ванная комната',
-                'options': [
-                    {'value': 'shower', 'label': 'Душевая кабина', 'icon': 'bi-shower'},
-                    {'value': 'bath', 'label': 'Ванна', 'icon': 'bi-droplet'},
-                    {'value': 'jacuzzi', 'label': 'Джакузи', 'icon': 'bi-droplet-half'},
-                    {'value': 'towels', 'label': 'Полотенца', 'icon': 'bi-emoji-smile'},
-                    {'value': 'bathrobe', 'label': 'Халат', 'icon': 'bi-person'},
-                    {'value': 'slippers', 'label': 'Тапочки', 'icon': 'bi-handbag'},
-                    {'value': 'hairdryer', 'label': 'Фен', 'icon': 'bi-wind'},
-                    {'value': 'shampoo', 'label': 'Шампунь', 'icon': 'bi-droplet-half'},
-                    {'value': 'shower_gel', 'label': 'Гель для душа', 'icon': 'bi-droplet-fill'},
                 ],
             },
             # Кому подойдёт квартира
