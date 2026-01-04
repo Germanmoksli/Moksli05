@@ -8398,13 +8398,42 @@ def view_room_public(room_id: int):
             opts = [opt for opt in cat['options'] if opt['value'] in selected_amenities]
             if opts:
                 filtered_categories.append({'name': cat['name'], 'options': opts})
-        # Attach the filtered categories to the request context via the room
-        # dictionary.  While not strictly required, storing this value on the
-        # room object simplifies access in the template and avoids the need to
-        # modify the render_template call signature.  If there are no
-        # selected amenities, the value will be an empty list.
+
+        # Attach the filtered categories to the room dictionary.  This list is
+        # used by the detail template to display grouped amenities.  If no
+        # amenities were selected, this will be an empty list.
         try:
             room['filtered_amenity_categories'] = filtered_categories
+        except Exception:
+            pass
+
+        # Determine the "top" amenities (up to six items).  Flatten the
+        # filtered categories while preserving the original order and take the
+        # first six options.  These items are shown directly on the detail
+        # page without requiring the user to open the modal.  If fewer than
+        # six amenities were selected, all of them will be displayed.
+        top_amenities: list[dict] = []
+        try:
+            flat_opts: list[dict] = []
+            for cat in filtered_categories:
+                for opt in cat['options']:
+                    flat_opts.append(opt)
+            top_amenities = flat_opts[:6]
+            # Compute whether there are more amenities than shown in the top list
+            total_opts_count = 0
+            for cat in filtered_categories:
+                try:
+                    total_opts_count += len(cat.get('options', []))
+                except Exception:
+                    pass
+            more_amenities = total_opts_count > len(top_amenities)
+        except Exception:
+            # In case of any unexpected structure, fall back to an empty list and no more amenities
+            top_amenities = []
+            more_amenities = False
+        try:
+            room['top_amenities'] = top_amenities
+            room['more_amenities'] = more_amenities
         except Exception:
             pass
 

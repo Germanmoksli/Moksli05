@@ -156,18 +156,13 @@
               </div>
               {% if room['description'] %}
               <!-- Контейнер для описания. Используем white-space: pre-wrap, чтобы сохранять
-                   все отступы и переносы строк, как они были введены пользователем.  Ограничиваем
-                   высоту описания, чтобы отображать только первые 10 строк. Остальная часть
-                   скрывается до нажатия кнопки «Показать полностью». -->
+                   все отступы и переносы строк, как они были введены пользователем.  Теперь
+                   описание отображается полностью без скрытия текста и без кнопки
+                   разворачивания. -->
               <div id="descriptionContainer" class="mt-4 mb-0 ms-md-n6 ps-md-4"
-                   style="white-space: pre-wrap; overflow: hidden;">
+                   style="white-space: pre-wrap;">
                 {{ room['description'] }}
               </div>
-              <!-- Кнопка для раскрытия/свертывания описания. Синий цвет и синяя полоска
-                   реализованы через пользовательский класс toggle-description-btn. -->
-              <span id="toggleDescriptionBtn" class="toggle-description-text mt-4 ms-md-n6 ps-md-4">
-                Показать полностью
-              </span>
 
               {# Отображаем удобства под описанием объявления — перемещён ниже блока описания для
                  корректного отображения даже если описание отсутствует. #}
@@ -336,20 +331,53 @@
                  на сервере. Блок выравниваем по левому краю описания, используя
                  те же классы ms-md-n6 и ps-md-4. Удобства отображаются плитками
                  с иконками. #}
-              {% if room.get('filtered_amenity_categories') and room['filtered_amenity_categories']|length > 0 %}
+              {# Выводим удобства. Сначала отображаем до шести основных удобств.  Кнопка
+                 «Показать все удобства» открывает модальное окно с полным списком,
+                 если дополнительных удобств больше, чем шесть. #}
+              {% if room.get('top_amenities') and room['top_amenities']|length > 0 %}
               <div class="mt-4 ms-md-n6 ps-md-4">
                 <h5 class="fw-bold mb-3">Удобства</h5>
-                {% for category in room['filtered_amenity_categories'] %}
-                  <h6 class="fw-bold mt-3 mb-2">{{ category.name }}</h6>
-                  <div class="d-flex flex-wrap gap-2">
-                    {% for option in category.options %}
-                      <div class="amenity-tile d-flex align-items-center">
-                        <i class="bi {{ option.icon }} me-2 text-primary"></i>
-                        <span>{{ option.label }}</span>
-                      </div>
-                    {% endfor %}
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                  {% for amenity in room['top_amenities'] %}
+                    <div class="amenity-tile d-flex align-items-center">
+                      <i class="bi {{ amenity.icon }} me-2 text-primary"></i>
+                      <span>{{ amenity.label }}</span>
+                    </div>
+                  {% endfor %}
+                </div>
+                {% if room.get('more_amenities') %}
+                <button type="button" class="btn btn-link px-0 fw-bold text-primary" data-bs-toggle="modal" data-bs-target="#amenitiesModal">Показать все удобства</button>
+                {% endif %}
+              </div>
+              {% endif %}
+
+              {# Модальное окно со всеми удобствами, сгруппированными по категориям. #}
+              {% if room.get('filtered_amenity_categories') and room['filtered_amenity_categories']|length > 0 %}
+              <div class="modal fade" id="amenitiesModal" tabindex="-1" aria-labelledby="amenitiesModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-scrollable">
+                  <div class="modal-content">
+                    <div class="modal-header">
+                      <h5 class="modal-title" id="amenitiesModalLabel">Все удобства</h5>
+                      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                      {% for category in room['filtered_amenity_categories'] %}
+                        <h6 class="fw-bold mt-3">{{ category.name }}</h6>
+                        <ul class="list-unstyled mb-2">
+                          {% for option in category.options %}
+                            <li class="d-flex align-items-center py-1">
+                              <i class="bi {{ option.icon }} me-2 text-primary"></i>
+                              <span>{{ option.label }}</span>
+                            </li>
+                          {% endfor %}
+                        </ul>
+                      {% endfor %}
+                    </div>
+                    <div class="modal-footer">
+                      <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                    </div>
                   </div>
-                {% endfor %}
+                </div>
               </div>
               {% endif %}
             </div>
@@ -887,52 +915,7 @@
     });
   </script>
 
-  <!-- Скрипт для управления отображением описания объявления. Скрывает
-       строки после первых десяти и добавляет кнопку «Показать полностью» для
-       разворачивания. При повторном нажатии описание сворачивается. -->
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      var descContainer = document.getElementById('descriptionContainer');
-      var toggleBtn = document.getElementById('toggleDescriptionBtn');
-      if (descContainer && toggleBtn) {
-        // Получаем фактическую высоту строки. Если line-height не указана в пикселях,
-        // используем parseFloat для извлечения числового значения.
-        var computedStyle = window.getComputedStyle(descContainer);
-        var lineHeightStr = computedStyle.lineHeight;
-        var lineHeight = parseFloat(lineHeightStr);
-        // Если line-height выражена в 'normal', приблизительно рассчитываем
-        // на основе размера шрифта
-        if (isNaN(lineHeight)) {
-          var fontSize = parseFloat(computedStyle.fontSize);
-          lineHeight = fontSize * 1.2;
-        }
-        var maxLines = 10;
-        var collapsedHeight = lineHeight * maxLines;
-        // Если описание длиннее, чем 10 строк, отображаем кнопку.
-        if (descContainer.scrollHeight > collapsedHeight) {
-          descContainer.style.maxHeight = collapsedHeight + 'px';
-          descContainer.style.overflow = 'hidden';
-          var expanded = false;
-          toggleBtn.addEventListener('click', function() {
-            expanded = !expanded;
-            if (expanded) {
-              // Раскрываем: убираем ограничение высоты
-              descContainer.style.maxHeight = '';
-              toggleBtn.textContent = 'Свернуть';
-            } else {
-              descContainer.style.maxHeight = collapsedHeight + 'px';
-              toggleBtn.textContent = 'Показать полностью';
-              // Скролл к началу описания после сворачивания
-              descContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-          });
-        } else {
-          // Если описание короткое, скрываем кнопку
-          toggleBtn.style.display = 'none';
-        }
-      }
-    });
-  </script>
+  <!-- Скрипт управления описанием больше не требуется, так как описание отображается полностью -->
   <style>
     /* Стили календаря бронирования: сетка, дни недели и подсветка выбранного диапазона. */
     #booking-calendar {
