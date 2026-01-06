@@ -34,7 +34,7 @@
        на странице каталога. Используем скрытые поля для check_in и
        check_out, а также Litepicker для выбора диапазона дат.
      #}
-    {% if session.get('user_role') != 'owner' and session.get('user_role') != 'manager' %}
+    {% if (session.get('user_role') != 'owner' and session.get('user_role') != 'manager') and (request.endpoint == 'public_listings' or request.endpoint == 'view_room_public') %}
     <!-- Добавляем идентификатор nav_filter_form, чтобы стилизовать блок фильтров и добавить тень -->
     <form id="nav_filter_form" method="get" action="{{ url_for('public_listings') }}" class="d-flex flex-wrap align-items-end gap-2 mx-auto" style="max-width: 60%;">
       <!-- Кнопка поиска слева: круглая кнопка с иконкой лупы -->
