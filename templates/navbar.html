@@ -47,7 +47,10 @@
         <input type="text" class="form-control" id="nav_location" name="location" placeholder="Введите город" value="{{ request.args.get('location', '') }}">
       </div>
       <div class="flex-grow-1">
-        <input type="text" class="form-control" id="nav_date_range" name="date_range" placeholder="Выберите даты" autocomplete="off">
+        {# Поле выбора дат. Делаем его только для чтения и открываем модальное окно с нашим календарём при клике. #}
+        <input type="text" class="form-control" id="nav_date_range" name="date_range"
+               placeholder="Выберите даты" autocomplete="off" readonly data-bs-toggle="modal"
+               data-bs-target="#navCalendarModal">
         <input type="hidden" id="nav_check_in" name="check_in" value="{{ request.args.get('check_in', '') }}">
         <input type="hidden" id="nav_check_out" name="check_out" value="{{ request.args.get('check_out', '') }}">
       </div>
@@ -262,3 +265,30 @@
     </div>
   </div>
 </nav>
+
+{# ----------------------------------------------------------------------------- #}
+{# Модальное окно выбора диапазона дат для навигации.                           #}
+{# Ранее мы использовали библиотеку Litepicker, но она перелистывала два месяца   #}
+{# сразу. Для более плавной навигации реализован собственный календарь на основе  #}
+{# скриптов из календаря бронирования. Модальное окно открывается по клику на    #}
+{# поле выбора дат в шапке.                                                     #}
+<div class="modal fade" id="navCalendarModal" tabindex="-1" aria-labelledby="navCalendarModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered nav-calendar-modal">
+    <div class="modal-content p-3" style="border-radius: 20px;">
+      <div class="modal-header border-0">
+        <h5 class="modal-title fw-bold" id="navCalendarModalLabel">Выберите даты</h5>
+        {# Крестик закрытия. Стилизуем в фирменный синий цвет приложения #}
+        <button type="button" class="btn" data-bs-dismiss="modal" aria-label="Close" style="font-size: 1.5rem; line-height: 1; color: var(--bs-primary);">
+          &times;
+        </button>
+      </div>
+      <div class="modal-body">
+        <!-- Здесь будет отрисован календарь -->
+        <div id="nav_calendar_content"></div>
+      </div>
+      <div class="modal-footer border-0">
+        <button type="button" class="btn btn-primary w-100 apply-nav-calendar">Применить</button>
+      </div>
+    </div>
+  </div>
+</div>
