@@ -371,16 +371,16 @@
                     <div class="modal-body">
                       <div class="row">
                         {% for category in room['filtered_amenity_categories'] %}
-                        <div class="col-12 col-md-6 mb-4">
+                        <div class="col-12 col-md-6 amenity-category-block">
                           <h6 class="fw-bold fs-5">{{ category.name }}</h6>
-                          <ul class="list-unstyled mb-0">
+                          <div class="row row-cols-2">
                             {% for option in category.options %}
-                            <li class="d-flex align-items-center py-1">
+                            <div class="col d-flex align-items-center mb-2">
                               <i class="bi {{ option.icon }} me-2 text-primary"></i>
                               <span>{{ option.label }}</span>
-                            </li>
+                            </div>
                             {% endfor %}
-                          </ul>
+                          </div>
                         </div>
                         {% endfor %}
                       </div>
@@ -1027,6 +1027,23 @@
       border: none;
       background: transparent;
       box-shadow: none;
+    }
+
+    /* Разделительные линии между блоками удобств внутри всплывающего окна.
+       Каждый блок отделён серой линией снизу, а блоки в первом
+       столбце также имеют вертикальную линию справа.  Последние два
+       блока (нижний ряд) не имеют нижней линии, чтобы не было
+       лишних разделителей. */
+    #amenitiesModal .amenity-category-block {
+      border-bottom: 1px solid #e0e0e0;
+      padding-bottom: 1rem;
+    }
+    #amenitiesModal .amenity-category-block:nth-child(odd) {
+      border-right: 1px solid #e0e0e0;
+      padding-right: 1rem;
+    }
+    #amenitiesModal .amenity-category-block:nth-last-child(-n+2) {
+      border-bottom: none;
     }
 
     /* Стиль для кнопки «Назад в каталог». Белый фон, синяя стрелка, увеличенный размер. */
