@@ -671,7 +671,7 @@
     <!-- Верхняя навигационная панель. Сохраняем белый фон и нижнюю границу,
          но убираем внешнюю нижнюю рамку, чтобы меню совпадало со стилем
          каталога. -->
-    <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom">
+    <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom d-none">
       <!-- Используем flex‑контейнер, чтобы логотип и гамбургер распределялись по краям.  
            Без d-flex элемент .navbar-toggler с ms-auto оставался рядом с логотипом, 
            потому что контейнер по умолчанию не является flex.  
@@ -974,6 +974,8 @@
         </div>
       </div>
     </nav>
+    {# Используем единое меню из каталога #}
+    {% include 'navbar.html' %}
     {% endif %}
     <!-- Область всплывающих уведомлений -->
     <div class="flash-container container-fluid">
