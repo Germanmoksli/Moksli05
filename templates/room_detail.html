@@ -1029,21 +1029,13 @@
       box-shadow: none;
     }
 
-    /* Разделительные линии между блоками удобств внутри всплывающего окна.
-       Каждый блок отделён серой линией снизу, а блоки в первом
-       столбце также имеют вертикальную линию справа.  Последние два
-       блока (нижний ряд) не имеют нижней линии, чтобы не было
-       лишних разделителей. */
-    #amenitiesModal .amenity-category-block {
+    /* Линия под заголовком каждого блока удобств.  Вместо разделительных
+       линий между блоками используем нижнюю рамку у заголовка,
+       чтобы отделить название блока от списка удобств. */
+    #amenitiesModal .amenity-category-block h6 {
       border-bottom: 1px solid #e0e0e0;
-      padding-bottom: 1rem;
-    }
-    #amenitiesModal .amenity-category-block:nth-child(odd) {
-      border-right: 1px solid #e0e0e0;
-      padding-right: 1rem;
-    }
-    #amenitiesModal .amenity-category-block:nth-last-child(-n+2) {
-      border-bottom: none;
+      padding-bottom: 0.25rem;
+      margin-bottom: 0.5rem;
     }
 
     /* Увеличиваем ширину всплывающего окна удобств и позволяем ему
