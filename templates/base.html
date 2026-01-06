@@ -619,9 +619,10 @@
        * другие панели.
        */
       #mainNavContainer > .navbar-brand {
-        /* Логотип располагается слева. Даем ему первый порядок и небольшой отступ справа. */
+        /* Логотип располагается слева. Даем ему первый порядок и небольшой отступ
+           слева и справа для соответствия меню каталога.  */
         order: 1;
-        margin-left: 0;
+        margin-left: 1rem;
         margin-right: 1rem;
       }
       #mainNavContainer > .navbar-collapse {
@@ -667,7 +668,10 @@
   <body class="bg-light d-flex flex-column min-vh-100">
     <!-- Верхняя навигационная панель. Можно скрыть её, установив hide_nav=True в шаблоне. -->
     {% if not hide_nav %}
-    <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom mb-3">
+    <!-- Верхняя навигационная панель. Сохраняем белый фон и нижнюю границу,
+         но убираем внешнюю нижнюю рамку, чтобы меню совпадало со стилем
+         каталога. -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom">
       <!-- Используем flex‑контейнер, чтобы логотип и гамбургер распределялись по краям.  
            Без d-flex элемент .navbar-toggler с ms-auto оставался рядом с логотипом, 
            потому что контейнер по умолчанию не является flex.  
@@ -679,7 +683,7 @@
         <!-- Заменяем текстовый логотип на изображение + название. Изображение
              берётся из каталога static/uploads/logo_moksli.png. Благодаря flex-контейнеру
              элементы выравниваются по центру по вертикали. -->
-        <a class="navbar-brand fw-bold d-flex align-items-center" href="{{ url_for('public_listings') }}">
+        <a class="navbar-brand fw-bold d-flex align-items-center ms-4" href="{{ url_for('public_listings') }}">
           <!-- Увеличиваем размер логотипа и смещаем его чуть вправо за счёт большего отступа слева.  
                Размер логотипа увеличен до 80px, чтобы он выглядел заметнее. -->
           <img src="{{ url_for('static', filename='uploads/logo_moksli.png') }}" alt="Moksli logo" height="80" class="me-2">
@@ -688,7 +692,7 @@
         </a>
         {% else %}
         <!-- В упрощённой версии приложения логотип ведёт к календарю (для владельцев/менеджеров) либо к каталогу (для гостей). -->
-        <a class="navbar-brand fw-bold d-flex align-items-center" href="{{ url_for('calendar_view') if session.get('user_id') else url_for('public_listings') }}">
+        <a class="navbar-brand fw-bold d-flex align-items-center ms-4" href="{{ url_for('calendar_view') if session.get('user_id') else url_for('public_listings') }}">
           <!-- Аналогично увеличиваем размер логотипа и отступ слева в режиме владельца/менеджера -->
           <img src="{{ url_for('static', filename='uploads/logo_moksli.png') }}" alt="Moksli logo" height="80" class="me-2">
           {# Удаляем текстовое название рядом с логотипом, оставляя только изображение #}
