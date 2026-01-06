@@ -985,9 +985,8 @@
     .amenity-tile {
       background-color: #f8f9fa;
       border: 1px solid #e0e0e0;
-      /* Синхронизируем скругление углов с элементами календаря и кнопками,
-         используем 10px (0.625rem) как усреднённое значение. */
-      border-radius: 10px;
+      /* Синхронизируем скругление углов с карточками каталога – 20px. */
+      border-radius: 20px;
       padding: 0.5rem 0.75rem;
       font-size: 0.95rem;
     }
@@ -999,8 +998,8 @@
       background-color: #ffffff;
       color: var(--bs-primary);
       border: 1px solid #e0e0e0;
-      /* Скругляем углы аналогично плиткам и календарю */
-      border-radius: 10px;
+      /* Скругляем углы аналогично карточкам каталога (20px) */
+      border-radius: 20px;
       padding: 0.5rem 1rem;
       font-weight: 600;
       font-size: 0.95rem;
@@ -1018,7 +1017,8 @@
        верхняя граница без линии.  Кнопка закрытия оформлена без
        стандартных рамок и фонов. */
     #amenitiesModal .modal-content {
-      border-radius: 10px;
+      /* Устанавливаем общий радиус 20px для модального окна */
+      border-radius: 20px;
     }
     #amenitiesModal .modal-header {
       border-bottom: none;
@@ -1079,7 +1079,8 @@
       background-color: #ffffff;
       color: var(--bs-primary);
       border: none;
-      border-radius: 0.5rem;
+      /* Скругляем углы как у карточек каталога – 20px. */
+      border-radius: 20px;
       width: 4rem;
       height: 4rem;
       display: inline-flex;
@@ -1107,7 +1108,8 @@
     }
     #booking-calendar .calendar-date {
       cursor: pointer;
-      border-radius: 10px;
+      /* Используем общий радиус 20px для дат */
+      border-radius: 20px;
     }
     #booking-calendar .calendar-date.disabled {
       color: #ced4da;
@@ -1176,7 +1178,8 @@
       object-position: center center;
       cursor: pointer;
       /* Скругляем углы изображений, чтобы соответствовать другим элементам интерфейса. */
-      border-radius: 1rem;
+      /* Скругляем углы как у карточек (20px) */
+      border-radius: 20px;
     }
 
     /* Маленькие фотографии справа всегда должны иметь одинаковую
