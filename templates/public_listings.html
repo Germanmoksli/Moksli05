@@ -237,6 +237,10 @@
        * как единое целое.
        */
       nav.navbar {
+        /* Закрепляем навигационную панель: при прокрутке меню остаётся вверху. */
+        position: sticky;
+        top: 0;
+        z-index: 1050;
         background-color: #f0f2f5 !important;
       }
 
@@ -390,8 +394,10 @@
 #nav_calendar_content .calendar-day,
 #nav_calendar_content .calendar-date {
   text-align: center;
-  padding: 0.45rem 0;
-  font-size: 0.9rem;
+  /* Подгоняем отступы и размер шрифта под календарь в карточке квартиры,
+     чтобы календарь поиска выглядел идентично модулю бронирования. */
+  padding: 0.4rem 0;
+  font-size: 0.8rem;
   font-weight: 700;
 }
 #nav_calendar_content .calendar-date {
