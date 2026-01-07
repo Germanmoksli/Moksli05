@@ -35,6 +35,22 @@
                отображение миниатюр. -->
           <div class="mb-5">
             <div id="galleryGrid" class="position-relative gallery-grid">
+              <!-- Кнопки "Избранное" и "Поделиться" перенесены в правый верхний угол галереи.
+                   Размещаем их абсолютным позиционированием, чтобы они всегда находились
+                   над фотографиями и выравнивались по правому краю. -->
+              <div class="position-absolute top-0 end-0 d-flex gap-3 m-3">
+                <a href="{{ url_for('toggle_favorite', room_id=room['id']) }}"
+                   class="btn btn-link p-0"
+                   title="Избранное">
+                  <i class="bi bi-heart{% if is_favorite %}-fill{% endif %} fs-4{% if is_favorite %} text-danger{% else %} text-primary{% endif %}"></i>
+                </a>
+                <button type="button"
+                        class="btn btn-link p-0"
+                        id="shareButton"
+                        title="Поделиться">
+                  <i class="bi bi-share fs-4 text-primary"></i>
+                </button>
+              </div>
               <!-- Большая фотография слева -->
               <img id="imgBig" class="gallery-img big" src="{{ photos[0] if photos else '' }}" data-index="0" onclick="openGalleryModal(this.dataset.index)">
               <!-- Четыре маленьких фотографии справа.  Изначально источники задаются в скрипте -->
@@ -60,6 +76,52 @@
             </div>
           </div>
           {% endif %}
+
+          {# Информационный блок со статистикой: отзывы, рейтинг, бронирования.
+             Размещаем его под галереей и выравниваем по правому краю, чтобы совпадать
+             с правым краем галереи. #}
+          {% set reviews_count = room.get('review_count', 0) %}
+          {% set reviews_mod10 = reviews_count % 10 %}
+          {% set reviews_mod100 = reviews_count % 100 %}
+          {% if 11 <= reviews_mod100 <= 14 %}
+            {% set reviews_label = 'отзывов' %}
+          {% elif reviews_mod10 == 1 %}
+            {% set reviews_label = 'отзыв' %}
+          {% elif reviews_mod10 in [2, 3, 4] %}
+            {% set reviews_label = 'отзыва' %}
+          {% else %}
+            {% set reviews_label = 'отзывов' %}
+          {% endif %}
+          {% set rv_tmp = room.get('rating') %}
+          {% if rv_tmp %}
+            {% set rating_value = '%.2f' % rv_tmp %}
+          {% else %}
+            {% set rating_value = '5.00' %}
+          {% endif %}
+          {% set bc = booking_count or 0 %}
+          {% set bc_mod10 = bc % 10 %}
+          {% set bc_mod100 = bc % 100 %}
+          {% if 11 <= bc_mod100 <= 14 %}
+            {% set booking_label = 'бронирований' %}
+          {% elif bc_mod10 == 1 %}
+            {% set booking_label = 'бронирование' %}
+          {% elif bc_mod10 in [2, 3, 4] %}
+            {% set booking_label = 'бронирования' %}
+          {% else %}
+            {% set booking_label = 'бронирований' %}
+          {% endif %}
+          <div class="d-flex justify-content-end align-items-center flex-wrap gap-4 mb-3">
+            <div class="info-stat text-end">
+              {{ reviews_count }} {{ reviews_label }}
+            </div>
+            <div class="info-stat text-end d-flex align-items-center">
+              <i class="bi bi-star-fill text-warning me-1"></i>
+              {{ rating_value }}
+            </div>
+            <div class="info-stat text-end">
+              {{ bc }} {{ booking_label }}
+            </div>
+          </div>
 
           <!-- Блок выбора дат и описание владельца. Календарь занимает левую часть, а текстовое
                описание от владельца располагается справа. -->
@@ -98,62 +160,8 @@
             <!-- Колонка с описанием.  Левый отступ внутри колонки убираем, чтобы описание можно было
                  сдвинуть ближе к календарю посредством отрицательного отступа только для текста. -->
             <div class="col-md-6 mb-3">
-              {#
-                Информационные блоки: количество отзывов, рейтинг и количество бронирований.
-                Эти блоки выводятся в одну строку и выровнены по правому краю.  Каждый блок
-                подчёркивается жирной синей линией.  Текст не имеет отдельной карточки или
-                фона и размещается прямо на основном сером фоне страницы.
-              #}
-              {% set reviews_count = room.get('review_count', 0) %}
-              {% set reviews_mod10 = reviews_count % 10 %}
-              {% set reviews_mod100 = reviews_count % 100 %}
-              {% if 11 <= reviews_mod100 <= 14 %}
-                {% set reviews_label = 'отзывов' %}
-              {% elif reviews_mod10 == 1 %}
-                {% set reviews_label = 'отзыв' %}
-              {% elif reviews_mod10 in [2, 3, 4] %}
-                {% set reviews_label = 'отзыва' %}
-              {% else %}
-                {% set reviews_label = 'отзывов' %}
-              {% endif %}
-              {# Рассчитываем значение рейтинга с двумя знаками после запятой.  Если рейтинг
-                 не определён или равен нулю, используем стандартное значение 5.00. #}
-              {% set rv_tmp = room.get('rating') %}
-              {% if rv_tmp %}
-                {% set rating_value = '%.2f' % rv_tmp %}
-              {% else %}
-                {% set rating_value = '5.00' %}
-              {% endif %}
-              {% set bc = booking_count or 0 %}
-              {% set bc_mod10 = bc % 10 %}
-              {% set bc_mod100 = bc % 100 %}
-              {% if 11 <= bc_mod100 <= 14 %}
-                {% set booking_label = 'бронирований' %}
-              {% elif bc_mod10 == 1 %}
-                {% set booking_label = 'бронирование' %}
-              {% elif bc_mod10 in [2, 3, 4] %}
-                {% set booking_label = 'бронирования' %}
-              {% else %}
-                {% set booking_label = 'бронирований' %}
-              {% endif %}
-              <div class="d-flex justify-content-end align-items-center flex-wrap gap-4 mb-3">
-                <div class="info-stat text-end">
-                  {{ reviews_count }} {{ reviews_label }}
-                </div>
-                <div class="info-stat text-end d-flex align-items-center">
-                  <i class="bi bi-star-fill text-warning me-1"></i>
-                  {{ rating_value }}
-                </div>
-                <div class="info-stat text-end">
-                  {{ bc }} {{ booking_label }}
-                </div>
-                <a href="{{ url_for('toggle_favorite', room_id=room['id']) }}" class="btn btn-link p-0 me-3" title="Избранное">
-                  <i class="bi bi-heart{% if is_favorite %}-fill{% endif %} fs-4{% if is_favorite %} text-danger{% else %} text-primary{% endif %}"></i>
-                </a>
-                <button type="button" class="btn btn-link p-0" id="shareButton" title="Поделиться">
-                  <i class="bi bi-share fs-4 text-primary"></i>
-                </button>
-              </div>
+              {# Блок статистики и кнопки "Избранное/Поделиться" удалён из колонки описания.
+                 Он перемещён выше, чтобы выравниваться по правому краю галереи. #}
               {% if room['description'] %}
               <!-- Контейнер для описания. Используем white-space: pre-wrap, чтобы сохранять
                    все отступы и переносы строк, как они были введены пользователем.  Теперь
@@ -937,6 +945,11 @@
       /* Уменьшаем ширину карточки до 80% колонки, чтобы сделать календарь
          и все его элементы более компактными */
       width: 80%;
+      /* Закрепляем карточку с календарём. Как только пользователь долистает её
+         до верхней части экрана, она останется на месте. Отступ top подобран
+         так, чтобы карточка располагалась под фиксированным меню навигации. */
+      position: sticky;
+      top: 100px;
     }
     #booking-calendar .calendar-nav {
       display: flex;
