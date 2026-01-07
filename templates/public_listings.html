@@ -9,7 +9,7 @@
     <!-- Иконки Bootstrap Icons для пунктов выпадающего меню -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <!-- Стили для Litepicker (календарь выбора диапазона дат) -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/litepicker/2.0.12/css/litepicker.min.css" rel="stylesheet">
+    <!-- <link href="https://cdnjs.cloudflare.com/ajax/libs/litepicker/2.0.12/css/litepicker.min.css" rel="stylesheet"> (disabled) -->
     <!-- Подключаем шрифт Montserrat (Regular 400) для каталога -->
     <!-- Подключаем Montserrat сразу с несколькими толщинами (400, 600, 700, 800, 900),
          чтобы использовать более «жирные» варианты для цены и заголовков. -->
@@ -355,7 +355,65 @@
       body {
         font-family: 'Montserrat', sans-serif !important;
       }
-    </style>
+    
+/* ---------------------------------------------------------------------
+   Стили для модального календаря выбора диапазона дат, совпадающего
+   по дизайну с календарём на странице полной информации об объявлении.
+   Этот календарь будет использоваться в каталоге вместо Litepicker.
+--------------------------------------------------------------------- */
+.nav-calendar-modal .modal-dialog {
+  max-width: 1100px;
+  width: 90%;
+}
+.nav-calendar-modal .modal-body {
+  max-height: 70vh;
+  overflow-y: auto;
+}
+#navCalendarModal .modal-header .btn {
+  background: none;
+  border: none;
+  box-shadow: none;
+}
+#navCalendarModal .modal-header .btn:hover {
+  background: none;
+}
+#nav_calendar_content .calendar-title {
+  font-weight: 600;
+  font-size: 1rem;
+  text-align: center;
+}
+#nav_calendar_content .calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.25rem;
+}
+#nav_calendar_content .calendar-day,
+#nav_calendar_content .calendar-date {
+  text-align: center;
+  padding: 0.45rem 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+#nav_calendar_content .calendar-date {
+  cursor: pointer;
+  border-radius: 20px;
+}
+#nav_calendar_content .calendar-date.disabled {
+  color: #ced4da;
+  pointer-events: none;
+}
+#nav_calendar_content .calendar-date.selected {
+  background-color: var(--bs-primary);
+  color: #ffffff;
+}
+#nav_calendar_content .calendar-date.in-range {
+  background-color: rgba(var(--bs-primary-rgb), 0.1);
+  color: var(--bs-primary);
+}
+#nav_calendar_content .nav-calendar-month {
+  flex: 1 1 0;
+}
+</style>
   </head>
   {#
     Задаём белый фон всему каталогу, чтобы фон страницы совпадал
@@ -412,7 +470,7 @@
             <input type="text" class="form-control" id="nav_location" name="location" placeholder="Введите город" value="{{ request.args.get('location', '') }}">
           </div>
           <div class="flex-grow-1">
-            <input type="text" class="form-control" id="nav_date_range" name="date_range" placeholder="Выберите даты" autocomplete="off">
+            <input type="text" class="form-control" id="nav_date_range" name="date_range" placeholder="Выберите даты" autocomplete="off" readonly data-bs-toggle="modal" data-bs-target="#navCalendarModal">
             <input type="hidden" id="nav_check_in" name="check_in" value="{{ request.args.get('check_in', '') }}">
             <input type="hidden" id="nav_check_out" name="check_out" value="{{ request.args.get('check_out', '') }}">
           </div>
@@ -627,7 +685,27 @@
         </div>
       </div>
     </nav>
-    <div id="listings-container" class="container mt-4">
+    
+<!-- Модальное окно для выбора диапазона дат в каталоге -->
+<div class="modal fade" id="navCalendarModal" tabindex="-1" aria-labelledby="navCalendarModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered nav-calendar-modal">
+    <div class="modal-content p-3" style="border-radius: 20px;">
+      <div class="modal-header border-0">
+        <h5 class="modal-title fw-bold" id="navCalendarModalLabel">Выберите даты</h5>
+        <button type="button" class="btn" data-bs-dismiss="modal" aria-label="Close" style="font-size: 1.5rem; line-height: 1; color: var(--bs-primary);">
+          &times;
+        </button>
+      </div>
+      <div class="modal-body">
+        <div id="nav_calendar_content"></div>
+      </div>
+      <div class="modal-footer border-0">
+        <button type="button" class="btn btn-primary w-100 apply-nav-calendar">Применить</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="listings-container" class="container mt-4">
       <!-- Поисковая форма в стиле Airbnb. Показываем её, если пользователь
            не авторизован или находится не в режиме гостя (например, владелец/менеджер).
            Для авторизованных гостей форма отображается в шапке навигации. -->
@@ -743,107 +821,190 @@
     <!-- Подключаем Bootstrap Bundle JS для поддержки выпадающего меню -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Подключаем Litepicker для выбора диапазона дат -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/litepicker/2.0.12/litepicker.min.js"></script>
-    <script>
-      document.addEventListener('DOMContentLoaded', function() {
-        var dateInput = document.getElementById('date_range');
-        if (!dateInput) return;
-        var checkInInput = document.getElementById('check_in');
-        var checkOutInput = document.getElementById('check_out');
-        // Инициализация Litepicker. singleMode: false — позволяет выбирать диапазон.
-        var picker = new Litepicker({
-          element: dateInput,
-          singleMode: false,
-          format: 'YYYY-MM-DD',
-          lang: 'ru',
-          autoApply: true,
-          dropdowns: {
-            minYear: 2020,
-            maxYear: new Date().getFullYear() + 2,
-            months: true,
-            years: true
-          }
-        });
-        // Когда пользователь выбирает диапазон, обновляем скрытые поля.
-        picker.on('selected', function(date1, date2) {
-          if (date1) {
-            checkInInput.value = date1.format('YYYY-MM-DD');
-          } else {
-            checkInInput.value = '';
-          }
-          if (date2) {
-            checkOutInput.value = date2.format('YYYY-MM-DD');
-          } else {
-            checkOutInput.value = '';
-          }
-        });
-        // Если в параметрах запроса были даты, устанавливаем их в календарь.
-        var ciVal = checkInInput.value;
-        var coVal = checkOutInput.value;
-        if (ciVal && coVal) {
-          picker.setDateRange(ciVal, coVal);
-        }
-      });
-    </script>
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/litepicker/2.0.12/litepicker.min.js"></script> (disabled) -->
+    
     <!-- Инициализация Litepicker для полей даты в навигации -->
-    <script>
-      document.addEventListener('DOMContentLoaded', function() {
-        var navDateInput = document.getElementById('nav_date_range');
-        if (navDateInput) {
-          var navCheckIn = document.getElementById('nav_check_in');
-          var navCheckOut = document.getElementById('nav_check_out');
-          // Инициализируем Litepicker для фильтра "Когда" в навигационном меню.
-          // Включаем отображение двух месяцев в двух колонках, чтобы
-          // пользователи могли видеть больше дат одновременно. Это повышает
-          // удобство выбора диапазона.
-          var pickerNav = new Litepicker({
-            element: navDateInput,
-            singleMode: false,
-            allowRepick: true,
-            format: 'DD.MM.YYYY',
-            lang: 'ru-RU',
-            autoApply: true,
-            showWeekNumbers: false,
-            tooltipText: { one: 'ночь', other: 'ночей' },
-            tooltipNumber: (totalDays) => totalDays,
-            numberOfMonths: 2,
-            numberOfColumns: 2,
-            // Убираем выпадающие списки выбора месяца и года. Вместо них над
-            // календарём будут отображаться надписи вроде "Ноябрь 2025" и
-            // "Декабрь 2025". Для навигации остаются стрелки. Ограничиваем
-            // диапазон годов через minYear и maxYear.
-            dropdowns: {
-              minYear: new Date().getFullYear(),
-              maxYear: new Date().getFullYear() + 1,
-              months: false,
-              years: false
-            },
-            setup: (picker) => {
-              picker.on('selected', (date1, date2) => {
-                if (navCheckIn && navCheckOut) {
-                  navCheckIn.value = date1 ? date1.format('YYYY-MM-DD') : '';
-                  navCheckOut.value = date2 ? date2.format('YYYY-MM-DD') : '';
-                  navDateInput.value = date1 && date2 ? `${date1.format('DD.MM.YYYY')} - ${date2.format('DD.MM.YYYY')}` : '';
-                }
-              });
-            }
-          });
-          var initStart = navCheckIn && navCheckIn.value ? new Date(navCheckIn.value) : null;
-          var initEnd = navCheckOut && navCheckOut.value ? new Date(navCheckOut.value) : null;
-          function formatDateNav(d) {
-            var day = ('0' + d.getDate()).slice(-2);
-            var month = ('0' + (d.getMonth() + 1)).slice(-2);
-            var year = d.getFullYear();
-            return day + '.' + month + '.' + year;
-          }
-          if (initStart && initEnd) {
-            pickerNav.setDateRange(initStart, initEnd);
-            navDateInput.value = `${formatDateNav(initStart)} - ${formatDateNav(initEnd)}`;
-          }
+    
+    
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    var navModalEl = document.getElementById('navCalendarModal');
+    if (!navModalEl) return;
+
+    var navDateInput = document.getElementById('nav_date_range');
+    var navCheckIn = document.getElementById('nav_check_in');
+    var navCheckOut = document.getElementById('nav_check_out');
+    var navCalBody = document.getElementById('nav_calendar_content');
+    var applyBtn = navModalEl.querySelector('.apply-nav-calendar');
+    var months = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+    var days = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+    var currentMonth;
+    var currentYear;
+    var startDate = null;
+    var endDate = null;
+    function isSameDate(a, b) {
+      return a && b && a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+    }
+    function formatDisplay(date) {
+      var d = ('0' + date.getDate()).slice(-2);
+      var m = ('0' + (date.getMonth() + 1)).slice(-2);
+      var y = date.getFullYear();
+      return d + '.' + m + '.' + y;
+    }
+    function formatValue(date) {
+      var d = ('0' + date.getDate()).slice(-2);
+      var m = ('0' + (date.getMonth() + 1)).slice(-2);
+      var y = date.getFullYear();
+      return y + '-' + m + '-' + d;
+    }
+    function updateDisplayFields() {
+      if (startDate && endDate) {
+        if (navCheckIn) navCheckIn.value = formatValue(startDate);
+        if (navCheckOut) navCheckOut.value = formatValue(endDate);
+        if (navDateInput) navDateInput.value = formatDisplay(startDate) + ' - ' + formatDisplay(endDate);
+      } else if (startDate && !endDate) {
+        if (navDateInput) navDateInput.value = formatDisplay(startDate) + ' - ';
+      } else {
+        if (navDateInput) navDateInput.value = '';
+        if (navCheckIn) navCheckIn.value = '';
+        if (navCheckOut) navCheckOut.value = '';
+      }
+    }
+    function onDateClick(date) {
+      if (!startDate || (startDate && endDate)) {
+        startDate = date;
+        endDate = null;
+      } else {
+        if (date < startDate) {
+          startDate = date;
+          endDate = null;
+        } else if (isSameDate(date, startDate)) {
+          startDate = null;
+          endDate = null;
+        } else {
+          endDate = date;
         }
+      }
+      updateDisplayFields();
+      renderCalendars();
+    }
+    function renderMonthTo(container, month, year) {
+      container.innerHTML = '';
+      var grid = document.createElement('div');
+      grid.className = 'calendar-grid';
+      days.forEach(function(label) {
+        var dayCell = document.createElement('div');
+        dayCell.className = 'calendar-day fw-bold';
+        dayCell.innerText = label;
+        grid.appendChild(dayCell);
       });
-    </script>
-    <!-- Подключение Google Maps Places API для автодополнения городов -->
+      var firstDate = new Date(year, month, 1);
+      var startIndex = (firstDate.getDay() + 6) % 7;
+      var lastDate = new Date(year, month + 1, 0).getDate();
+      for (var i = 0; i < startIndex; i++) {
+        var empty = document.createElement('div');
+        empty.className = 'calendar-date disabled';
+        grid.appendChild(empty);
+      }
+      for (var d = 1; d <= lastDate; d++) {
+        (function(day) {
+          var cellDate = new Date(year, month, day);
+          var cell = document.createElement('div');
+          cell.className = 'calendar-date';
+          cell.innerText = day;
+          if (startDate && isSameDate(cellDate, startDate)) {
+            cell.classList.add('selected');
+          }
+          if (startDate && endDate && cellDate > startDate && cellDate < endDate) {
+            cell.classList.add('in-range');
+          }
+          if (startDate && endDate && isSameDate(cellDate, endDate)) {
+            cell.classList.add('selected');
+          }
+          cell.addEventListener('click', function() {
+            onDateClick(cellDate);
+          });
+          grid.appendChild(cell);
+        })(d);
+      }
+      container.appendChild(grid);
+    }
+    function renderCalendars() {
+      if (!navCalBody) return;
+      navCalBody.innerHTML = '';
+      var navRow = document.createElement('div');
+      navRow.className = 'd-flex justify-content-between align-items-center mb-3';
+      var prevBtn = document.createElement('button');
+      prevBtn.type = 'button';
+      prevBtn.className = 'btn btn-light btn-sm rounded-circle d-flex align-items-center justify-content-center';
+      prevBtn.innerHTML = '<i class="bi bi-chevron-left fw-bold"></i>';
+      prevBtn.onclick = function() {
+        if (currentMonth === 0) { currentMonth = 11; currentYear--; } else { currentMonth--; }
+        renderCalendars();
+      };
+      var nextBtn = document.createElement('button');
+      nextBtn.type = 'button';
+      nextBtn.className = 'btn btn-light btn-sm rounded-circle d-flex align-items-center justify-content-center';
+      nextBtn.innerHTML = '<i class="bi bi-chevron-right fw-bold"></i>';
+      nextBtn.onclick = function() {
+        if (currentMonth === 11) { currentMonth = 0; currentYear++; } else { currentMonth++; }
+        renderCalendars();
+      };
+      var titleWrapper = document.createElement('div');
+      titleWrapper.className = 'd-flex flex-column flex-md-row justify-content-center align-items-center flex-grow-1 gap-4';
+      var thisTitle = document.createElement('div');
+      thisTitle.className = 'calendar-title';
+      thisTitle.innerText = months[currentMonth] + ' ' + currentYear;
+      var nextMonth = (currentMonth + 1) % 12;
+      var nextYearVal = currentYear + (currentMonth === 11 ? 1 : 0);
+      var nextTitle = document.createElement('div');
+      nextTitle.className = 'calendar-title';
+      nextTitle.innerText = months[nextMonth] + ' ' + nextYearVal;
+      titleWrapper.appendChild(thisTitle);
+      titleWrapper.appendChild(nextTitle);
+      navRow.appendChild(prevBtn);
+      navRow.appendChild(titleWrapper);
+      navRow.appendChild(nextBtn);
+      navCalBody.appendChild(navRow);
+      var monthsContainer = document.createElement('div');
+      monthsContainer.className = 'd-flex justify-content-center gap-4';
+      var leftMonthEl = document.createElement('div');
+      leftMonthEl.className = 'nav-calendar-month';
+      var rightMonthEl = document.createElement('div');
+      rightMonthEl.className = 'nav-calendar-month';
+      renderMonthTo(leftMonthEl, currentMonth, currentYear);
+      renderMonthTo(rightMonthEl, nextMonth, nextYearVal);
+      monthsContainer.appendChild(leftMonthEl);
+      monthsContainer.appendChild(rightMonthEl);
+      navCalBody.appendChild(monthsContainer);
+    }
+    navModalEl.addEventListener('show.bs.modal', function() {
+      if (navCheckIn && navCheckIn.value) {
+        startDate = new Date(navCheckIn.value + 'T00:00:00');
+      } else {
+        startDate = null;
+      }
+      if (navCheckOut && navCheckOut.value) {
+        endDate = new Date(navCheckOut.value + 'T00:00:00');
+      } else {
+        endDate = null;
+      }
+      var refDate = startDate || new Date();
+      currentMonth = refDate.getMonth();
+      currentYear = refDate.getFullYear();
+      renderCalendars();
+      updateDisplayFields();
+    });
+    if (applyBtn) {
+      applyBtn.addEventListener('click', function() {
+        updateDisplayFields();
+        var modalInstance = bootstrap.Modal.getOrCreateInstance(navModalEl);
+        modalInstance.hide();
+      });
+    }
+  });
+</script>
+<!-- Подключение Google Maps Places API для автодополнения городов -->
     {#
       Используем переменную google_maps_api_key, предоставляемую через
       context_processor.  Если ключ определён, подключаем библиотеку
