@@ -25,6 +25,20 @@
             <h1 class="fw-bold fs-2 mb-0">{{ room['room_number'] }}</h1>
           </div>
           {% if photos and photos|length > 0 %}
+          <!-- Кнопки «Избранное» и «Поделиться», размещённые над галереей -->
+          <div class="d-flex justify-content-end gap-3 mb-2">
+            <a href="{{ url_for('toggle_favorite', room_id=room['id']) }}"
+               class="btn btn-link p-0"
+               title="Избранное">
+              <i class="bi bi-heart{% if is_favorite %}-fill{% endif %} fs-4{% if is_favorite %} text-danger{% else %} text-primary{% endif %}"></i>
+            </a>
+            <button type="button"
+                    class="btn btn-link p-0"
+                    id="shareButton"
+                    title="Поделиться">
+              <i class="bi bi-share fs-4 text-primary"></i>
+            </button>
+          </div>
           <!-- Галерея: новая сетка из пяти фотографий.  Первая фотография занимает левую половину галереи,
                а четыре другие отображаются в виде двух столбцов по две фотографии справа.  В правом
                верхнем углу размещена кнопка увеличения. -->
@@ -38,19 +52,7 @@
               <!-- Кнопки "Избранное" и "Поделиться" перенесены в правый верхний угол галереи.
                    Размещаем их абсолютным позиционированием, чтобы они всегда находились
                    над фотографиями и выравнивались по правому краю. -->
-              <div class="position-absolute top-0 end-0 d-flex gap-3 m-3">
-                <a href="{{ url_for('toggle_favorite', room_id=room['id']) }}"
-                   class="btn btn-link p-0"
-                   title="Избранное">
-                  <i class="bi bi-heart{% if is_favorite %}-fill{% endif %} fs-4{% if is_favorite %} text-danger{% else %} text-primary{% endif %}"></i>
-                </a>
-                <button type="button"
-                        class="btn btn-link p-0"
-                        id="shareButton"
-                        title="Поделиться">
-                  <i class="bi bi-share fs-4 text-primary"></i>
-                </button>
-              </div>
+              <!-- Кнопки «Избранное» и «Поделиться» перенесены над галереей -->
               <!-- Большая фотография слева -->
               <img id="imgBig" class="gallery-img big" src="{{ photos[0] if photos else '' }}" data-index="0" onclick="openGalleryModal(this.dataset.index)">
               <!-- Четыре маленьких фотографии справа.  Изначально источники задаются в скрипте -->
@@ -167,9 +169,9 @@
                    все отступы и переносы строк, как они были введены пользователем.  Теперь
                    описание отображается полностью без скрытия текста и без кнопки
                    разворачивания. -->
-              <div id="descriptionContainer" class="mt-4 mb-0 ms-md-n6 ps-md-4"
+              <div id="descriptionContainer" class="mt-4 mb-0"
                    style="white-space: pre-wrap;">
-                {{ room['description'] }}
+                {{ room['description']|trim }}
               </div>
 
               {# Отображаем удобства под описанием объявления — перемещён ниже блока описания для
@@ -949,7 +951,17 @@
          до верхней части экрана, она останется на месте. Отступ top подобран
          так, чтобы карточка располагалась под фиксированным меню навигации. */
       position: sticky;
-      top: 100px;
+      /* Увеличиваем отступ сверху, чтобы календарь не прятался под фиксированным
+         верхним меню навигации при прокрутке страницы.  Высота шапки около 80px,
+         поэтому выбираем значение с запасом. */
+      top: 120px;
+    }
+
+    /* Скрываем кнопки избранного/поделиться внутри галереи, так как они
+       перенесены выше галереи.  Контейнер остаётся в разметке, но теперь
+       невидим — новые кнопки расположены перед галереей. */
+    .gallery-grid .position-absolute.top-0.end-0.d-flex {
+      display: none !important;
     }
     #booking-calendar .calendar-nav {
       display: flex;
