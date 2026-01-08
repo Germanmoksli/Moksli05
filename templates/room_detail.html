@@ -23,22 +23,23 @@
               <i class="bi bi-arrow-left"></i>
             </a>
             <h1 class="fw-bold fs-2 mb-0">{{ room['room_number'] }}</h1>
+            <!-- Кнопки «Избранное» и «Поделиться» располагаются на одной строке с заголовком объявления -->
+            <div class="position-absolute end-0 top-50 translate-middle-y d-flex gap-3">
+              <a href="{{ url_for('toggle_favorite', room_id=room['id']) }}"
+                 class="btn btn-link p-0"
+                 title="Избранное">
+                <i class="bi bi-heart{% if is_favorite %}-fill{% endif %} fs-4{% if is_favorite %} text-danger{% else %} text-primary{% endif %}"></i>
+              </a>
+              <button type="button"
+                      class="btn btn-link p-0"
+                      id="shareButton"
+                      title="Поделиться">
+                <i class="bi bi-share fs-4 text-primary"></i>
+              </button>
+            </div>
           </div>
           {% if photos and photos|length > 0 %}
-          <!-- Кнопки «Избранное» и «Поделиться», размещённые над галереей -->
-          <div class="d-flex justify-content-end gap-3 mb-2">
-            <a href="{{ url_for('toggle_favorite', room_id=room['id']) }}"
-               class="btn btn-link p-0"
-               title="Избранное">
-              <i class="bi bi-heart{% if is_favorite %}-fill{% endif %} fs-4{% if is_favorite %} text-danger{% else %} text-primary{% endif %}"></i>
-            </a>
-            <button type="button"
-                    class="btn btn-link p-0"
-                    id="shareButton"
-                    title="Поделиться">
-              <i class="bi bi-share fs-4 text-primary"></i>
-            </button>
-          </div>
+          <!-- Галерея: кнопки «Избранное» и «Поделиться» теперь располагаются на той же строке, что и заголовок -->
           <!-- Галерея: новая сетка из пяти фотографий.  Первая фотография занимает левую половину галереи,
                а четыре другие отображаются в виде двух столбцов по две фотографии справа.  В правом
                верхнем углу размещена кнопка увеличения. -->
@@ -133,7 +134,7 @@
           <!-- Увеличиваем отступ сверху, чтобы создать пространство между галереей и календарём/инфо-блоками -->
           <div class="row mb-3 mt-5 gx-0">
             <!-- Календарь бронирования -->
-            <div class="col-md-6 mb-3 align-self-start">
+            <div class="col-md-6 mb-3 align-self-start" id="calendarColumn">
               <div class="card shadow-sm" id="calendar-card">
                 <div class="card-body">
                   <!-- Контейнер для генерации календаря -->
@@ -947,14 +948,6 @@
       /* Уменьшаем ширину карточки до 80% колонки, чтобы сделать календарь
          и все его элементы более компактными */
       width: 80%;
-      /* Закрепляем карточку с календарём. Как только пользователь долистает её
-         до верхней части экрана, она останется на месте. Отступ top подобран
-         так, чтобы карточка располагалась под фиксированным меню навигации. */
-      position: sticky;
-      /* Увеличиваем отступ сверху, чтобы календарь не прятался под фиксированным
-         верхним меню навигации при прокрутке страницы.  Высота шапки около 80px,
-         поэтому выбираем значение с запасом. */
-      top: 120px;
     }
 
     /* Скрываем кнопки избранного/поделиться внутри галереи, так как они
@@ -962,6 +955,14 @@
        невидим — новые кнопки расположены перед галереей. */
     .gallery-grid .position-absolute.top-0.end-0.d-flex {
       display: none !important;
+    }
+
+    /* Закрепляем колонку с календарём под фиксированным меню навигации.  Теперь при
+       прокрутке страницы календарь будет оставаться на месте под шапкой. */
+    #calendarColumn {
+      position: sticky;
+      top: 120px;
+      z-index: 10;
     }
     #booking-calendar .calendar-nav {
       display: flex;
