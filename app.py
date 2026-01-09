@@ -7996,6 +7996,15 @@ def public_listings():
     to a lightweight template designed for unauthenticated users.
     """
     conn = get_db_connection()
+    # If the current user has an original owner role and has not yet toggled
+    # into guest mode, default them to guest mode when viewing the catalogue.
+    # This ensures that owners see the public listings as a guest by default.
+    try:
+        if session.get('original_user_role') == 'owner' and session.get('user_role') == 'owner':
+            session['user_role'] = 'guest'
+    except Exception:
+        # Ignore errors if the session is unavailable or immutable
+        pass
     # Ensure the rooms table has all of the extended columns before querying.  If
     # the schema upgrade fails we ignore the error so that selection still
     # proceeds.  Without this call, newly added fields (e.g. num_rooms,
@@ -10147,98 +10156,103 @@ def room_preview():
     # failures do not take down the page and allows us to diagnose issues
     # separately via server logs.
     try:
-        # Build a temporary room object.  Missing values are set to ``None`` or
-    # sensible defaults.  Use id = -1 to denote a transient object.
-    room = {}
-    room['id'] = -1
-    room['room_number'] = session.get('new_listing_property_name') or 'Новое объявление'
-    room['housing_type'] = session.get('new_listing_property_type') or None
-    # Main description from step 5 (supports older key names)
-    description = session.get('new_listing_main_description') or session.get('new_listing_description') or ''
-    room['description'] = description
-    # Amenities: join list into a comma-separated string
-    amenities_list = session.get('new_listing_amenities') or []
-    try:
-        room['amenities'] = ','.join(amenities_list) if amenities_list else ''
-    except Exception:
-        room['amenities'] = ''
-    # Check‑in/out times
-    room['checkin_time'] = session.get('new_listing_check_in_time') or None
-    room['checkout_time'] = session.get('new_listing_check_out_time') or None
-    # Smoking and pets policies (for preview we compute both raw and boolean forms)
-    smoking = session.get('new_listing_smoking')
-    pets = session.get('new_listing_pets')
-    # Original text policy string
-    room['smoking_policy'] = smoking if smoking else None
-    room['allow_pets'] = True if pets == 'yes' else False if pets == 'no' else None
-    # Boolean flags expected by the detail template
-    room['smoking_allowed'] = True if smoking == 'yes' else False if smoking == 'no' else None
-    room['pets_allowed'] = True if pets == 'yes' else False if pets == 'no' else None
-    # Floor and area information
-    def _to_int(value):
+        # Build a temporary room object. Missing values are set to ``None`` or sensible defaults.
+        # Use id = -1 to denote a transient object.
+        room = {}
+        room['id'] = -1
+        room['room_number'] = session.get('new_listing_property_name') or 'Новое объявление'
+        room['housing_type'] = session.get('new_listing_property_type') or None
+        # Main description from step 5 (supports older key names)
+        description = session.get('new_listing_main_description') or session.get('new_listing_description') or ''
+        room['description'] = description
+        # Amenities: join list into a comma‑separated string
+        amenities_list = session.get('new_listing_amenities') or []
         try:
-            return int(value) if value and str(value).strip() else None
+            room['amenities'] = ','.join(amenities_list) if amenities_list else ''
         except Exception:
-            return None
-    def _to_float(value):
-        try:
-            return float(value) if value and str(value).strip() else None
-        except Exception:
-            return None
-    room['floor'] = _to_int(session.get('new_listing_floor'))
-    room['floors_total'] = None
-    room['area_total'] = _to_float(session.get('new_listing_total_area'))
-    room['area_kitchen'] = _to_float(session.get('new_listing_kitchen_area'))
-    room['living_area'] = _to_float(session.get('new_listing_living_area'))
-    room['condition'] = session.get('new_listing_renovation') or None
-    # Elevator: convert yes/no string to boolean
-    elev = session.get('new_listing_elevator')
-    room['elevator'] = True if elev == 'yes' else False if elev == 'no' else None
-    # Room and guest counts
-    room['num_rooms'] = _to_int(session.get('new_listing_rooms_count'))
-    room['max_guests'] = _to_int(session.get('new_listing_guests_count'))
-    room['beds_count'] = _to_int(session.get('new_listing_beds_count'))
-    room['sofas_count'] = _to_int(session.get('new_listing_sofas_count'))
-    # Pricing
-    room['price_per_night'] = _to_float(session.get('new_listing_base_price')) or 0
-    room['weekend_markup'] = _to_int(session.get('new_listing_weekend_markup')) or 0
-    # Discounts: ensure a list of integers.  The session may contain a list
-    # (e.g. [5, 10]) or a string (e.g. "5,10").  Convert accordingly.
-    discounts_raw = session.get('new_listing_discounts')
-    if isinstance(discounts_raw, list):
-        room['discounts'] = [int(x) for x in discounts_raw if str(x).isdigit()]
-    else:
-        try:
-            room['discounts'] = [int(part.strip()) for part in str(discounts_raw).split(',') if part.strip().isdigit()]
-        except Exception:
-            room['discounts'] = []
-    # Address
-    room['country'] = session.get('new_listing_country') or None
-    room['city'] = session.get('new_listing_city') or None
-    room['street'] = session.get('new_listing_street') or None
-    room['house_number'] = session.get('new_listing_house_number') or None
-    # Owner contact and id
-    room['owner_messenger'] = None
-    room['owner_id'] = session.get('user_id')
-    room['owner_name'] = None
-    room['owner_phone'] = None
-    room['owner_email'] = None
-    # Rating and review count for preview
-    room['rating'] = None
-    room['review_count'] = 0
-    # Photos: convert saved filenames into accessible URLs
-    filenames = session.get('new_listing_photos') or []
-    photos = []
-    for fname in filenames:
-        try:
-            photos.append(url_for('uploaded_room_image', filename=fname))
-        except Exception:
-            continue
+            room['amenities'] = ''
+        # Check‑in/out times
+        room['checkin_time'] = session.get('new_listing_check_in_time') or None
+        room['checkout_time'] = session.get('new_listing_check_out_time') or None
+        # Smoking and pets policies (for preview we compute both raw and boolean forms)
+        smoking = session.get('new_listing_smoking')
+        pets = session.get('new_listing_pets')
+        # Original text policy string
+        room['smoking_policy'] = smoking if smoking else None
+        room['allow_pets'] = True if pets == 'yes' else False if pets == 'no' else None
+        # Boolean flags expected by the detail template
+        room['smoking_allowed'] = True if smoking == 'yes' else False if smoking == 'no' else None
+        room['pets_allowed'] = True if pets == 'yes' else False if pets == 'no' else None
+        # Helper functions to convert to int/float
+        def _to_int(value):
+            try:
+                return int(value) if value and str(value).strip() else None
+            except Exception:
+                return None
+        def _to_float(value):
+            try:
+                return float(value) if value and str(value).strip() else None
+            except Exception:
+                return None
+        # Floor and area information
+        room['floor'] = _to_int(session.get('new_listing_floor'))
+        room['floors_total'] = None
+        room['area_total'] = _to_float(session.get('new_listing_total_area'))
+        room['area_kitchen'] = _to_float(session.get('new_listing_kitchen_area'))
+        room['living_area'] = _to_float(session.get('new_listing_living_area'))
+        room['condition'] = session.get('new_listing_renovation') or None
+        # Elevator: convert yes/no string to boolean
+        elev = session.get('new_listing_elevator')
+        room['elevator'] = True if elev == 'yes' else False if elev == 'no' else None
+        # Room and guest counts
+        room['num_rooms'] = _to_int(session.get('new_listing_rooms_count'))
+        room['max_guests'] = _to_int(session.get('new_listing_guests_count'))
+        room['beds_count'] = _to_int(session.get('new_listing_beds_count'))
+        room['sofas_count'] = _to_int(session.get('new_listing_sofas_count'))
+        # Pricing
+        room['price_per_night'] = _to_float(session.get('new_listing_base_price')) or 0
+        room['weekend_markup'] = _to_int(session.get('new_listing_weekend_markup')) or 0
+        # Discounts: ensure a list of integers. The session may contain a list or a comma‑separated string.
+        discounts_raw = session.get('new_listing_discounts')
+        if isinstance(discounts_raw, list):
+            room['discounts'] = [int(x) for x in discounts_raw if str(x).isdigit()]
+        else:
+            try:
+                room['discounts'] = [int(part.strip()) for part in str(discounts_raw).split(',') if part.strip().isdigit()]
+            except Exception:
+                room['discounts'] = []
+        # Address
+        room['country'] = session.get('new_listing_country') or None
+        room['city'] = session.get('new_listing_city') or None
+        room['street'] = session.get('new_listing_street') or None
+        room['house_number'] = session.get('new_listing_house_number') or None
+        # Owner contact and id
+        room['owner_messenger'] = None
+        room['owner_id'] = session.get('user_id')
+        room['owner_name'] = None
+        room['owner_phone'] = None
+        room['owner_email'] = None
+        # Rating and review count for preview
+        room['rating'] = None
+        room['review_count'] = 0
+        # Photos: convert saved filenames into accessible URLs
+        filenames = session.get('new_listing_photos') or []
+        photos = []
+        for fname in filenames:
+            try:
+                photos.append(url_for('uploaded_room_image', filename=fname))
+            except Exception:
+                continue
         # Booking statistics for preview
         booking_count = 0
         is_favorite = False
-        # Encode full address for map embed.  Use urllib.parse.quote_plus via a local import
-        address_parts = [room.get('country') or '', room.get('city') or '', room.get('street') or '', room.get('house_number') or '']
+        # Encode full address for map embed
+        address_parts = [
+            room.get('country') or '',
+            room.get('city') or '',
+            room.get('street') or '',
+            room.get('house_number') or '',
+        ]
         full_address = ', '.join([part for part in address_parts if part])
         try:
             from urllib.parse import quote_plus
