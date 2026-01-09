@@ -153,35 +153,11 @@
         <h5 class="modal-title" id="previewModalLabel">Предпросмотр объявления</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
       </div>
-      <div class="modal-body">
-        <!-- Сводная информация об объекте.  Используем данные из сессии -->
-        <p><strong>Тип жилья:</strong> {{ session['new_listing_property_type'] }}</p>
-        <p><strong>Адрес:</strong> {{ session['new_listing_address'] }}</p>
-        <p><strong>Описание:</strong> {{ session.get('new_listing_description', '') }}</p>
-        <p><strong>Правила заезда/выезда:</strong>
-          Заезд с {{ session.get('new_listing_check_in_time', '') }} до {{ session.get('new_listing_check_out_time', '') }};
-          Курение: {{ 'разрешено' if session.get('new_listing_smoking') == 'yes' else 'запрещено' }};
-          Домашние животные: {{ 'разрешены' if session.get('new_listing_pets') == 'yes' else 'запрещены' }}
-        </p>
-        <p><strong>Дополнительно:</strong>
-          Этаж {{ session.get('new_listing_floor', '') }},
-          лифт: {{ 'есть' if session.get('new_listing_elevator') == 'yes' else 'нет' }},
-          общая площадь: {{ session.get('new_listing_total_area', '') }} м²,
-          жилая площадь: {{ session.get('new_listing_living_area', '') }} м²,
-          площадь кухни: {{ session.get('new_listing_kitchen_area', '') }} м²,
-          ремонт: {{ session.get('new_listing_renovation', '') }}
-        </p>
-        <p><strong>Цены:</strong>
-          базовая цена {{ session.get('new_listing_base_price', '0') }} ₸,
-          надбавка на выходные {{ session.get('new_listing_weekend_markup', '0') }}%
-        </p>
-        <p><strong>Скидки:</strong>
-          {% if session.get('new_listing_discounts') %}
-            {{ session['new_listing_discounts'] | join(', ') }}%
-          {% else %}
-            не выбраны
-          {% endif %}
-        </p>
+      <div class="modal-body p-0" style="height: calc(100vh - 10rem);">
+        <!-- Полноценный предпросмотр объявления.  Используем iframe для
+             загрузки страницы предварительного просмотра.  Высота окна
+             устанавливается динамически через inline-стиль. -->
+        <iframe src="{{ url_for('room_preview') }}" style="width: 100%; height: 100%; border: none;" title="Предпросмотр объявления"></iframe>
       </div>
       <div class="modal-footer">
         <!-- Кнопка публикации отправляет форму скидок -->

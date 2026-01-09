@@ -23,7 +23,11 @@
               <i class="bi bi-arrow-left"></i>
             </a>
             <h1 class="fw-bold fs-2 mb-0">{{ room['room_number'] }}</h1>
-            <!-- Кнопки «Избранное» и «Поделиться» располагаются на одной строке с заголовком объявления -->
+            <!-- Кнопки «Избранное» и «Поделиться» располагаются на одной строке с заголовком объявления.
+                 В режиме предпросмотра (is_preview) эти кнопки отображаются как неактивные
+                 элементы без ссылок, чтобы избежать обращения к маршрутам, требующим
+                 действительного идентификатора комнаты. -->
+            {% if not is_preview %}
             <div class="position-absolute end-0 top-50 translate-middle-y d-flex gap-3">
               <a href="{{ url_for('toggle_favorite', room_id=room['id']) }}"
                  class="btn btn-link p-0"
@@ -37,6 +41,16 @@
                 <i class="bi bi-share fs-4 text-primary"></i>
               </button>
             </div>
+            {% else %}
+            <div class="position-absolute end-0 top-50 translate-middle-y d-flex gap-3">
+              <span class="btn btn-link p-0 disabled" title="Избранное">
+                <i class="bi bi-heart fs-4 text-muted"></i>
+              </span>
+              <span class="btn btn-link p-0 disabled" title="Поделиться">
+                <i class="bi bi-share fs-4 text-muted"></i>
+              </span>
+            </div>
+            {% endif %}
           </div>
           {% if photos and photos|length > 0 %}
           <!-- Галерея: кнопки «Избранное» и «Поделиться» теперь располагаются на той же строке, что и заголовок -->

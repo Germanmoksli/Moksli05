@@ -10116,3 +10116,105 @@ def new_room_step9():
         hide_nav=True,
         discounts=session.get('new_listing_discounts'),
     )
+
+# --------------------------------------------------------------------------
+# Preview a room during the listing wizard
+@app.route('/rooms/preview')
+@login_required
+@roles_required('owner')
+def room_preview():
+    """Render a preview of the listing using data collected in the wizard.
+
+    This endpoint constructs a temporary ``room`` dictionary from the
+    ``session`` values gathered throughout the multi‑step listing wizard and
+    renders the apartment detail template.  It does not persist any data to
+    the database.  The resulting page is intended to be embedded in a
+    modal via an iframe during the final step of the wizard so that
+    hosts can see exactly how their listing will appear once published.
+    Only authenticated owners may access this route.
+    """
+    # Ensure the wizard is in progress by checking required session keys.
+    if not session.get('new_listing_property_type'):
+        return redirect(url_for('new_room_step1'))
+    if 'new_listing_address' not in session:
+        return redirect(url_for('new_room_step2'))
+    # Build a temporary room object.  Missing values are set to ``None`` or
+    # sensible defaults.  Use id = -1 to denote a transient object.
+    room = {}
+    room['id'] = -1
+    room['room_number'] = session.get('new_listing_property_name') or 'Новое объявление'
+    room['housing_type'] = session.get('new_listing_property_type') or None
+    # Main description from step 5 (supports older key names)
+    description = session.get('new_listing_main_description') or session.get('new_listing_description') or ''
+    room['description'] = description
+    # Amenities: join list into comma-separated string
+    amenities_list = session.get('new_listing_amenities') or []
+    try:
+        room['amenities'] = ','.join(amenities_list) if amenities_list else ''
+    except Exception:
+        room['amenities'] = ''
+    # House rules
+    room['checkin_time'] = session.get('new_listing_check_in_time') or None
+    room['checkout_time'] = session.get('new_listing_check_out_time') or None
+    smoking_policy = session.get('new_listing_smoking')
+    room['smoking_policy'] = smoking_policy if smoking_policy else None
+    pets = session.get('new_listing_pets')
+    room['allow_pets'] = True if pets == 'yes' else False if pets == 'no' else None
+    # Floor and area information
+    def _to_int(value):
+        try:
+            return int(value) if value and str(value).strip() else None
+        except Exception:
+            return None
+    def _to_float(value):
+        try:
+            return float(value) if value and str(value).strip() else None
+        except Exception:
+            return None
+    room['floor'] = _to_int(session.get('new_listing_floor'))
+    room['floors_total'] = None
+    room['area_total'] = _to_float(session.get('new_listing_total_area'))
+    room['area_kitchen'] = _to_float(session.get('new_listing_kitchen_area'))
+    room['living_area'] = _to_float(session.get('new_listing_living_area'))
+    room['condition'] = session.get('new_listing_renovation') or None
+    # Pricing
+    room['price_per_night'] = _to_float(session.get('new_listing_base_price')) or 0
+    room['weekend_markup'] = _to_int(session.get('new_listing_weekend_markup')) or 0
+    # Address
+    room['country'] = session.get('new_listing_country') or None
+    room['city'] = session.get('new_listing_city') or None
+    room['street'] = session.get('new_listing_street') or None
+    room['house_number'] = session.get('new_listing_house_number') or None
+    # Owner contact and id
+    room['owner_messenger'] = None
+    room['owner_id'] = session.get('user_id')
+    # Photos: convert saved filenames into accessible URLs
+    filenames = session.get('new_listing_photos') or []
+    photos = []
+    for fname in filenames:
+        try:
+            photos.append(url_for('uploaded_room_image', filename=fname))
+        except Exception:
+            continue
+    # Booking statistics for preview
+    booking_count = 0
+    is_favorite = False
+    # Encode full address for map embed
+    address_parts = [room.get('country') or '', room.get('city') or '', room.get('street') or '', room.get('house_number') or '']
+    full_address = ', '.join([part for part in address_parts if part])
+    try:
+        encoded_address = urllib.parse.quote_plus(full_address) if full_address else ''
+    except Exception:
+        encoded_address = ''
+    # Unavailable dates: none in preview
+    unavailable_dates_json = '[]'
+    return render_template(
+        'room_detail.html',
+        room=room,
+        photos=photos,
+        booking_count=booking_count,
+        is_favorite=is_favorite,
+        unavailable_dates_json=unavailable_dates_json,
+        encoded_address=encoded_address,
+        is_preview=True,
+    )
