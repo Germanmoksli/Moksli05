@@ -1352,7 +1352,7 @@
           while (iterDate < endDate) {
             var dow = iterDate.getDay();
             var nightPrice = pricePerNight;
-            if (weekendMarkup && (dow === 0 || dow === 6)) {
+            if (weekendMarkup && (dow === 0 || dow === 5 || dow === 6)) {
               nightPrice = pricePerNight + (pricePerNight * weekendMarkup / 100);
             }
             total += nightPrice;
@@ -1448,7 +1448,7 @@
             // Определяем цену за этот день: применяем наценку в выходные (суббота и воскресенье).
             var dow = cellDate.getDay();
             var dayPrice = pricePerNight;
-            if (weekendMarkup && (dow === 0 || dow === 6)) {
+            if (weekendMarkup && (dow === 0 || dow === 5 || dow === 6)) {
               dayPrice = pricePerNight + (pricePerNight * weekendMarkup / 100);
             }
             // Оставляем только число без символа валюты для отображения под датой.
