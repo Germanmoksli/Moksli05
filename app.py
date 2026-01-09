@@ -2035,14 +2035,17 @@ def login():
             session['original_user_role'] = user['role']
             conn.close()
             flash('Вход выполнен успешно!')
-            # Redirect based on the user's role.  Guests go to the public catalogue,
-            # owners go directly to their list of apartments, and other roles
-            # continue to the main dashboard.  This ensures that owners
-            # immediately see their own listings after logging in.
+            # Redirect based on the user's role.  Guests go to the public catalogue.
+            # Owners start in guest mode by default (public catalogue) but
+            # can switch back to owner mode via the toggle.  Other roles
+            # continue to the main dashboard (index).
             if user['role'] == 'guest':
                 return redirect(url_for('public_listings'))
             elif user['role'] == 'owner':
-                return redirect(url_for('list_rooms'))
+                # Owners are initially set to guest mode to view the public catalogue.
+                # They can switch back to owner mode via the switch_role route.
+                session['user_role'] = 'guest'
+                return redirect(url_for('public_listings'))
             else:
                 return redirect(url_for('index'))
         else:
@@ -10138,7 +10141,13 @@ def room_preview():
         return redirect(url_for('new_room_step1'))
     if 'new_listing_address' not in session:
         return redirect(url_for('new_room_step2'))
-    # Build a temporary room object.  Missing values are set to ``None`` or
+    # Attempt to build a temporary room object.  Wrap the process in a try/except
+    # so that any unexpected error is caught and a user‑friendly message is
+    # returned instead of an unhandled 500.  This ensures that preview
+    # failures do not take down the page and allows us to diagnose issues
+    # separately via server logs.
+    try:
+        # Build a temporary room object.  Missing values are set to ``None`` or
     # sensible defaults.  Use id = -1 to denote a transient object.
     room = {}
     room['id'] = -1
@@ -10193,11 +10202,16 @@ def room_preview():
     # Pricing
     room['price_per_night'] = _to_float(session.get('new_listing_base_price')) or 0
     room['weekend_markup'] = _to_int(session.get('new_listing_weekend_markup')) or 0
-    # Discounts: ensure a list of integers
-    try:
-        room['discounts'] = [int(x) for x in session.get('new_listing_discounts', [])]
-    except Exception:
-        room['discounts'] = []
+    # Discounts: ensure a list of integers.  The session may contain a list
+    # (e.g. [5, 10]) or a string (e.g. "5,10").  Convert accordingly.
+    discounts_raw = session.get('new_listing_discounts')
+    if isinstance(discounts_raw, list):
+        room['discounts'] = [int(x) for x in discounts_raw if str(x).isdigit()]
+    else:
+        try:
+            room['discounts'] = [int(part.strip()) for part in str(discounts_raw).split(',') if part.strip().isdigit()]
+        except Exception:
+            room['discounts'] = []
     # Address
     room['country'] = session.get('new_listing_country') or None
     room['city'] = session.get('new_listing_city') or None
@@ -10220,26 +10234,37 @@ def room_preview():
             photos.append(url_for('uploaded_room_image', filename=fname))
         except Exception:
             continue
-    # Booking statistics for preview
-    booking_count = 0
-    is_favorite = False
-    # Encode full address for map embed.  Use urllib.parse.quote_plus via a local import
-    address_parts = [room.get('country') or '', room.get('city') or '', room.get('street') or '', room.get('house_number') or '']
-    full_address = ', '.join([part for part in address_parts if part])
-    try:
-        from urllib.parse import quote_plus
-        encoded_address = quote_plus(full_address) if full_address else ''
-    except Exception:
-        encoded_address = ''
-    # Unavailable dates: none in preview
-    unavailable_dates_json = '[]'
-    return render_template(
-        'room_detail.html',
-        room=room,
-        photos=photos,
-        booking_count=booking_count,
-        is_favorite=is_favorite,
-        unavailable_dates_json=unavailable_dates_json,
-        encoded_address=encoded_address,
-        is_preview=True,
-    )
+        # Booking statistics for preview
+        booking_count = 0
+        is_favorite = False
+        # Encode full address for map embed.  Use urllib.parse.quote_plus via a local import
+        address_parts = [room.get('country') or '', room.get('city') or '', room.get('street') or '', room.get('house_number') or '']
+        full_address = ', '.join([part for part in address_parts if part])
+        try:
+            from urllib.parse import quote_plus
+            encoded_address = quote_plus(full_address) if full_address else ''
+        except Exception:
+            encoded_address = ''
+        # Unavailable dates: none in preview
+        unavailable_dates_json = '[]'
+        return render_template(
+            'room_detail.html',
+            room=room,
+            photos=photos,
+            booking_count=booking_count,
+            is_favorite=is_favorite,
+            unavailable_dates_json=unavailable_dates_json,
+            encoded_address=encoded_address,
+            is_preview=True,
+        )
+    except Exception as e:
+        # Log the error to the server console for debugging.  Avoid returning a raw
+        # traceback to the user for security reasons.  Instead present a
+        # simple explanatory message inside the modal.  Import here to
+        # minimise dependencies at module load time.
+        try:
+            print('Error in room_preview:', e)
+        except Exception:
+            pass
+        from flask import render_template_string
+        return render_template_string('<div class="p-3"><h3>Предпросмотр недоступен</h3><p>Возникла ошибка при формировании предпросмотра. Пожалуйста, проверьте введённые данные и попробуйте снова.</p></div>')
