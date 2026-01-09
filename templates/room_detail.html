@@ -48,7 +48,7 @@
                Не задаём дополнительный margin-bottom через стиль, чтобы
                избежать слишком большого расстояния и сохранить корректное
                отображение миниатюр. -->
-          <div class="mb-5">
+          <div class="mb-3">
             <div id="galleryGrid" class="position-relative gallery-grid">
               <!-- Кнопки "Избранное" и "Поделиться" перенесены в правый верхний угол галереи.
                    Размещаем их абсолютным позиционированием, чтобы они всегда находились
@@ -113,7 +113,7 @@
           {% else %}
             {% set booking_label = 'бронирований' %}
           {% endif %}
-          <div class="d-flex justify-content-end align-items-center flex-wrap gap-4 mb-3">
+          <div class="d-flex justify-content-end align-items-center flex-wrap gap-4 mb-2">
             <div class="info-stat text-end">
               {{ reviews_count }} {{ reviews_label }}
             </div>
@@ -132,7 +132,7 @@
                тем самым сильнее приблизить описание к календарю -->
           <!-- Добавляем отступ сверху, чтобы создать пространство между галереей и календарем/инфо-блоками -->
           <!-- Увеличиваем отступ сверху, чтобы создать пространство между галереей и календарём/инфо-блоками -->
-          <div class="row mb-3 mt-5 gx-0">
+          <div class="row mb-3 mt-3 gx-0">
             <!-- Календарь бронирования -->
             <div class="col-md-6 mb-3 align-self-start" id="calendarColumn">
               <div class="card shadow-sm" id="calendar-card">
@@ -170,7 +170,7 @@
                    все отступы и переносы строк, как они были введены пользователем.  Теперь
                    описание отображается полностью без скрытия текста и без кнопки
                    разворачивания. -->
-              <div id="descriptionContainer" class="mt-4 mb-0"
+              <div id="descriptionContainer" class="mt-2 mb-0"
                    style="white-space: pre-wrap;">
                 {{ room['description']|trim }}
               </div>
@@ -941,17 +941,22 @@
   </script>
 </div>
 {% if room['latitude'] and room['longitude'] %}
+<!-- Leaflet map for apartment location -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
-  function initRoomDetailMap() {
+  document.addEventListener('DOMContentLoaded', function() {
     var lat = {{ room['latitude'] }};
     var lon = {{ room['longitude'] }};
     var mapContainer = document.getElementById('mapid');
     if (!mapContainer) return;
-    var map = new google.maps.Map(mapContainer, { center: { lat: lat, lng: lon }, zoom: 15 });
-    new google.maps.Marker({ position: { lat: lat, lng: lon }, map: map });
-  }
+    var map = L.map(mapContainer).setView([lat, lon], 15);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+    L.marker([lat, lon]).addTo(map);
+  });
 </script>
-<script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&callback=initRoomDetailMap" async defer></script>
 {% endif %}
 
   {# Share button script: copy the current page URL to the clipboard or prompt the user. #}
@@ -1200,6 +1205,33 @@
       color: var(--bs-primary);
     }
 
+    /* Удаляем возможный отступ первой строки в описании и убираем
+       внутренние отступы, чтобы выровнять текст по левому краю. */
+    #descriptionContainer {
+      text-indent: 0;
+      margin-left: 0;
+      padding-left: 0;
+    }
+
+    /* Форматирование ячеек календаря для отображения цены под датой. */
+    #booking-calendar .calendar-date {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 0.2rem 0;
+    }
+    #booking-calendar .calendar-date .day-number {
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+    #booking-calendar .calendar-date .day-price {
+      font-size: 0.7rem;
+      font-weight: 500;
+      color: #6c757d;
+      line-height: 1;
+    }
+
     /* Информационные блоки (количество отзывов, рейтинг, бронирования) подчеркиваются
        жирной синей линией и не имеют своего собственного фона или рамок.  Выравнивание
        текста осуществляется по правому краю. */
@@ -1411,8 +1443,16 @@
           (function(day) {
             var cell = document.createElement('div');
             cell.classList.add('calendar-date');
-            cell.innerText = day;
             var cellDate = new Date(currentYear, currentMonth, day);
+            // Определяем цену за этот день: применяем наценку в выходные (суббота и воскресенье).
+            var dow = cellDate.getDay();
+            var dayPrice = pricePerNight;
+            if (weekendMarkup && (dow === 0 || dow === 6)) {
+              dayPrice = pricePerNight + (pricePerNight * weekendMarkup / 100);
+            }
+            var priceStr = Math.round(dayPrice) + ' ₸';
+            // Заполняем ячейку: номер дня и цена, каждая на своей строке.
+            cell.innerHTML = '<div class="day-number">' + day + '</div><div class="day-price">' + priceStr + '</div>';
             // Преобразуем дату в строку формата YYYY-MM-DD, чтобы сравнить с массивом
             var cellDateStr = cellDate.toISOString().split('T')[0];
             // Если дата забронирована, отмечаем её как недоступную
