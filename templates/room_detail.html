@@ -1222,7 +1222,8 @@
       padding: 0.2rem 0;
     }
     #booking-calendar .calendar-date .day-number {
-      font-size: 0.8rem;
+      /* Увеличиваем размер числа даты, чтобы оно выделялось сильнее. */
+      font-size: 1rem;
       font-weight: 700;
     }
     #booking-calendar .calendar-date .day-price {
@@ -1450,7 +1451,8 @@
             if (weekendMarkup && (dow === 0 || dow === 6)) {
               dayPrice = pricePerNight + (pricePerNight * weekendMarkup / 100);
             }
-            var priceStr = Math.round(dayPrice) + ' ₸';
+            // Оставляем только число без символа валюты для отображения под датой.
+            var priceStr = Math.round(dayPrice).toString();
             // Заполняем ячейку: номер дня и цена, каждая на своей строке.
             cell.innerHTML = '<div class="day-number">' + day + '</div><div class="day-price">' + priceStr + '</div>';
             // Преобразуем дату в строку формата YYYY-MM-DD, чтобы сравнить с массивом
