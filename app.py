@@ -10147,19 +10147,24 @@ def room_preview():
     # Main description from step 5 (supports older key names)
     description = session.get('new_listing_main_description') or session.get('new_listing_description') or ''
     room['description'] = description
-    # Amenities: join list into comma-separated string
+    # Amenities: join list into a comma-separated string
     amenities_list = session.get('new_listing_amenities') or []
     try:
         room['amenities'] = ','.join(amenities_list) if amenities_list else ''
     except Exception:
         room['amenities'] = ''
-    # House rules
+    # Check‑in/out times
     room['checkin_time'] = session.get('new_listing_check_in_time') or None
     room['checkout_time'] = session.get('new_listing_check_out_time') or None
-    smoking_policy = session.get('new_listing_smoking')
-    room['smoking_policy'] = smoking_policy if smoking_policy else None
+    # Smoking and pets policies (for preview we compute both raw and boolean forms)
+    smoking = session.get('new_listing_smoking')
     pets = session.get('new_listing_pets')
+    # Original text policy string
+    room['smoking_policy'] = smoking if smoking else None
     room['allow_pets'] = True if pets == 'yes' else False if pets == 'no' else None
+    # Boolean flags expected by the detail template
+    room['smoking_allowed'] = True if smoking == 'yes' else False if smoking == 'no' else None
+    room['pets_allowed'] = True if pets == 'yes' else False if pets == 'no' else None
     # Floor and area information
     def _to_int(value):
         try:
@@ -10177,9 +10182,22 @@ def room_preview():
     room['area_kitchen'] = _to_float(session.get('new_listing_kitchen_area'))
     room['living_area'] = _to_float(session.get('new_listing_living_area'))
     room['condition'] = session.get('new_listing_renovation') or None
+    # Elevator: convert yes/no string to boolean
+    elev = session.get('new_listing_elevator')
+    room['elevator'] = True if elev == 'yes' else False if elev == 'no' else None
+    # Room and guest counts
+    room['num_rooms'] = _to_int(session.get('new_listing_rooms_count'))
+    room['max_guests'] = _to_int(session.get('new_listing_guests_count'))
+    room['beds_count'] = _to_int(session.get('new_listing_beds_count'))
+    room['sofas_count'] = _to_int(session.get('new_listing_sofas_count'))
     # Pricing
     room['price_per_night'] = _to_float(session.get('new_listing_base_price')) or 0
     room['weekend_markup'] = _to_int(session.get('new_listing_weekend_markup')) or 0
+    # Discounts: ensure a list of integers
+    try:
+        room['discounts'] = [int(x) for x in session.get('new_listing_discounts', [])]
+    except Exception:
+        room['discounts'] = []
     # Address
     room['country'] = session.get('new_listing_country') or None
     room['city'] = session.get('new_listing_city') or None
@@ -10188,6 +10206,12 @@ def room_preview():
     # Owner contact and id
     room['owner_messenger'] = None
     room['owner_id'] = session.get('user_id')
+    room['owner_name'] = None
+    room['owner_phone'] = None
+    room['owner_email'] = None
+    # Rating and review count for preview
+    room['rating'] = None
+    room['review_count'] = 0
     # Photos: convert saved filenames into accessible URLs
     filenames = session.get('new_listing_photos') or []
     photos = []
@@ -10199,11 +10223,12 @@ def room_preview():
     # Booking statistics for preview
     booking_count = 0
     is_favorite = False
-    # Encode full address for map embed
+    # Encode full address for map embed.  Use urllib.parse.quote_plus via a local import
     address_parts = [room.get('country') or '', room.get('city') or '', room.get('street') or '', room.get('house_number') or '']
     full_address = ', '.join([part for part in address_parts if part])
     try:
-        encoded_address = urllib.parse.quote_plus(full_address) if full_address else ''
+        from urllib.parse import quote_plus
+        encoded_address = quote_plus(full_address) if full_address else ''
     except Exception:
         encoded_address = ''
     # Unavailable dates: none in preview
