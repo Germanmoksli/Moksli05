@@ -140,8 +140,13 @@
                   <!-- Контейнер для генерации календаря -->
                   <div id="booking-calendar"></div>
                   <div class="mt-3">
-                    <!-- Цена: по умолчанию за ночь; будет обновляться скриптом -->
+                  <!-- Цена: по умолчанию за ночь; будет обновляться скриптом -->
                     <h4 class="fw-bold text-dark mb-2 text-end" id="priceDisplay">{{ room['price_per_night'] }} ₸/сутки</h4>
+                    {% if room.get('weekend_markup') %}
+                    <p class="text-end mb-2" style="font-size: 0.9rem;">
+                      Цена в выходные: {{ (room['price_per_night'] * (1 + room['weekend_markup'] / 100))|int }} ₸/сутки
+                    </p>
+                    {% endif %}
                     <form method="post" action="#">
                       <!-- скрытые поля для передачи выбранных дат -->
                       <input type="hidden" id="checkin_date" name="checkin_date">
@@ -174,9 +179,13 @@
                    style="white-space: pre-wrap;">
                 {{ room['description']|trim }}
               </div>
-
-              {# Отображаем удобства под описанием объявления — перемещён ниже блока описания для
-                 корректного отображения даже если описание отсутствует. #}
+              {% endif %}
+              {# Дополнительные заметки для гостей — выводятся после основного описания #}
+              {% if room.get('guest_notes') %}
+              <div id="guestNotesContainer" class="mt-3 mb-0" style="white-space: pre-wrap;">
+                <strong>Примечания для гостей:</strong><br>
+                {{ room['guest_notes']|trim }}
+              </div>
               {% endif %}
               {# Определяем список выбранных удобств и выводим их независимо от наличия описания. #}
               {% set raw_amenities = room.get('amenities') %}
@@ -438,10 +447,58 @@
           <h5 class="fw-bold mb-3">Информация о доме</h5>
           <p class="mb-1"><strong>Этаж:</strong> {{ room.get('floor') }}{% if room.get('floors_total') %}/{{ room['floors_total'] }}{% endif %}</p>
           {% if room.get('area_total') %}<p class="mb-1"><strong>Площадь:</strong> {{ room['area_total'] }} м²</p>{% endif %}
+          {% if room.get('living_area') %}<p class="mb-1"><strong>Жилая площадь:</strong> {{ room['living_area'] }} м²</p>{% endif %}
+          {% if room.get('area_kitchen') %}<p class="mb-1"><strong>Площадь кухни:</strong> {{ room['area_kitchen'] }} м²</p>{% endif %}
           {% if room.get('condition') %}<p class="mb-1"><strong>Состояние:</strong> {{ room['condition'] }}</p>{% endif %}
+          {% if room.get('elevator') is not none %}<p class="mb-1"><strong>Лифт:</strong> {{ 'Да' if room['elevator'] else 'Нет' }}</p>{% endif %}
           <p class="mb-0"><strong>Адрес:</strong> {{ room['country'] or '' }}{% if room['city'] %}, {{ room['city'] }}{% endif %}{% if room['street'] %}, {{ room['street'] }}{% endif %}{% if room['house_number'] %}, {{ room['house_number'] }}{% endif %}</p>
         </div>
       </div>
+      <!-- Карточка параметров размещения (количество комнат, гостей, кроватей, диванов, надбавка на выходные) -->
+      <div class="card shadow-sm mb-3 ms-md-n6 ps-md-4" style="max-width: 50%;">
+        <div class="card-body">
+          <h5 class="fw-bold mb-3">Параметры размещения</h5>
+          {% if room.get('num_rooms') %}<p class="mb-1"><strong>Комнат:</strong> {{ room['num_rooms'] }}</p>{% endif %}
+          {% if room.get('max_guests') %}<p class="mb-1"><strong>Гостей:</strong> {{ room['max_guests'] }}</p>{% endif %}
+          {% if room.get('beds_count') is not none %}<p class="mb-1"><strong>Кроватей:</strong> {{ room['beds_count'] }}</p>{% endif %}
+          {% if room.get('sofas_count') is not none %}<p class="mb-1"><strong>Диванов:</strong> {{ room['sofas_count'] }}</p>{% endif %}
+          {% if room.get('weekend_markup') %}<p class="mb-1"><strong>Надбавка на выходные:</strong> {{ room['weekend_markup'] }}%</p>{% endif %}
+        </div>
+      </div>
+
+      <!-- Карточка правил проживания, скидок и дополнительных условий -->
+      {% if room.checkin_time or room.checkout_time or room.smoking_policy or room.allow_pets is not none or room.discount %}
+      <div class="card shadow-sm mb-3 ms-md-n6 ps-md-4" style="max-width: 50%;">
+        <div class="card-body">
+          <h5 class="fw-bold mb-3">Правила проживания</h5>
+          {% if room.checkin_time or room.checkout_time %}
+            <p class="mb-1"><strong>Заезд/выезд:</strong>
+              {% if room.checkin_time %}заезд после {{ room.checkin_time }}{% endif %}
+              {% if room.checkin_time and room.checkout_time %}, {% endif %}
+              {% if room.checkout_time %}выезд до {{ room.checkout_time }}{% endif %}
+            </p>
+          {% endif %}
+          {% if room.smoking_policy %}
+            <p class="mb-1"><strong>Курение:</strong>
+              {% if room.smoking_policy == 'yes' %}разрешено{% elif room.smoking_policy == 'no' %}запрещено{% else %}{{ room.smoking_policy }}{% endif %}
+            </p>
+          {% endif %}
+          {% if room.allow_pets is not none %}
+            <p class="mb-1"><strong>Животные:</strong> {{ 'разрешены' if room.allow_pets else 'запрещены' }}</p>
+          {% endif %}
+          {% if room.discount %}
+            {% set discount_codes = room.discount.split(',') %}
+            <p class="mb-1"><strong>Скидки:</strong>
+              {% for d in discount_codes %}
+                {% set d_clean = d.strip() %}
+                {% if d_clean == '20' %}20% для первых 3 бронирований{% elif d_clean == '5' %}5% при проживании 7+ дней{% elif d_clean == '10' %}10% при проживании 30+ дней{% else %}{{ d_clean }}%{% endif %}
+                {% if not loop.last %}, {% endif %}
+              {% endfor %}
+            </p>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
       {% if room['latitude'] and room['longitude'] %}
       <div class="card shadow-sm mb-3">
         <div class="card-body">
