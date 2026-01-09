@@ -63,23 +63,32 @@
           <input type="text" class="form-control" id="house_number" name="house_number" value="{{ house_number }}" required>
         </div>
       </div>
-      <!-- Карта Google: ширина выравнена по краям блока с полями и уменьшена по высоте -->
+      <!-- Карта: в зависимости от наличия Google Maps API ключа отображаем интерактивную карту или
+           простое встроенное представление.  С интерактивной картой работаем как раньше; если ключ
+           отсутствует, загружаем карту через embed API, что не требует ключа. -->
       <div class="mb-4" style="max-width: 700px; margin: 0 auto;">
-        {# Убрали заголовок "Карта". Скругленные углы и тень добавлены на контейнер ratio #}
         <div class="ratio rounded shadow" style="width: 100%; padding-top: 56.25%; position: relative; overflow: hidden;">
-          {# Interactive Google Map will be rendered in this div by the JavaScript API. The absolute positioning
-             ensures it fills the parent ratio container just like the previous iframe. #}
-          <div id="addressMap" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></div>
+          {% if google_maps_api_key %}
+            <!-- Google Maps JS API container.  Заполняется скриптом initAddressMap -->
+            <div id="addressMap" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></div>
+          {% else %}
+            <!-- Fallback embed map: updates via JavaScript when адресные поля изменяются -->
+            <iframe id="addressMapIframe"
+                    src="{% if encoded_address %}https://maps.google.com/maps?q={{ encoded_address }}&amp;output=embed{% else %}{% endif %}"
+                    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;"
+                    loading="lazy" allowfullscreen>
+            </iframe>
+          {% endif %}
         </div>
       </div>
       {# Панель навигации перенесена в верхнюю часть страницы; нижняя навигация не нужна #}
     </form>
-    {# Include Google Maps JavaScript API with Places and Geometry libraries if an API key is available.
-       The callback initialises the map and autocomplete fields. #}
+    {# Если Google Maps API ключ определён, подключаем скрипт и инициализируем карту #}
     {% if google_maps_api_key %}
-    <script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&libraries=places,geometry&callback=initAddressMap" async defer></script>
+      <script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&libraries=places,geometry&callback=initAddressMap" async defer></script>
     {% endif %}
     <script>
+      {% if google_maps_api_key %}
       // Initialise Google Map with place autocompletion for country, city and street.
       function initAddressMap() {
         // Default location (Almaty as a fallback)
@@ -195,6 +204,39 @@
       // Expose initAddressMap on the global window object so that the
       // Google Maps API callback can locate it when the external script loads.
       window.initAddressMap = initAddressMap;
+      {% else %}
+      // Fallback: update the embed map when the address fields change.  This does not require an API key.
+      document.addEventListener('DOMContentLoaded', function() {
+        function updateIframe() {
+          var countryVal = document.getElementById('country').value.trim();
+          var cityVal = document.getElementById('city').value.trim();
+          var streetVal = document.getElementById('street').value.trim();
+          var houseVal = document.getElementById('house_number').value.trim();
+          var parts = [];
+          if (houseVal) parts.push(houseVal);
+          if (streetVal) parts.push(streetVal);
+          if (cityVal) parts.push(cityVal);
+          if (countryVal) parts.push(countryVal);
+          var address = parts.join(', ');
+          var iframe = document.getElementById('addressMapIframe');
+          if (!iframe) return;
+          if (address) {
+            var encoded = encodeURIComponent(address);
+            iframe.src = 'https://maps.google.com/maps?q=' + encoded + '&amp;output=embed';
+          } else {
+            iframe.src = '';
+          }
+        }
+        ['country','city','street','house_number'].forEach(function(id) {
+          var el = document.getElementById(id);
+          if (el) {
+            el.addEventListener('input', updateIframe);
+            el.addEventListener('change', updateIframe);
+          }
+        });
+        updateIframe();
+      });
+      {% endif %}
     </script>
     {% else %}
       <p>Тип жилья не выбран. Пожалуйста, начните процесс создания объявления заново.</p>

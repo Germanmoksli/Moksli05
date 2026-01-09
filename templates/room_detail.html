@@ -484,11 +484,14 @@
 
 
       <!-- Дополнительные сведения: карта. Блок информации о доме перемещён в правую колонку. -->
-      {% if room['latitude'] and room['longitude'] %}
+      {# Отображаем карту с адресом квартиры.  Используем embed API Google Maps, который не требует ключа. #}
+      {% if encoded_address %}
       <div class="card shadow-sm mb-3">
         <div class="card-body">
           <h5 class="fw-bold mb-3">Карта</h5>
-          <div id="mapid" style="height: 200px;"></div>
+          <div class="ratio ratio-16x9">
+            <iframe src="https://maps.google.com/maps?q={{ encoded_address }}&amp;output=embed" width="100%" height="100%" style="border:0;" loading="lazy" allowfullscreen></iframe>
+          </div>
         </div>
       </div>
       {% endif %}
@@ -940,24 +943,7 @@
     // приостановки анимации при уходе пользователя с вкладки, но это не требуется.
   </script>
 </div>
-{% if room['latitude'] and room['longitude'] %}
-<!-- Leaflet map for apartment location -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-<script>
-  document.addEventListener('DOMContentLoaded', function() {
-    var lat = {{ room['latitude'] }};
-    var lon = {{ room['longitude'] }};
-    var mapContainer = document.getElementById('mapid');
-    if (!mapContainer) return;
-    var map = L.map(mapContainer).setView([lat, lon], 15);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors'
-    }).addTo(map);
-    L.marker([lat, lon]).addTo(map);
-  });
-</script>
-{% endif %}
+{# Удалили Leaflet: карта отображается через Google Maps embed выше #}
 
   {# Share button script: copy the current page URL to the clipboard or prompt the user. #}
   <script>

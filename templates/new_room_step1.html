@@ -117,7 +117,8 @@
           <div class="modal-body">
             <div class="mb-3">
               {# Remove the label above the input for a cleaner look #}
-              <input type="text" class="form-control" id="propertyNameInput" placeholder="Например, Уютная квартира" />
+              {# Ограничиваем длину названия до 40 символов чтобы пользователь не вводил слишком длинные строки #}
+              <input type="text" class="form-control" id="propertyNameInput" placeholder="Например, Уютная квартира" maxlength="40" />
               <div class="invalid-feedback">
                 Пожалуйста, введите название, чтобы продолжить.
               </div>

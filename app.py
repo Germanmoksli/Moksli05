@@ -3805,19 +3805,6 @@ def ensure_rooms_additional_columns(conn) -> None:
             ("min_notice_days", "INTEGER"),
             ("booking_method", "TEXT"),
             ("is_published", "BOOLEAN"),
-            # Additional fields for extended apartment information
-            # living_area: numerical value for the living (residential) square meters
-            ("living_area", "REAL"),
-            # elevator: whether the building has an elevator (BOOLEAN)
-            ("elevator", "BOOLEAN"),
-            # beds_count: number of beds available in the apartment
-            ("beds_count", "INTEGER"),
-            # sofas_count: number of sofas available in the apartment
-            ("sofas_count", "INTEGER"),
-            # guest_notes: any notes or rules the host wants guests to know
-            ("guest_notes", "TEXT"),
-            # weekend_markup: percentage markup for weekends and holidays
-            ("weekend_markup", "INTEGER"),
         ]
         for col, coltype in expected:
             if col not in col_names:
@@ -8622,8 +8609,23 @@ def view_room_public(room_id: int):
 
     # Close the original connection used for loading the room and photos
     conn.close()
-    # Pass Google Maps API key to the detail page so that Google Maps can be loaded
+    # Pass Google Maps API key to the detail page so that Google Maps can be loaded if desired.
     google_maps_api_key = os.environ.get("GOOGLE_MAPS_API_KEY")
+    # Compute a combined address and its URL-encoded representation for map embedding.
+    try:
+        address_parts = []
+        for key in ['country', 'city', 'street', 'house_number']:
+            try:
+                val = room.get(key)
+            except Exception:
+                val = None
+            if val:
+                address_parts.append(str(val))
+        full_address = ', '.join(address_parts)
+        encoded_address = urllib.parse.quote_plus(full_address) if full_address else ''
+    except Exception:
+        full_address = ''
+        encoded_address = ''
     return render_template(
         'room_detail.html',
         room=room,
@@ -8632,6 +8634,7 @@ def view_room_public(room_id: int):
         is_favorite=is_favorite,
         booked_dates=booked_dates,
         booking_count=booking_count,
+        encoded_address=encoded_address,
     )
 
 
@@ -8743,10 +8746,14 @@ def new_room_step1():
         session['new_listing_property_type'] = property_type
         property_name = request.form.get("property_name", "")
         if property_name:
+            # Trim whitespace and enforce a maximum length of 40 characters on the listing title.
+            # Without this limit user supplied names could be arbitrarily long and break the UI.
             try:
-                session['new_listing_property_name'] = property_name.strip()
+                trimmed = property_name.strip()[:40]
             except Exception:
-                session['new_listing_property_name'] = property_name
+                # In the unlikely event that strip fails, fall back to slicing the raw string.
+                trimmed = property_name[:40]
+            session['new_listing_property_name'] = trimmed
         return redirect(url_for('new_room_step2'))
     # Determine selected property type from session for highlighting cards
     selected_type = session.get('new_listing_property_type')
@@ -9906,68 +9913,6 @@ def new_room_step9():
                                 new_room_id = fallback_row[0]
                             except Exception:
                                 new_room_id = None
-                # After obtaining the new room id, populate additional fields that
-                # are not included in the initial INSERT.  These fields include
-                # the number of rooms, maximum guests, number of beds and sofas,
-                # living area, elevator availability, any guest notes, and the
-                # weekend markup percentage.  Conversions are performed using
-                # the helper functions defined above.  Missing or invalid
-                # values result in None so that the UPDATE statement does not
-                # inadvertently set incorrect data.
-                if new_room_id:
-                    # Safely convert counts and numeric fields
-                    rooms_count_val = _to_int(session.get('new_listing_rooms_count'))
-                    guests_count_val = _to_int(session.get('new_listing_guests_count'))
-                    beds_count_val = _to_int(session.get('new_listing_beds_count'))
-                    sofas_count_val = _to_int(session.get('new_listing_sofas_count'))
-                    living_area_val = _to_float(session.get('new_listing_living_area'))
-                    # Convert elevator value from yes/no to boolean where possible
-                    elevator_val = session.get('new_listing_elevator')
-                    if elevator_val == 'yes':
-                        elevator_bool = True
-                    elif elevator_val == 'no':
-                        elevator_bool = False
-                    else:
-                        elevator_bool = None
-                    # Guest notes may be empty; use None when blank
-                    guest_notes_val = session.get('new_listing_guest_notes') or None
-                    # Weekend markup stored as integer percentage
-                    weekend_markup_val = None
-                    try:
-                        wm_tmp = session.get('new_listing_weekend_markup')
-                        weekend_markup_val = int(wm_tmp) if wm_tmp is not None and str(wm_tmp).strip() else None
-                    except Exception:
-                        weekend_markup_val = None
-                    try:
-                        # Ensure the target columns exist before updating
-                        ensure_column_exists(conn, 'rooms', 'living_area', 'REAL')
-                        ensure_column_exists(conn, 'rooms', 'elevator', 'BOOLEAN')
-                        ensure_column_exists(conn, 'rooms', 'beds_count', 'INTEGER')
-                        ensure_column_exists(conn, 'rooms', 'sofas_count', 'INTEGER')
-                        ensure_column_exists(conn, 'rooms', 'guest_notes', 'TEXT')
-                        ensure_column_exists(conn, 'rooms', 'weekend_markup', 'INTEGER')
-                    except Exception:
-                        pass
-                    # Perform the update to set these additional attributes
-                    try:
-                        conn.execute(
-                            "UPDATE rooms SET num_rooms = ?, max_guests = ?, beds_count = ?, sofas_count = ?, living_area = ?, elevator = ?, guest_notes = ?, weekend_markup = ? WHERE id = ?",
-                            (
-                                rooms_count_val,
-                                guests_count_val,
-                                beds_count_val,
-                                sofas_count_val,
-                                living_area_val,
-                                elevator_bool,
-                                guest_notes_val,
-                                weekend_markup_val,
-                                new_room_id,
-                            ),
-                        )
-                    except Exception:
-                        # Silently ignore update failures so that publishing continues
-                        pass
-
                 # Insert photos for the new room if available.  Retrieve any
                 # base64‑encoded image data stored in the session from the
                 # upload step.  ``photo_data_map`` is a mapping from
@@ -10154,12 +10099,7 @@ def new_room_step9():
                 'new_listing_base_price', 'new_listing_weekend_markup',
                 'new_listing_discounts',
                 'new_listing_photo_data',    # clear any leftover base64 mapping
-                '_upload_temp_id',            # clear the session identifier for temp photos
-                # Additional wizard fields
-                'new_listing_rooms_count', 'new_listing_guests_count',
-                'new_listing_beds_count', 'new_listing_sofas_count',
-                'new_listing_property_name',
-                'new_listing_property_name'
+                '_upload_temp_id'            # clear the session identifier for temp photos
             ]:
                 session.pop(key, None)
             # After publishing, redirect to the rooms list where the new listing will appear
