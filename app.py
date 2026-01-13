@@ -10270,6 +10270,7 @@ def room_preview():
             unavailable_dates_json=unavailable_dates_json,
             encoded_address=encoded_address,
             is_preview=True,
+            booked_dates=[],  # no booked dates in preview
         )
     except Exception as e:
         # Log the error to the server console for debugging.  Avoid returning a raw
