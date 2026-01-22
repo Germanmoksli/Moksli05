@@ -3,15 +3,23 @@
 {% block content %}
   <div class="d-flex justify-content-between align-items-center mb-3">
     <h2 class="text-primary fw-bold fs-4">Мои квартиры</h2>
-    <!-- Replaced the rectangular "Добавить объявление" button with a circular button.  The
-         button uses the primary colour as its background and contains a bold plus
-         icon.  It retains the link to start a new listing (step 1 of the
-         creation wizard). -->
-    <a href="{{ url_for('new_room_step1') }}"
-       class="btn btn-primary rounded-circle d-flex align-items-center justify-content-center"
-       style="width: 48px; height: 48px;">
-      <i class="bi bi-plus-lg fs-4 fw-bold text-white"></i>
-    </a>
+    <!-- Кнопка добавления нового объявления.  Если есть черновики, она открывает модальное окно
+         с выбором: начать новое объявление или продолжить создание.  Если черновиков нет,
+         кнопка сразу переходит к началу мастера создания и очищает состояние. -->
+    {% if drafts %}
+      <a href="#"
+         class="btn btn-primary rounded-circle d-flex align-items-center justify-content-center"
+         style="width: 48px; height: 48px;"
+         data-bs-toggle="modal" data-bs-target="#createListingModal">
+        <i class="bi bi-plus-lg fs-4 fw-bold text-white"></i>
+      </a>
+    {% else %}
+      <a href="{{ url_for('start_new_listing') }}"
+         class="btn btn-primary rounded-circle d-flex align-items-center justify-content-center"
+         style="width: 48px; height: 48px;">
+        <i class="bi bi-plus-lg fs-4 fw-bold text-white"></i>
+      </a>
+    {% endif %}
   </div>
   {# Display draft listings (saved unfinished objects) above the table #}
   {% if drafts %}
@@ -29,6 +37,27 @@
             <span class="text-primary small">Продолжить →</span>
           </a>
         {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+
+  {# Modal for choosing between starting a new listing or resuming a draft #}
+  {% if drafts %}
+    <div class="modal fade" id="createListingModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Создание объявления</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            У вас есть незавершённый черновик. Что вы хотите сделать?
+          </div>
+          <div class="modal-footer">
+            <a href="{{ url_for('start_new_listing') }}" class="btn btn-primary">Создать новое объявление</a>
+            <a href="{{ url_for('resume_draft', draft_id=drafts[0].id) }}" class="btn btn-secondary">Продолжить создание</a>
+          </div>
+        </div>
       </div>
     </div>
   {% endif %}

@@ -9432,6 +9432,28 @@ def new_room_step5():
         return redirect(url_for('new_room_step2'))
     if 'new_listing_amenities' not in session:
         return redirect(url_for('new_room_step3'))
+
+@app.route('/rooms/new/start', methods=['GET'])
+@login_required
+@roles_required('owner')
+def start_new_listing():
+    """Begin a new listing from scratch.
+
+    Clears any existing wizard-related session variables so that the
+    creation process starts from step 1 with no pre-filled data.  This
+    route should be used when the user chooses to create a new listing
+    from the modal on the rooms page.  After clearing the session it
+    redirects to the first step of the new listing wizard.
+    """
+    # Remove all session keys beginning with 'new_listing_' to reset
+    # any partially completed wizard state.  Use list() to avoid
+    # modifying the dictionary while iterating.
+    for key in list(session.keys()):
+        if key.startswith('new_listing_'):
+            session.pop(key, None)
+    # Also remove any property name draft; some steps store this
+    session.pop('new_listing_property_name', None)
+    return redirect(url_for('new_room_step1'))
     if 'new_listing_photos' not in session:
         return redirect(url_for('new_room_step4'))
     if request.method == 'POST':
