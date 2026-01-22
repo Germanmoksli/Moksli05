@@ -53,15 +53,22 @@
       <!-- Make the entire row clickable to open the time picker and restrict the time
            selection to 30‑minute increments starting from 12:00.  The
            container has a pointer cursor to indicate interactivity. -->
-      <div class="mb-3" id="checkInRow" style="cursor: pointer;">
-        <label for="check_in_time" class="form-label fw-bold">Время заезда</label>
-        <input type="time" class="form-control" id="check_in_time" name="check_in_time"
-               value="{{ check_in_time }}" step="1800" min="12:00">
-      </div>
-      <div class="mb-3" id="checkOutRow" style="cursor: pointer;">
-        <label for="check_out_time" class="form-label fw-bold">Время выезда</label>
-        <input type="time" class="form-control" id="check_out_time" name="check_out_time"
-               value="{{ check_out_time }}" step="1800" min="12:00">
+      <!-- Часы и минуты в одном ряду: два поля занимают половину ширины.  
+           Используем time‑input с шагом 15 минут и паттерном, разрешающим только 00, 15 или 30 минут. 
+           Минимальное время — 12:00, максимальное — 23:30. При клике по всему блоку открывается выбор времени. -->
+      <div class="row mb-3">
+        <div class="col-12 col-md-6" id="checkInRow" style="cursor: pointer;">
+          <label for="check_in_time" class="form-label fw-bold">Время заезда</label>
+          <input type="time" class="form-control" id="check_in_time" name="check_in_time"
+                 value="{{ check_in_time }}" step="900" min="12:00" max="23:30"
+                 pattern="^(?:1[2-9]|2[0-3]):(?:00|15|30)$">
+        </div>
+        <div class="col-12 col-md-6" id="checkOutRow" style="cursor: pointer;">
+          <label for="check_out_time" class="form-label fw-bold">Время выезда</label>
+          <input type="time" class="form-control" id="check_out_time" name="check_out_time"
+                 value="{{ check_out_time }}" step="900" min="12:00" max="23:30"
+                 pattern="^(?:1[2-9]|2[0-3]):(?:00|15|30)$">
+        </div>
       </div>
       <div class="mb-3">
         <label class="form-label fw-bold d-block">Курение разрешено?</label>
@@ -83,6 +90,10 @@
         <div class="form-check form-check-inline">
           <input class="form-check-input" type="radio" name="pets" id="petsNo" value="no" {% if pets == 'no' %}checked{% endif %}>
           <label class="form-check-label" for="petsNo">Нет</label>
+        </div>
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" name="pets" id="petsAgreed" value="agreed" {% if pets == 'agreed' %}checked{% endif %}>
+          <label class="form-check-label" for="petsAgreed">По согласованию</label>
         </div>
       </div>
     </form>
