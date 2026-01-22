@@ -47,7 +47,7 @@
   </style>
 {% if hide_nav %}
   <!-- Top navigation bar for photo upload (final step) -->
-  <div class="container-fluid bg-light py-2 mb-3" style="border: none;">
+  <div class="container-fluid bg-light py-2 mb-3" style="border: none; position: sticky; top: 0; z-index: 1000;">
     <div class="d-flex align-items-center justify-content-between">
       <!-- Left group: cancel and save draft -->
       <div class="d-flex align-items-center gap-2 me-3">
@@ -139,11 +139,11 @@
       const photoOrderInput = document.getElementById('photoOrder');
       let photos = [];
       // Align the client‑side photo limit with the server logic.  The
-      // backend enforces a maximum of 20 images during the add/edit
+      // backend enforces a maximum of 100 images during the add/edit
       // operations, so restricting the client here prevents users from
       // selecting more than will ultimately be accepted.  If this number
       // changes server‑side, update this constant accordingly.
-      const MAX_PHOTOS = 20;
+      const MAX_PHOTOS = 100;
       uploadArea.addEventListener('click', function() {
         photoInput.click();
       });

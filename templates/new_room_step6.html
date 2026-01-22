@@ -14,7 +14,7 @@
 {% block content %}
 {% if hide_nav %}
   <!-- Навигационная панель для шага правил дома -->
-  <div class="container-fluid bg-light py-2 mb-3" style="border: none;">
+  <div class="container-fluid bg-light py-2 mb-3" style="border: none; position: sticky; top: 0; z-index: 1000;">
     <div class="d-flex align-items-center justify-content-between">
       <!-- Левая группа: отмена и черновик -->
       <div class="d-flex align-items-center gap-2 me-3">
@@ -50,13 +50,18 @@
   <div class="mx-auto" style="max-width: 600px;">
     <h2 class="fw-bold fs-2 mb-4 text-start">Правила дома</h2>
     <form method="post" id="rulesForm" action="{{ url_for('new_room_step6') }}">
-      <div class="mb-3">
+      <!-- Make the entire row clickable to open the time picker and restrict the time
+           selection to 30‑minute increments starting from 12:00.  The
+           container has a pointer cursor to indicate interactivity. -->
+      <div class="mb-3" id="checkInRow" style="cursor: pointer;">
         <label for="check_in_time" class="form-label fw-bold">Время заезда</label>
-        <input type="time" class="form-control" id="check_in_time" name="check_in_time" value="{{ check_in_time }}">
+        <input type="time" class="form-control" id="check_in_time" name="check_in_time"
+               value="{{ check_in_time }}" step="1800" min="12:00">
       </div>
-      <div class="mb-3">
+      <div class="mb-3" id="checkOutRow" style="cursor: pointer;">
         <label for="check_out_time" class="form-label fw-bold">Время выезда</label>
-        <input type="time" class="form-control" id="check_out_time" name="check_out_time" value="{{ check_out_time }}">
+        <input type="time" class="form-control" id="check_out_time" name="check_out_time"
+               value="{{ check_out_time }}" step="1800" min="12:00">
       </div>
       <div class="mb-3">
         <label class="form-label fw-bold d-block">Курение разрешено?</label>
@@ -83,4 +88,34 @@
     </form>
   </div>
 </div>
+<!-- Script to enable clicking anywhere in the time row to open the time picker -->
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const checkInRow = document.getElementById('checkInRow');
+    const checkOutRow = document.getElementById('checkOutRow');
+    const checkInInput = document.getElementById('check_in_time');
+    const checkOutInput = document.getElementById('check_out_time');
+    if (checkInRow && checkInInput) {
+      checkInRow.addEventListener('click', function(e) {
+        // If the click was not directly on the input, focus and open the time picker.
+        if (e.target !== checkInInput) {
+          checkInInput.focus();
+          if (typeof checkInInput.showPicker === 'function') {
+            checkInInput.showPicker();
+          }
+        }
+      });
+    }
+    if (checkOutRow && checkOutInput) {
+      checkOutRow.addEventListener('click', function(e) {
+        if (e.target !== checkOutInput) {
+          checkOutInput.focus();
+          if (typeof checkOutInput.showPicker === 'function') {
+            checkOutInput.showPicker();
+          }
+        }
+      });
+    }
+  });
+</script>
 {% endblock %}

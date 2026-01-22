@@ -5,7 +5,7 @@
 {% block content %}
 {% if hide_nav %}
   <!-- Единая верхняя панель: все элементы располагаются в одну строку -->
-  <div class="container-fluid bg-light py-2 mb-3" style="border: none;">
+  <div class="container-fluid bg-light py-2 mb-3" style="border: none; position: sticky; top: 0; z-index: 1000;">
     <div class="d-flex align-items-center justify-content-between">
       <!-- Левая группа: кнопка закрытия и сохранения в черновик -->
       <div class="d-flex align-items-center gap-2 me-3">
@@ -103,75 +103,7 @@
     </form>
     </div>
 
-    {# Modal dialog to capture the property name.  It opens when the user selects
-       a property type and prevents proceeding until a name is provided. #}
-    <div class="modal fade" id="propertyNameModal" tabindex="-1" aria-labelledby="propertyNameModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
-      <div class="modal-dialog modal-dialog-centered">
-        {# Custom modal styling: rounded corners and no borders between sections #}
-        <div class="modal-content" style="border-radius: 20px; border: none; min-height: 300px;">
-          <div class="modal-header" style="border: none; display: block;">
-            <h5 class="modal-title fw-bold fs-4 mb-2" id="propertyNameModalLabel">Введите название объекта</h5>
-            <p class="text-muted mb-3" style="font-size: 0.9rem;">Это название увидят все пользователи на других страницах Moksli</p>
-            <button type="button" class="btn-close position-absolute end-0 top-0 m-3" data-bs-dismiss="modal" aria-label="Закрыть"></button>
-          </div>
-          <div class="modal-body">
-            <div class="mb-3">
-              {# Remove the label above the input for a cleaner look #}
-              {# Ограничиваем длину названия до 40 символов чтобы пользователь не вводил слишком длинные строки #}
-              <input type="text" class="form-control" id="propertyNameInput" placeholder="Например, Уютная квартира" maxlength="40" />
-              <div class="invalid-feedback">
-                Пожалуйста, введите название, чтобы продолжить.
-              </div>
-            </div>
-          </div>
-          <div class="modal-footer" style="border: none;">
-            <button type="button" class="btn btn-primary" id="propertyNameSave">Сохранить</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <script>
-      document.addEventListener('DOMContentLoaded', function() {
-        // Initialise the Bootstrap modal
-        var propertyNameModalEl = document.getElementById('propertyNameModal');
-        var propertyNameModal = new bootstrap.Modal(propertyNameModalEl);
-        var propertyNameInput = document.getElementById('propertyNameInput');
-        var propertyNameHidden = document.getElementById('property_name');
-        var saveBtn = document.getElementById('propertyNameSave');
-        // When any property type radio is selected, prompt for a name
-        var radios = document.querySelectorAll('input[name="property_type"]');
-        radios.forEach(function(radio) {
-          radio.addEventListener('change', function() {
-            // Pre-fill the input with any previously saved value
-            if (propertyNameHidden.value) {
-              propertyNameInput.value = propertyNameHidden.value;
-              propertyNameInput.classList.remove('is-invalid');
-            } else {
-              propertyNameInput.value = '';
-              propertyNameInput.classList.remove('is-invalid');
-            }
-            propertyNameModal.show();
-          });
-        });
-        // Save the name and close the modal when clicking the Save button
-        saveBtn.addEventListener('click', function() {
-          var value = propertyNameInput.value.trim();
-          if (value) {
-            propertyNameHidden.value = value;
-            propertyNameModal.hide();
-          } else {
-            // Show validation message
-            propertyNameInput.classList.add('is-invalid');
-          }
-        });
-        // Remove invalid class when user starts typing
-        propertyNameInput.addEventListener('input', function() {
-          if (propertyNameInput.classList.contains('is-invalid')) {
-            propertyNameInput.classList.remove('is-invalid');
-          }
-        });
-      });
-    </script>
+    {# The modal used to capture the property name has been removed.
+       A dedicated input for the listing title is provided on step 5 instead. #}
 </div>
 {% endblock %}

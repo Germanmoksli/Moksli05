@@ -2,20 +2,18 @@
 
 {#
   Step 5 of the new listing wizard: descriptions.  This final step
-  collects textual information about the listing, including a main
-  description and any important notes for guests.  The page reuses the
+  collects textual information about the listing.  The page reuses the
   unified navigation bar with cancel/draft actions, a progress bar and
   back/finish buttons.  A constrained container centres the form and
   aligns headings with prior steps.  Real‑time character counters help
-  users stay within the limits (2000 characters for the main description
-  and 1000 characters for the guest notes).
+  users stay within the limits (400 characters for the main description).
 #}
 {% block title %}Новое объявление – Шаг 5{% endblock %}
 
 {% block content %}
 {% if hide_nav %}
   <!-- Top navigation bar for descriptions step -->
-  <div class="container-fluid bg-light py-2 mb-3" style="border: none;">
+  <div class="container-fluid bg-light py-2 mb-3" style="border: none; position: sticky; top: 0; z-index: 1000;">
     <div class="d-flex align-items-center justify-content-between">
       <!-- Left group: cancel and save draft -->
       <div class="d-flex align-items-center gap-2 me-3">
@@ -53,36 +51,37 @@
     <!-- Heading for descriptions step -->
     <h2 class="fw-bold fs-2 mb-4 text-start">Описание объекта</h2>
     <form method="post" id="descriptionForm">
+      <!-- Название объявления -->
+      <div class="mb-4">
+        <label for="property_name" class="form-label fw-bold">Название объявления</label>
+        <input type="text" class="form-control" id="property_name" name="property_name" value="{{ property_name }}" maxlength="40" required>
+      </div>
       <!-- Main description -->
       <div class="mb-4">
         <label for="main_description" class="form-label fw-bold">Основное описание</label>
-        <textarea class="form-control" id="main_description" name="main_description" rows="6" maxlength="1000" required>{{ main_description }}</textarea>
-        <div class="form-text text-end"><span id="mainDescCount">0</span>/1000</div>
+        <textarea class="form-control" id="main_description" name="main_description" rows="6" maxlength="400" required>{{ main_description }}</textarea>
+        <div class="form-text text-end"><span id="mainDescCount">0</span>/400</div>
       </div>
-      <!-- Guest notes -->
-      <div class="mb-4">
-        <label for="guest_notes" class="form-label fw-bold">Что важно знать гостю заранее?</label>
-        <textarea class="form-control" id="guest_notes" name="guest_notes" rows="4" maxlength="500">{{ guest_notes }}</textarea>
-        <div class="form-text text-end"><span id="guestNotesCount">0</span>/500</div>
-      </div>
+      {# The guest notes field has been removed as per the new requirements. #}
     </form>
   </div>
 </div>
 <!-- Character counter script -->
 <script>
   document.addEventListener('DOMContentLoaded', function () {
+    // Set up a real‑time counter for the main description. The guest
+    // notes field has been removed, so only the main description is
+    // counted.
     const mainInput = document.getElementById('main_description');
     const mainCount = document.getElementById('mainDescCount');
-    const guestInput = document.getElementById('guest_notes');
-    const guestCount = document.getElementById('guestNotesCount');
     function updateCount(input, counter) {
       counter.textContent = input.value.length;
     }
-    mainInput.addEventListener('input', function() { updateCount(mainInput, mainCount); });
-    guestInput.addEventListener('input', function() { updateCount(guestInput, guestCount); });
-    // Initialise counts with existing values if editing
+    mainInput.addEventListener('input', function() {
+      updateCount(mainInput, mainCount);
+    });
+    // Initialise count on page load in case there is existing text.
     updateCount(mainInput, mainCount);
-    updateCount(guestInput, guestCount);
   });
 </script>
 {% endblock %}

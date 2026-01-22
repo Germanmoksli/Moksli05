@@ -4054,11 +4054,11 @@ def add_room():
         except Exception:
             uploaded_photos = []
         # Ограничим общее количество фото, которое можно загрузить при
-        # создании объявления, до 20.  Если файлов больше, лишние игнорируем.
+        # создании объявления, до 100.  Если файлов больше, лишние игнорируем.
         if uploaded_photos:
-            photos_to_process = uploaded_photos[:20]
-            if len(uploaded_photos) > 20:
-                flash("Количество фотографий ограничено 20. Лишние файлы не были загружены.")
+            photos_to_process = uploaded_photos[:100]
+            if len(uploaded_photos) > 100:
+                flash("Количество фотографий ограничено 100. Лишние файлы не были загружены.")
             for file in photos_to_process:
                 # Пропускаем пустые объекты
                 if not file or not getattr(file, "filename", None):
@@ -9435,14 +9435,26 @@ def new_room_step5():
     if 'new_listing_photos' not in session:
         return redirect(url_for('new_room_step4'))
     if request.method == 'POST':
-        # Save the main description and guest notes.  Use strip() to
-        # normalise whitespace.  Empty fields become empty strings.
+        # Save the property name provided on this step.  Limit to 40 characters
+        # and trim whitespace.  If not provided the session value remains unchanged.
+        property_name = request.form.get('property_name', '')
+        if property_name:
+            try:
+                trimmed_name = property_name.strip()[:40]
+            except Exception:
+                trimmed_name = property_name[:40]
+            session['new_listing_property_name'] = trimmed_name
+        # Save the main description.  Trim and enforce a maximum length of
+        # 400 characters to prevent excessively long texts from breaking the UI.
         main_desc = request.form.get('main_description', '')
-        guest_notes = request.form.get('guest_notes', '')
         try:
-            session['new_listing_main_description'] = main_desc.strip()
+            trimmed_desc = main_desc.strip()[:400]
         except Exception:
-            session['new_listing_main_description'] = main_desc
+            trimmed_desc = main_desc[:400]
+        session['new_listing_main_description'] = trimmed_desc
+        # Guest notes have been removed; still capture them if present for
+        # backward compatibility but do not rely on them.
+        guest_notes = request.form.get('guest_notes', '')
         try:
             session['new_listing_guest_notes'] = guest_notes.strip()
         except Exception:
@@ -9456,7 +9468,8 @@ def new_room_step5():
     next_url = url_for('new_room_step6')
     # Retrieve any previously saved values from the session to pre‑fill the form
     main_description = session.get('new_listing_main_description', '')
-    guest_notes = session.get('new_listing_guest_notes', '')
+    # Retrieve previously saved property name to pre‑fill the field
+    property_name_val = session.get('new_listing_property_name', '')
     return render_template(
         'new_room_step5.html',
         progress=progress,
@@ -9464,7 +9477,7 @@ def new_room_step5():
         next_url=next_url,
         hide_nav=True,
         main_description=main_description,
-        guest_notes=guest_notes,
+        property_name=property_name_val,
     )
 
 @app.route('/rooms/new/step6', methods=['GET', 'POST'])
