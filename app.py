@@ -3645,7 +3645,10 @@ def list_rooms():
         # If querying drafts fails (e.g. table not found), leave drafts empty
         drafts = []
     conn.close()
-    return render_template("rooms.html", rooms=rooms, drafts=drafts)
+    # Determine view mode (grid or list).  Default to grid when unspecified.
+    view_mode = request.args.get('view', 'grid')
+    # Pass view_mode to the template so that the user can toggle between display modes
+    return render_template("rooms.html", rooms=rooms, drafts=drafts, view_mode=view_mode)
 
 
 @app.route("/rooms/<int:room_id>/delete", methods=["POST"])
@@ -3687,6 +3690,52 @@ def delete_room(room_id: int):
         # Roll back on error and display a message
         conn.rollback()
         flash(f"Ошибка при удалении квартиры: {e}", "danger")
+    finally:
+        conn.close()
+    return redirect(url_for('list_rooms'))
+
+# -------------------------------------------------------------------------
+# Route to unpublish a listing
+
+@app.route('/rooms/<int:room_id>/unpublish', methods=['POST'])
+@login_required
+@roles_required('owner')
+def unpublish_room(room_id: int):
+    """Mark a listing as unpublished without deleting it.
+
+    Owners may choose to remove their listing from public view by setting
+    ``is_published`` to False.  This route verifies ownership and updates
+    the record accordingly.  After unpublishing, the user is redirected
+    back to the list of rooms with a success message.  If the room
+    doesn't exist or doesn't belong to the current user, an error
+    message is displayed instead.
+    """
+    conn = get_db_connection()
+    # Verify that the room exists and belongs to the current owner
+    room = conn.execute(
+        "SELECT id, owner_id, is_published FROM rooms WHERE id = ?",
+        (room_id,)
+    ).fetchone()
+    # Helper to extract the owner id from the row
+    def _get_owner(r):
+        try:
+            return r["owner_id"]
+        except Exception:
+            return r[1] if r is not None and len(r) > 1 else None
+    if room is None or _get_owner(room) != session.get("user_id"):
+        conn.close()
+        flash("Квартира не найдена или у вас нет прав на её редактирование.", "danger")
+        return redirect(url_for('list_rooms'))
+    try:
+        with conn:
+            conn.execute(
+                "UPDATE rooms SET is_published = FALSE WHERE id = ?",
+                (room_id,),
+            )
+        flash("Объявление снято с публикации.", "success")
+    except Exception as e:
+        conn.rollback()
+        flash(f"Ошибка при снятии объявления с публикации: {e}", "danger")
     finally:
         conn.close()
     return redirect(url_for('list_rooms'))
