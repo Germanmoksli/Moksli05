@@ -86,47 +86,89 @@
     </div>
   {% endif %}
   {% if rooms %}
-    {#
-      Unified card layout for both grid and list views.  Each apartment is displayed as a card with
-      a preview image, status indicator with text, title, and action buttons.  The number of
-      columns adapts based on the selected view mode: multiple columns for the grid and a single
-      column for the list.  All extraneous details (room count, guests, area, amenities, price)
-      have been removed to provide the same information in both layouts.
-    #}
-    <div class="row g-4 {% if view_mode == 'grid' %}row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4{% else %}row-cols-1{% endif %}">
-      {% for room in rooms %}
-        <div class="col">
-          <div class="card h-100 shadow-sm" style="border-radius: 16px; overflow: hidden;">
-            <div class="position-relative" style="height: 200px; overflow: hidden;">
-              {% if room.photo_src %}
-                <img src="{{ room.photo_src }}" alt="Фото" class="w-100 h-100" style="object-fit: cover;">
-              {% else %}
-                <img src="{{ url_for('static', filename='img/no-photo.png') }}" alt="Фото" class="w-100 h-100" style="object-fit: cover;">
-              {% endif %}
-            </div>
-            <div class="p-3">
-              <h5 class="fw-bold mb-2 mb-sm-1">{{ room['room_number'] or 'Без названия' }}</h5>
-              <div class="d-flex align-items-center">
-                <span class="me-2" style="width: 10px; height: 10px; border-radius: 50%; background-color: {% if room['is_published'] %}#28a745{% else %}#dc3545{% endif %};"></span>
-                <span class="small text-muted">
+    {% if view_mode == 'grid' %}
+      {#
+        Grid view: display each apartment as a card similar to the public catalogue.  The card shows
+        a preview image (180px height), status indicator with text, title, and action buttons.  All
+        other details are omitted.  Cards are arranged responsively with up to four columns on
+        larger screens.
+      #}
+      <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
+        {% for room in rooms %}
+          <div class="col">
+            <div class="card h-100 shadow-sm" style="border-radius: 16px; overflow: hidden;">
+              <div class="position-relative" style="height: 180px; overflow: hidden;">
+                {% if room.photo_src %}
+                  <img src="{{ room.photo_src }}" alt="Фото" class="w-100 h-100" style="object-fit: cover;">
+                {% else %}
+                  <img src="{{ url_for('static', filename='img/no-photo.png') }}" alt="Фото" class="w-100 h-100" style="object-fit: cover;">
+                {% endif %}
+              </div>
+              <div class="p-3">
+                <h5 class="fw-bold mb-2">{{ room['room_number'] or 'Без названия' }}</h5>
+                <div class="d-flex align-items-center">
+                  {% set status_color = '#dc3545' %}
+                  {% set status_text = 'Не опубликовано' %}
                   {% if room['is_published'] %}
-                    Опубликовано
-                  {% else %}
-                    Не опубликовано
+                    {% set status_color = '#28a745' %}
+                    {% set status_text = 'Опубликовано' %}
                   {% endif %}
-                </span>
+                  <span class="me-2" style="width: 10px; height: 10px; border-radius: 50%; background-color: {{ status_color }};"></span>
+                  <span class="small text-muted">{{ status_text }}</span>
+                </div>
+              </div>
+              <div class="p-3 pt-0 d-flex gap-2">
+                <a href="{{ url_for('edit_room', room_id=room['id']) }}" class="btn btn-sm btn-outline-primary flex-grow-1">Редактировать</a>
+                <form method="post" action="{{ url_for('unpublish_room', room_id=room['id']) }}" class="m-0" onsubmit="return confirm('Вы уверены, что хотите снять это объявление с публикации?');">
+                  <button type="submit" class="btn btn-sm btn-outline-warning">Снять с публикации</button>
+                </form>
               </div>
             </div>
-            <div class="p-3 pt-0 d-flex gap-2">
-              <a href="{{ url_for('edit_room', room_id=room['id']) }}" class="btn btn-sm btn-outline-primary flex-grow-1">Редактировать</a>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      {#
+        List view: display apartments as individual list-group items.  Each row shows a small
+        thumbnail, a status indicator with text, the listing title, and action buttons.  Rows
+        are separated by borders and use minimal spacing.  This preserves the original list
+        appearance while still providing status text.
+      #}
+      <div class="list-group">
+        {% for room in rooms %}
+          <div class="list-group-item py-3 d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center">
+              <div class="me-3" style="width: 80px; height: 60px; overflow: hidden; border-radius: 8px;">
+                {% if room.photo_src %}
+                  <img src="{{ room.photo_src }}" alt="Фото" class="w-100 h-100" style="object-fit: cover;">
+                {% else %}
+                  <img src="{{ url_for('static', filename='img/no-photo.png') }}" alt="Фото" class="w-100 h-100" style="object-fit: cover;">
+                {% endif %}
+              </div>
+              <div>
+                <div class="d-flex align-items-center mb-1">
+                  {% set status_color = '#dc3545' %}
+                  {% set status_text = 'Не опубликовано' %}
+                  {% if room['is_published'] %}
+                    {% set status_color = '#28a745' %}
+                    {% set status_text = 'Опубликовано' %}
+                  {% endif %}
+                  <span class="me-2" style="width: 10px; height: 10px; border-radius: 50%; background-color: {{ status_color }};"></span>
+                    <span class="small text-muted me-2">{{ status_text }}</span>
+                </div>
+                <strong>{{ room['room_number'] or 'Без названия' }}</strong>
+              </div>
+            </div>
+            <div class="d-flex gap-2">
+              <a href="{{ url_for('edit_room', room_id=room['id']) }}" class="btn btn-sm btn-outline-primary">Редактировать</a>
               <form method="post" action="{{ url_for('unpublish_room', room_id=room['id']) }}" class="m-0" onsubmit="return confirm('Вы уверены, что хотите снять это объявление с публикации?');">
                 <button type="submit" class="btn btn-sm btn-outline-warning">Снять с публикации</button>
               </form>
             </div>
           </div>
-        </div>
-      {% endfor %}
-    </div>
+        {% endfor %}
+      </div>
+    {% endif %}
   {% else %}
     <p>Нет квартир в системе.</p>
   {% endif %}
