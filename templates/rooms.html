@@ -1,36 +1,48 @@
 {% extends "base.html" %}
 {% block title %}Мои квартиры{% endblock %}
 {% block content %}
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h2 class="text-primary fw-bold fs-4">Мои квартиры</h2>
-    <!-- Группа действий: кнопка добавления и переключатели представления (плитка/список) -->
-    <div class="d-flex align-items-center gap-2">
-      <!-- Кнопка добавления нового объявления.  Если есть черновики, она открывает модальное окно
-           с выбором: начать новое объявление или продолжить создание.  Если черновиков нет,
-           кнопка сразу переходит к началу мастера создания и очищает состояние. -->
-      {% if drafts %}
-        <a href="#"
-           class="btn btn-primary rounded-circle d-flex align-items-center justify-content-center"
-           style="width: 48px; height: 48px;"
-           data-bs-toggle="modal" data-bs-target="#createListingModal">
-          <i class="bi bi-plus-lg fs-4 fw-bold text-white"></i>
-        </a>
-      {% else %}
-        <a href="{{ url_for('start_new_listing') }}"
-           class="btn btn-primary rounded-circle d-flex align-items-center justify-content-center"
-           style="width: 48px; height: 48px;">
-          <i class="bi bi-plus-lg fs-4 fw-bold text-white"></i>
-        </a>
-      {% endif %}
-      <!-- Переключатель вида: плитка или список -->
-      <div class="btn-group" role="group" aria-label="View switch">
-        <a href="{{ url_for('list_rooms', view='grid') }}" class="btn btn-outline-secondary {% if view_mode == 'grid' %}active{% endif %}" title="Плитка">
-          <i class="bi bi-grid"></i>
-        </a>
-        <a href="{{ url_for('list_rooms', view='list') }}" class="btn btn-outline-secondary {% if view_mode == 'list' %}active{% endif %}" title="Список">
-          <i class="bi bi-list"></i>
-        </a>
-      </div>
+  <div class="d-flex justify-content-end align-items-center mb-3">
+    <!-- Кнопка добавления нового объявления.  Если есть черновики, она открывает модальное окно
+         с выбором: начать новое объявление или продолжить создание.  Если черновиков нет,
+         кнопка сразу переходит к началу мастера создания и очищает состояние. -->
+    {% if drafts %}
+      <a href="#"
+         class="btn btn-primary rounded-circle d-flex align-items-center justify-content-center me-2"
+         style="width: 48px; height: 48px;"
+         data-bs-toggle="modal" data-bs-target="#createListingModal">
+        <i class="bi bi-plus-lg fs-4 fw-bold text-white"></i>
+      </a>
+    {% else %}
+      <a href="{{ url_for('start_new_listing') }}"
+         class="btn btn-primary rounded-circle d-flex align-items-center justify-content-center me-2"
+         style="width: 48px; height: 48px;">
+        <i class="bi bi-plus-lg fs-4 fw-bold text-white"></i>
+      </a>
+    {% endif %}
+    <!-- Кнопка переключения вида: отображается как одна серая иконка.  По нажатию открывается меню
+         с вариантами 'Плиткой' и 'Списком'.  Иконка на кнопке показывает противоположный режим. -->
+    <div class="dropdown">
+      <a class="btn btn-light text-secondary border-0 d-flex align-items-center justify-content-center"
+         href="#" id="viewToggleDropdown" data-bs-toggle="dropdown" aria-expanded="false"
+         title="Изменить отображение">
+        {% if view_mode == 'grid' %}
+          <i class="bi bi-list fs-4"></i>
+        {% else %}
+          <i class="bi bi-grid fs-4"></i>
+        {% endif %}
+      </a>
+      <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="viewToggleDropdown">
+        <li>
+          <a class="dropdown-item d-flex align-items-center" href="{{ url_for('list_rooms', view='grid') }}">
+            <i class="bi bi-grid me-2"></i>Плиткой
+          </a>
+        </li>
+        <li>
+          <a class="dropdown-item d-flex align-items-center" href="{{ url_for('list_rooms', view='list') }}">
+            <i class="bi bi-list me-2"></i>Списком
+          </a>
+        </li>
+      </ul>
     </div>
   </div>
   {# Display draft listings (saved unfinished objects) above the table #}
@@ -74,91 +86,47 @@
     </div>
   {% endif %}
   {% if rooms %}
-    {% if view_mode == 'grid' %}
-      <!-- Grid view: display rooms as responsive cards.  Each card shows a preview image, title,
-           basic details and amenities, price per night, and management actions.  The delete
-           action has been replaced with an unpublish button. -->
-      <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
-        {% for room in rooms %}
-          <div class="col">
-            <div class="card h-100 shadow-sm" style="border-radius: 16px; overflow: hidden;">
-              <a href="{{ url_for('edit_room', room_id=room['id']) }}" style="text-decoration: none; color: inherit;">
-                <div class="position-relative" style="height: 200px; overflow: hidden;">
-                  {% if room.photo_src %}
-                    <img src="{{ room.photo_src }}" alt="Фото" class="w-100 h-100" style="object-fit: cover;">
-                  {% else %}
-                    <img src="{{ url_for('static', filename='img/no-photo.png') }}" alt="Фото" class="w-100 h-100" style="object-fit: cover;">
-                  {% endif %}
-                </div>
-                <div class="p-3">
-                  <h5 class="fw-bold">{{ room['room_number'] or 'Без названия' }}</h5>
-                  <div class="text-muted small mb-2">
-                    {% set details = [] %}
-                    {% if room['num_rooms'] %}
-                      {% set _ = details.append(room['num_rooms'] ~ ' комн') %}
-                    {% endif %}
-                    {% if room['max_guests'] %}
-                      {% set _ = details.append(room['max_guests'] ~ ' гостей') %}
-                    {% endif %}
-                    {% if room['area_total'] %}
-                      {% set _ = details.append(room['area_total'] ~ ' м²') %}
-                    {% endif %}
-                    {{ details|join(' · ') }}
-                  </div>
-                  <div class="mb-2">
-                    {% set amenities_lower = (room['amenities'] or '').lower() %}
-                    {% if 'wifi' in amenities_lower or 'wi-fi' in amenities_lower or 'wi fi' in amenities_lower %}
-                      <i class="bi bi-wifi me-2" title="Wi-Fi"></i>
-                    {% endif %}
-                    {% if 'parking' in amenities_lower %}
-                      <i class="bi bi-car-front me-2" title="Парковка"></i>
-                    {% endif %}
-                    {% if 'кондиц' in amenities_lower or 'climate' in amenities_lower or 'air' in amenities_lower %}
-                      <i class="bi bi-thermometer-half me-2" title="Кондиционер"></i>
-                    {% endif %}
-                  </div>
-                  <div class="fw-bold fs-6">{{ room['price_per_night'] }} ₸ / сутки</div>
-                </div>
-              </a>
-              <div class="p-3 pt-0 d-flex gap-2">
-                <a href="{{ url_for('edit_room', room_id=room['id']) }}" class="btn btn-sm btn-outline-primary flex-grow-1">Редактировать</a>
-                <form method="post" action="{{ url_for('unpublish_room', room_id=room['id']) }}" class="m-0" onsubmit="return confirm('Вы уверены, что хотите снять это объявление с публикации?');">
-                  <button type="submit" class="btn btn-sm btn-outline-warning">Снять с публикации</button>
-                </form>
-              </div>
+    {#
+      Unified card layout for both grid and list views.  Each apartment is displayed as a card with
+      a preview image, status indicator with text, title, and action buttons.  The number of
+      columns adapts based on the selected view mode: multiple columns for the grid and a single
+      column for the list.  All extraneous details (room count, guests, area, amenities, price)
+      have been removed to provide the same information in both layouts.
+    #}
+    <div class="row g-4 {% if view_mode == 'grid' %}row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4{% else %}row-cols-1{% endif %}">
+      {% for room in rooms %}
+        <div class="col">
+          <div class="card h-100 shadow-sm" style="border-radius: 16px; overflow: hidden;">
+            <div class="position-relative" style="height: 200px; overflow: hidden;">
+              {% if room.photo_src %}
+                <img src="{{ room.photo_src }}" alt="Фото" class="w-100 h-100" style="object-fit: cover;">
+              {% else %}
+                <img src="{{ url_for('static', filename='img/no-photo.png') }}" alt="Фото" class="w-100 h-100" style="object-fit: cover;">
+              {% endif %}
             </div>
-          </div>
-        {% endfor %}
-      </div>
-    {% else %}
-      <!-- List view: display rooms as list-group items with thumbnail, status indicator, title, and actions. -->
-      <div class="list-group">
-        {% for room in rooms %}
-          <div class="list-group-item py-3 d-flex justify-content-between align-items-center">
-            <div class="d-flex align-items-center">
-              <div class="me-3" style="width: 80px; height: 60px; overflow: hidden; border-radius: 8px;">
-                {% if room.photo_src %}
-                  <img src="{{ room.photo_src }}" alt="Фото" class="w-100 h-100" style="object-fit: cover;">
-                {% else %}
-                  <img src="{{ url_for('static', filename='img/no-photo.png') }}" alt="Фото" class="w-100 h-100" style="object-fit: cover;">
-                {% endif %}
-              </div>
+            <div class="p-3">
+              <h5 class="fw-bold mb-2 mb-sm-1">{{ room['room_number'] or 'Без названия' }}</h5>
               <div class="d-flex align-items-center">
-                <span class="me-2" style="display:inline-block;width:10px;height:10px;border-radius:50%;
-                  background-color:{% if room['is_published'] %}#28a745{% else %}#dc3545{% endif %};"></span>
-                <strong>{{ room['room_number'] or 'Без названия' }}</strong>
+                <span class="me-2" style="width: 10px; height: 10px; border-radius: 50%; background-color: {% if room['is_published'] %}#28a745{% else %}#dc3545{% endif %};"></span>
+                <span class="small text-muted">
+                  {% if room['is_published'] %}
+                    Опубликовано
+                  {% else %}
+                    Не опубликовано
+                  {% endif %}
+                </span>
               </div>
             </div>
-            <div class="d-flex gap-2">
-              <a href="{{ url_for('edit_room', room_id=room['id']) }}" class="btn btn-sm btn-outline-primary">Редактировать</a>
+            <div class="p-3 pt-0 d-flex gap-2">
+              <a href="{{ url_for('edit_room', room_id=room['id']) }}" class="btn btn-sm btn-outline-primary flex-grow-1">Редактировать</a>
               <form method="post" action="{{ url_for('unpublish_room', room_id=room['id']) }}" class="m-0" onsubmit="return confirm('Вы уверены, что хотите снять это объявление с публикации?');">
                 <button type="submit" class="btn btn-sm btn-outline-warning">Снять с публикации</button>
               </form>
             </div>
           </div>
-        {% endfor %}
-      </div>
-    {% endif %}
+        </div>
+      {% endfor %}
+    </div>
   {% else %}
     <p>Нет квартир в системе.</p>
   {% endif %}
