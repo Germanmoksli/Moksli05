@@ -19,31 +19,9 @@
         <i class="bi bi-plus-lg fs-4 fw-bold text-white"></i>
       </a>
     {% endif %}
-    <!-- Кнопка переключения вида: отображается как одна серая иконка.  По нажатию открывается меню
-         с вариантами 'Плиткой' и 'Списком'.  Иконка на кнопке показывает противоположный режим. -->
-    <div class="dropdown">
-      <a class="btn btn-light text-secondary border-0 d-flex align-items-center justify-content-center"
-         href="#" id="viewToggleDropdown" data-bs-toggle="dropdown" aria-expanded="false"
-         title="Изменить отображение">
-        {% if view_mode == 'grid' %}
-          <i class="bi bi-list fs-4"></i>
-        {% else %}
-          <i class="bi bi-grid fs-4"></i>
-        {% endif %}
-      </a>
-      <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="viewToggleDropdown">
-        <li>
-          <a class="dropdown-item d-flex align-items-center" href="{{ url_for('list_rooms', view='grid') }}">
-            <i class="bi bi-grid me-2"></i>Плиткой
-          </a>
-        </li>
-        <li>
-          <a class="dropdown-item d-flex align-items-center" href="{{ url_for('list_rooms', view='list') }}">
-            <i class="bi bi-list me-2"></i>Списком
-          </a>
-        </li>
-      </ul>
-    </div>
+    {# Удалили переключатель отображения. Список квартир теперь всегда
+       показывается в виде списка, без варианта плитки. Если в будущем
+       понадобится вернуть переключатель, можно восстановить этот блок. #}
   </div>
   {# Display draft listings (saved unfinished objects) above the table #}
   {% if drafts %}
@@ -86,7 +64,10 @@
     </div>
   {% endif %}
   {% if rooms %}
-    {% if view_mode == 'grid' %}
+    {# Отключаем отображение плитки: условие всегда ложное, поэтому код
+       плиточного вида не будет выполняться.  Квартиры будут показываться
+       только списком. #}
+    {% if false %}
       {#
         Grid view: display each apartment as a card similar to the public catalogue.  The card shows
         a preview image (180px height), status indicator with text, title, and action buttons.  All
