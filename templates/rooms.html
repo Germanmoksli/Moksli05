@@ -93,7 +93,14 @@
         other details are omitted.  Cards are arranged responsively with up to four columns on
         larger screens.
       #}
-      <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
+      <!--
+        Use the same responsive column breakpoints as the public catalogue to
+        ensure the cards in "Мои квартиры" are the same width as in the
+        catalogue.  On mobile we show two cards per row, on small screens two,
+        on medium three and on large five.  The g-4 class keeps the same
+        spacing between cards as in the catalogue.
+      -->
+      <div class="row row-cols-2 row-cols-sm-2 row-cols-md-3 row-cols-lg-5 g-4">
         {% for room in rooms %}
           <div class="col">
             <div class="card h-100 border-0 position-relative" style="box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); border-radius: 20px; background-color: transparent !important;">
@@ -104,27 +111,42 @@
                   <img src="{{ url_for('static', filename='img/no-photo.png') }}" alt="Фото" class="w-100 h-100" style="object-fit: cover;">
                 {% endif %}
               </div>
-              <div class="p-3 d-flex flex-column" style="min-height: 100px;">
-                {# Status row: dot and text #}
-                <div class="d-flex align-items-center mb-1">
-                  {% set status_color = '#dc3545' %}
-                  {% set status_text = 'Не опубликовано' %}
-                  {% if room['is_published'] %}
-                    {% set status_color = '#28a745' %}
-                    {% set status_text = 'Опубликовано' %}
-                  {% endif %}
-                  <span class="me-2" style="width: 10px; height: 10px; border-radius: 50%; background-color: {{ status_color }};"></span>
-                  <span class="small text-muted">{{ status_text }}</span>
+              {#
+                Display the listing status as a coloured badge in the upper right
+                corner.  Published listings get a green badge, unpublished
+                listings a red badge.  Using Bootstrap's .badge class gives
+                rounded corners and padding similar to the badges used in the
+                catalogue.  The badge is positioned absolutely so it sits on
+                top of the image.
+              #}
+              <div class="position-absolute top-0 end-0 m-2" style="z-index: 2;">
+                {% if room['is_published'] %}
+                  <span class="badge bg-success">Опубликовано</span>
+                {% else %}
+                  <span class="badge bg-danger">Не&nbsp;опубликовано</span>
+                {% endif %}
+              </div>
+              <div class="p-3">
+                <!-- Make the listing name smaller and limit it to two lines to
+                     reduce the vertical space used by the title.  We use a
+                     custom inline style here rather than relying on Bootstrap
+                     headings.  Font size roughly matches the catalogue
+                     (≈0.94rem), font weight 600 for emphasis and
+                     -webkit-line-clamp to truncate long names with an ellipsis. -->
+                <div style="font-size: 0.9375rem; font-weight: 600; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; min-height: calc(1.2em * 2);">
+                  {{ room['room_number'] or 'Без названия' }}
                 </div>
-                {# Title of the apartment #}
-                <h5 class="fw-bold mb-1">{{ room['room_number'] or 'Без названия' }}</h5>
-                {# Actions: use link-style buttons to minimize vertical space.  The buttons are inline and use no padding. #}
-                <div class="mt-auto d-flex gap-2">
-                  <a href="{{ url_for('edit_room', room_id=room['id']) }}" class="btn btn-link p-0 text-primary">Редактировать</a>
-                  <form method="post" action="{{ url_for('unpublish_room', room_id=room['id']) }}" class="m-0" onsubmit="return confirm('Вы уверены, что хотите снять это объявление с публикации?');">
-                    <button type="submit" class="btn btn-link p-0 text-warning">Снять с публикации</button>
-                  </form>
-                </div>
+              </div>
+              <div class="p-3 pt-0 d-flex gap-2">
+                <!-- Use our primary colour for the buttons rather than the default
+                     outline styles.  The btn-sm class keeps them compact and
+                     the flex-grow-1 ensures even widths. -->
+                <a href="{{ url_for('edit_room', room_id=room['id']) }}" class="btn btn-sm btn-primary flex-grow-1">Редактировать</a>
+                <form method="post" action="{{ url_for('unpublish_room', room_id=room['id']) }}" class="m-0" onsubmit="return confirm('Вы уверены, что хотите снять это объявление с публикации?');">
+                  <!-- Use btn-primary for consistency with the edit button.  The
+                       warning message is conveyed via the confirmation dialog. -->
+                  <button type="submit" class="btn btn-sm btn-primary">Снять с публикации</button>
+                </form>
               </div>
             </div>
           </div>
@@ -163,9 +185,11 @@
               </div>
             </div>
             <div class="d-flex gap-2">
-              <a href="{{ url_for('edit_room', room_id=room['id']) }}" class="btn btn-sm btn-outline-primary">Редактировать</a>
+              <!-- Use our primary colour for buttons in list view to match the
+                   grid cards.  The btn-sm class keeps them compact. -->
+              <a href="{{ url_for('edit_room', room_id=room['id']) }}" class="btn btn-sm btn-primary">Редактировать</a>
               <form method="post" action="{{ url_for('unpublish_room', room_id=room['id']) }}" class="m-0" onsubmit="return confirm('Вы уверены, что хотите снять это объявление с публикации?');">
-                <button type="submit" class="btn btn-sm btn-outline-warning">Снять с публикации</button>
+                <button type="submit" class="btn btn-sm btn-primary">Снять с публикации</button>
               </form>
             </div>
           </div>
