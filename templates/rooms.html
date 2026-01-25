@@ -104,9 +104,9 @@
                   <img src="{{ url_for('static', filename='img/no-photo.png') }}" alt="Фото" class="w-100 h-100" style="object-fit: cover;">
                 {% endif %}
               </div>
-              <div class="p-3">
-                <h5 class="fw-bold mb-2">{{ room['room_number'] or 'Без названия' }}</h5>
-                <div class="d-flex align-items-center">
+              <div class="p-3 d-flex flex-column" style="min-height: 100px;">
+                {# Status row: dot and text #}
+                <div class="d-flex align-items-center mb-1">
                   {% set status_color = '#dc3545' %}
                   {% set status_text = 'Не опубликовано' %}
                   {% if room['is_published'] %}
@@ -116,12 +116,15 @@
                   <span class="me-2" style="width: 10px; height: 10px; border-radius: 50%; background-color: {{ status_color }};"></span>
                   <span class="small text-muted">{{ status_text }}</span>
                 </div>
-              </div>
-              <div class="p-3 pt-0 d-flex gap-2">
-                <a href="{{ url_for('edit_room', room_id=room['id']) }}" class="btn btn-sm btn-outline-primary flex-grow-1">Редактировать</a>
-                <form method="post" action="{{ url_for('unpublish_room', room_id=room['id']) }}" class="m-0" onsubmit="return confirm('Вы уверены, что хотите снять это объявление с публикации?');">
-                  <button type="submit" class="btn btn-sm btn-outline-warning">Снять с публикации</button>
-                </form>
+                {# Title of the apartment #}
+                <h5 class="fw-bold mb-1">{{ room['room_number'] or 'Без названия' }}</h5>
+                {# Actions: use link-style buttons to minimize vertical space.  The buttons are inline and use no padding. #}
+                <div class="mt-auto d-flex gap-2">
+                  <a href="{{ url_for('edit_room', room_id=room['id']) }}" class="btn btn-link p-0 text-primary">Редактировать</a>
+                  <form method="post" action="{{ url_for('unpublish_room', room_id=room['id']) }}" class="m-0" onsubmit="return confirm('Вы уверены, что хотите снять это объявление с публикации?');">
+                    <button type="submit" class="btn btn-link p-0 text-warning">Снять с публикации</button>
+                  </form>
+                </div>
               </div>
             </div>
           </div>
