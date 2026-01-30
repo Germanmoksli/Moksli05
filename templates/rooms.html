@@ -1,28 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Мои квартиры{% endblock %}
 {% block content %}
-  <div class="d-flex justify-content-end align-items-center mb-3">
-    <!-- Кнопка добавления нового объявления.  Если есть черновики, она открывает модальное окно
-         с выбором: начать новое объявление или продолжить создание.  Если черновиков нет,
-         кнопка сразу переходит к началу мастера создания и очищает состояние. -->
-    {% if drafts %}
-      <a href="#"
-         class="btn btn-primary rounded-circle d-flex align-items-center justify-content-center me-2"
-         style="width: 48px; height: 48px;"
-         data-bs-toggle="modal" data-bs-target="#createListingModal">
-        <i class="bi bi-plus-lg fs-4 fw-bold text-white"></i>
-      </a>
-    {% else %}
-      <a href="{{ url_for('start_new_listing') }}"
-         class="btn btn-primary rounded-circle d-flex align-items-center justify-content-center me-2"
-         style="width: 48px; height: 48px;">
-        <i class="bi bi-plus-lg fs-4 fw-bold text-white"></i>
-      </a>
-    {% endif %}
-    {# Удалили переключатель отображения. Список квартир теперь всегда
-       показывается в виде списка, без варианта плитки. Если в будущем
-       понадобится вернуть переключатель, можно восстановить этот блок. #}
-  </div>
+  {# Кнопку создания объявления перенесли в верхнее меню навигации, поэтому убираем её из списка. #}
   {# Display draft listings (saved unfinished objects) above the table #}
   {% if drafts %}
     <div class="mb-4">
@@ -148,7 +127,7 @@
       #}
       <div class="list-group">
         {% for room in rooms %}
-          <div class="list-group-item py-3 d-flex justify-content-between align-items-center" style="border-radius: 20px; margin-bottom: 1rem;">
+          <div class="list-group-item py-3 d-flex justify-content-between align-items-center" style="border-radius: 20px; margin-bottom: 1rem; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);">
             <div class="d-flex align-items-center">
               <div class="me-3" style="width: 80px; height: 60px; overflow: hidden; border-radius: 8px;">
                 {% if room.photo_src %}

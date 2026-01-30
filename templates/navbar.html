@@ -218,23 +218,25 @@
           </div>
         {% else %}
           {% if session.get('user_role') == 'owner' %}
-            <!-- Для владельцев: выпадающий список с двумя пунктами (переключение роли и выход) -->
+            {# Для владельцев: показываем кнопку создания объявления рядом с аватаром.  Кнопка имеет синий текст на белом фоне. #}
+            <a href="{{ url_for('start_new_listing') }}" class="btn btn-sm d-flex align-items-center" style="background-color: #fff; color: var(--bs-primary); border: none; border-radius: 20px;">
+              Создать объявление
+            </a>
+            <!-- Для владельцев: выпадающий список с пунктами переключения режима и выхода.  Увеличиваем размер аватара для лучшей видимости. -->
             <div class="dropdown">
               <a href="#" class="d-flex align-items-center text-decoration-none dropdown-toggle" id="ownerMenu" data-bs-toggle="dropdown" aria-expanded="false">
                 {% if user_photo %}
                   {% if user_photo.startswith('data:') %}
-                    <img src="{{ user_photo }}" alt="avatar" class="rounded-circle me-2" width="32" height="32" style="object-fit: cover;">
+                    <img src="{{ user_photo }}" alt="avatar" class="rounded-circle me-2" width="40" height="40" style="object-fit: cover;">
                   {% else %}
-                    <img src="{{ url_for('static', filename=user_photo) }}" alt="avatar" class="rounded-circle me-2" width="32" height="32" style="object-fit: cover;">
+                    <img src="{{ url_for('static', filename=user_photo) }}" alt="avatar" class="rounded-circle me-2" width="40" height="40" style="object-fit: cover;">
                   {% endif %}
                 {% else %}
                   {% set _name = current_user_name if current_user_name else current_username %}
-                  <div class="avatar-placeholder me-2" style="width: 32px; height: 32px;">
+                  <div class="avatar-placeholder me-2 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; border-radius: 50%; font-size: 1.1rem;">
                     {{ _name[0]|upper }}
                   </div>
                 {% endif %}
-                {# Убираем имя пользователя из верхнего меню, оставляем только аватар #}
-                {#<strong>{{ current_user_name or current_username }}</strong>#}
               </a>
               <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="ownerMenu">
                 <li>
@@ -250,16 +252,16 @@
               </ul>
             </div>
           {% else %}
-            <!-- Для менеджеров: аватар, имя и ссылка Выход -->
+            <!-- Для менеджеров: увеличиваем размер аватара и оставляем кнопку выхода -->
             {% if user_photo %}
               {% if user_photo.startswith('data:') %}
-                <img src="{{ user_photo }}" alt="avatar" class="rounded-circle me-2" width="32" height="32" style="object-fit: cover;">
+                <img src="{{ user_photo }}" alt="avatar" class="rounded-circle me-2" width="40" height="40" style="object-fit: cover;">
               {% else %}
-                <img src="{{ url_for('static', filename=user_photo) }}" alt="avatar" class="rounded-circle me-2" width="32" height="32" style="object-fit: cover;">
+                <img src="{{ url_for('static', filename=user_photo) }}" alt="avatar" class="rounded-circle me-2" width="40" height="40" style="object-fit: cover;">
               {% endif %}
             {% else %}
               {% set _name = current_user_name if current_user_name else current_username %}
-              <div class="avatar-placeholder me-2" style="width: 32px; height: 32px;">
+              <div class="avatar-placeholder me-2 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; border-radius: 50%; font-size: 1.1rem;">
                 {{ _name[0]|upper }}
               </div>
             {% endif %}
