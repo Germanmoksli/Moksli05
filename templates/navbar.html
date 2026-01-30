@@ -17,7 +17,12 @@
       </li>
       {# Дашборд и список гостей удалены в упрощённой версии #}
       <li class="nav-item">
-        <a href="{{ url_for('list_rooms') }}" class="nav-link">Квартиры</a>
+        {# Переименовываем пункт навигации: теперь он называется "Объявления" #}
+        <a href="{{ url_for('list_rooms') }}" class="nav-link">Объявления</a>
+      </li>
+      <!-- Добавляем пункт Архив для просмотра снятых с публикации объявлений -->
+      <li class="nav-item">
+        <a href="{{ url_for('archive_rooms') }}" class="nav-link">Архив</a>
       </li>
       {# Сотрудники и подписка удалены в упрощённой версии #}
     </ul>
@@ -228,7 +233,8 @@
                     {{ _name[0]|upper }}
                   </div>
                 {% endif %}
-                <strong>{{ current_user_name or current_username }}</strong>
+                {# Убираем имя пользователя из верхнего меню, оставляем только аватар #}
+                {#<strong>{{ current_user_name or current_username }}</strong>#}
               </a>
               <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="ownerMenu">
                 <li>
@@ -257,7 +263,8 @@
                 {{ _name[0]|upper }}
               </div>
             {% endif %}
-            <span class="me-2"><strong>{{ current_user_name or current_username }}</strong></span>
+            {# Убираем имя пользователя для менеджера в верхнем меню #}
+            {#<span class="me-2"><strong>{{ current_user_name or current_username }}</strong></span>#}
             <a href="{{ url_for('logout') }}" class="btn btn-outline-secondary">Выход</a>
           {% endif %}
         {% endif %}

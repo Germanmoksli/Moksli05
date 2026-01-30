@@ -3740,6 +3740,138 @@ def unpublish_room(room_id: int):
         conn.close()
     return redirect(url_for('list_rooms'))
 
+# -------------------------------------------------------------------------
+# Route to publish an unpublished listing
+@app.route('/rooms/<int:room_id>/publish', methods=['POST'])
+@login_required
+@roles_required('owner')
+def publish_room(room_id: int):
+    """
+    Mark an unpublished listing as published. Owners may republish their
+    archived listings by setting ``is_published`` to True. This route verifies
+    ownership and updates the record accordingly. After publishing, the user
+    is redirected back to the previous page (if available) or to the list of
+    active listings.
+    """
+    conn = get_db_connection()
+    # Verify that the room exists and belongs to the current owner
+    room = conn.execute(
+        "SELECT id, owner_id FROM rooms WHERE id = ?",
+        (room_id,)
+    ).fetchone()
+    def _get_owner_pub(r):
+        try:
+            return r["owner_id"]
+        except Exception:
+            return r[1] if r is not None and len(r) > 1 else None
+    if room is None or _get_owner_pub(room) != session.get("user_id"):
+        conn.close()
+        flash("Квартира не найдена или у вас нет прав на её редактирование.", "danger")
+        return redirect(url_for('list_rooms'))
+    try:
+        with conn:
+            conn.execute(
+                "UPDATE rooms SET is_published = TRUE WHERE id = ?",
+                (room_id,),
+            )
+        flash("Объявление опубликовано.", "success")
+    except Exception as e:
+        conn.rollback()
+        flash(f"Ошибка при публикации объявления: {e}", "danger")
+    finally:
+        conn.close()
+    # Redirect to referrer if available, otherwise to rooms list
+    ref = request.referrer
+    try:
+        if ref:
+            return redirect(ref)
+    except Exception:
+        pass
+    return redirect(url_for('list_rooms'))
+
+# -------------------------------------------------------------------------
+# Archive listings view
+@app.route('/archive')
+@login_required
+@roles_required('owner')
+def archive_rooms():
+    """
+    Display a list of all unpublished (archived) apartments belonging to the
+    current owner.  The archive includes basic details and a thumbnail similar
+    to the active listings page.  Owners can republish listings from this
+    view.
+    """
+    user_id = session.get('user_id')
+    conn = get_db_connection()
+    # Ensure additional columns and image data columns exist
+    try:
+        ensure_rooms_additional_columns(conn)
+    except Exception:
+        pass
+    try:
+        ensure_room_photos_image_data_column(conn)
+    except Exception:
+        pass
+    # Select unpublished rooms owned by the user with photo info
+    room_rows = conn.execute(
+        "SELECT rooms.*, "
+        "       (SELECT file_name FROM room_photos WHERE room_id = rooms.id ORDER BY id LIMIT 1) AS photo_file_name, "
+        "       (SELECT image_data FROM room_photos WHERE room_id = rooms.id ORDER BY id LIMIT 1) AS photo_image_data "
+        "FROM rooms WHERE owner_id = ? AND is_published = FALSE ORDER BY id",
+        (user_id,)
+    ).fetchall()
+    rooms: list[dict] = []
+    for row in room_rows:
+        # Convert row to dict
+        try:
+            room_dict = dict(row)  # type: ignore[arg-type]
+        except Exception:
+            room_dict = {}
+            if hasattr(row, 'keys'):
+                for key in row.keys():
+                    try:
+                        room_dict[key] = row[key]
+                    except Exception:
+                        pass
+        file_name = None
+        image_data = None
+        try:
+            file_name = room_dict.get('photo_file_name')  # type: ignore[attr-defined]
+            image_data = room_dict.get('photo_image_data')  # type: ignore[attr-defined]
+        except Exception:
+            try:
+                file_name = row['photo_file_name']  # type: ignore[index]
+            except Exception:
+                file_name = None
+            try:
+                image_data = row['photo_image_data']  # type: ignore[index]
+            except Exception:
+                image_data = None
+        photo_src: str | None = None
+        if image_data:
+            mime = 'image/jpeg'
+            try:
+                fn = file_name or ''
+                ext = fn.rsplit('.', 1)[-1].lower()
+                if ext == 'png':
+                    mime = 'image/png'
+                elif ext == 'gif':
+                    mime = 'image/gif'
+                elif ext == 'webp':
+                    mime = 'image/webp'
+            except Exception:
+                mime = 'image/jpeg'
+            photo_src = f"data:{mime};base64,{image_data}"
+        elif file_name:
+            try:
+                photo_src = url_for('uploaded_room_image', filename=file_name)
+            except Exception:
+                photo_src = None
+        room_dict['photo_src'] = photo_src
+        rooms.append(room_dict)
+    conn.close()
+    return render_template('archive.html', rooms=rooms)
+
 def ensure_booking_creator_column(conn: sqlite3.Connection) -> None:
     """
     Ensure that the ``bookings`` table contains a ``created_by`` column.

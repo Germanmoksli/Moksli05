@@ -123,11 +123,17 @@
                      outline styles.  The btn-sm class keeps them compact and
                      the flex-grow-1 ensures even widths. -->
                 <a href="{{ url_for('edit_room', room_id=room['id']) }}" class="btn btn-sm btn-primary flex-grow-1">Редактировать</a>
+                {# Если объявление опубликовано, показываем кнопку снятия с публикации.  
+                   Иначе предлагаем опубликовать снятое объявление. #}
+                {% if room['is_published'] %}
                 <form method="post" action="{{ url_for('unpublish_room', room_id=room['id']) }}" class="m-0" onsubmit="return confirm('Вы уверены, что хотите снять это объявление с публикации?');">
-                  <!-- Use btn-primary for consistency with the edit button.  The
-                       warning message is conveyed via the confirmation dialog. -->
                   <button type="submit" class="btn btn-sm btn-primary">Снять с публикации</button>
                 </form>
+                {% else %}
+                <form method="post" action="{{ url_for('publish_room', room_id=room['id']) }}" class="m-0" onsubmit="return confirm('Вы уверены, что хотите опубликовать это объявление?');">
+                  <button type="submit" class="btn btn-sm btn-primary">Опубликовать</button>
+                </form>
+                {% endif %}
               </div>
             </div>
           </div>
@@ -169,9 +175,16 @@
               <!-- Use our primary colour for buttons in list view to match the
                    grid cards.  The btn-sm class keeps them compact. -->
               <a href="{{ url_for('edit_room', room_id=room['id']) }}" class="btn btn-sm btn-primary">Редактировать</a>
+              {# Показываем кнопку в зависимости от статуса объявления #}
+              {% if room['is_published'] %}
               <form method="post" action="{{ url_for('unpublish_room', room_id=room['id']) }}" class="m-0" onsubmit="return confirm('Вы уверены, что хотите снять это объявление с публикации?');">
                 <button type="submit" class="btn btn-sm btn-primary">Снять с публикации</button>
               </form>
+              {% else %}
+              <form method="post" action="{{ url_for('publish_room', room_id=room['id']) }}" class="m-0" onsubmit="return confirm('Вы уверены, что хотите опубликовать это объявление?');">
+                <button type="submit" class="btn btn-sm btn-primary">Опубликовать</button>
+              </form>
+              {% endif %}
             </div>
           </div>
         {% endfor %}

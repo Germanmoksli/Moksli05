@@ -794,7 +794,12 @@
               </li>
               {# Дашборд и список гостей скрыты в упрощённой версии #}
               <li class="nav-item">
-                <a href="{{ url_for('list_rooms') }}" class="nav-link {% if request.endpoint == 'list_rooms' %}active{% endif %}">Квартиры</a>
+                {# Переименовываем пункт навигации: теперь он называется "Объявления" #}
+                <a href="{{ url_for('list_rooms') }}" class="nav-link {% if request.endpoint == 'list_rooms' %}active{% endif %}">Объявления</a>
+              </li>
+              <!-- Добавляем пункт Архив для просмотра снятых с публикации объявлений -->
+              <li class="nav-item">
+                <a href="{{ url_for('archive_rooms') }}" class="nav-link {% if request.endpoint == 'archive_rooms' %}active{% endif %}">Архив</a>
               </li>
               {# Сотрудники и подписка скрыты в упрощённой версии #}
             {% elif session.get('user_role') == 'manager' %}
@@ -939,7 +944,8 @@
                           {{ _name[0]|upper }}
                         </div>
                       {% endif %}
-                      <span>{{ current_user_name or current_username }}</span>
+                      {# Убираем имя пользователя из верхнего меню для владельцев, оставляем только аватар #}
+                      {#<span>{{ current_user_name or current_username }}</span>#}
                     </li>
                     <li><hr class="dropdown-divider"></li>
                     <!-- Избранное -->
@@ -1040,7 +1046,8 @@
                       {{ _name[0]|upper }}
                     </div>
                   {% endif %}
-                  <span class="me-3">{{ current_user_name or current_username }}</span>
+                  {# Убираем имя пользователя для менеджера в верхнем меню #}
+                  {#<span class="me-3">{{ current_user_name or current_username }}</span>#}
                   <a href="{{ url_for('logout') }}" class="btn btn-outline-secondary">Выход</a>
                 {% endif %}
               {% endif %}
