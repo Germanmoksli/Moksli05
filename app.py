@@ -3555,7 +3555,7 @@ def list_rooms():
         "SELECT rooms.*, "
         "       (SELECT file_name FROM room_photos WHERE room_id = rooms.id ORDER BY id LIMIT 1) AS photo_file_name, "
         "       (SELECT image_data FROM room_photos WHERE room_id = rooms.id ORDER BY id LIMIT 1) AS photo_image_data "
-        "FROM rooms WHERE owner_id = ? ORDER BY id",
+        "FROM rooms WHERE owner_id = ? AND (is_published = TRUE OR is_published IS NULL) ORDER BY id",
         (user_id,)
     ).fetchall()
     rooms = []
