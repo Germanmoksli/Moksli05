@@ -11,25 +11,25 @@
     </a>
     {# Для владельцев и менеджеров отображаем навигационные пункты в верхнем меню #}
     {% if session.get('user_role') == 'owner' %}
-    <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+    <ul class="navbar-nav mx-auto mb-2 mb-lg-0">
       <li class="nav-item">
-        <a href="{{ url_for('calendar_view') }}" class="nav-link">Календарь</a>
+        <a href="{{ url_for('calendar_view') }}" class="nav-link px-3 py-2" style="{% if request.endpoint == 'calendar_view' %}background-color: #fff; color: var(--bs-primary); border-radius: 20px;{% else %}color: #fff;{% endif %}">Календарь</a>
       </li>
       {# Дашборд и список гостей удалены в упрощённой версии #}
       <li class="nav-item">
         {# Переименовываем пункт навигации: теперь он называется "Объявления" #}
-        <a href="{{ url_for('list_rooms') }}" class="nav-link">Объявления</a>
+        <a href="{{ url_for('list_rooms') }}" class="nav-link px-3 py-2" style="{% if request.endpoint == 'list_rooms' %}background-color: #fff; color: var(--bs-primary); border-radius: 20px;{% else %}color: #fff;{% endif %}">Объявления</a>
       </li>
       <!-- Добавляем пункт Архив для просмотра снятых с публикации объявлений -->
       <li class="nav-item">
-        <a href="{{ url_for('archive_rooms') }}" class="nav-link">Архив</a>
+        <a href="{{ url_for('archive_rooms') }}" class="nav-link px-3 py-2" style="{% if request.endpoint == 'archive_rooms' %}background-color: #fff; color: var(--bs-primary); border-radius: 20px;{% else %}color: #fff;{% endif %}">Архив</a>
       </li>
       {# Сотрудники и подписка удалены в упрощённой версии #}
     </ul>
-    {% elif session.get('user_role') == 'manager' %}
-    <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+{% elif session.get('user_role') == 'manager' %}
+    <ul class="navbar-nav mx-auto mb-2 mb-lg-0">
       <li class="nav-item">
-        <a href="{{ url_for('calendar_view') }}" class="nav-link">Календарь</a>
+        <a href="{{ url_for('calendar_view') }}" class="nav-link px-3 py-2" style="{% if request.endpoint == 'calendar_view' %}background-color: #fff; color: var(--bs-primary); border-radius: 20px;{% else %}color: #fff;{% endif %}">Календарь</a>
       </li>
       {# Дашборд, гости и сотрудники удалены в упрощённой версии #}
     </ul>
@@ -241,7 +241,7 @@
               <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="ownerMenu">
                 <li>
                   <a class="dropdown-item d-flex align-items-center" href="{{ url_for('switch_role') }}">
-                    <i class="bi bi-arrow-left-right me-2"></i>Переключиться на режим гостя
+                    <i class="bi bi-arrow-left-right me-2"></i>В режим гостя
                   </a>
                 </li>
                 <li>
