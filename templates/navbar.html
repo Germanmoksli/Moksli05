@@ -13,23 +13,23 @@
     {% if session.get('user_role') == 'owner' %}
     <ul class="navbar-nav mx-auto mb-2 mb-lg-0">
       <li class="nav-item">
-        <a href="{{ url_for('calendar_view') }}" class="nav-link px-3 py-2" style="{% if request.endpoint == 'calendar_view' %}background-color: #fff; color: var(--bs-primary); border-radius: 20px;{% else %}color: #fff;{% endif %}">Календарь</a>
+        <a href="{{ url_for('calendar_view') }}" class="nav-link px-3 py-2" style="{% if request.endpoint == 'calendar_view' %}background-color: #fff; color: var(--bs-primary); border-radius: 20px;{% else %}color: var(--bs-primary);{% endif %}">Календарь</a>
       </li>
       {# Дашборд и список гостей удалены в упрощённой версии #}
       <li class="nav-item">
         {# Переименовываем пункт навигации: теперь он называется "Объявления" #}
-        <a href="{{ url_for('list_rooms') }}" class="nav-link px-3 py-2" style="{% if request.endpoint == 'list_rooms' %}background-color: #fff; color: var(--bs-primary); border-radius: 20px;{% else %}color: #fff;{% endif %}">Объявления</a>
+        <a href="{{ url_for('list_rooms') }}" class="nav-link px-3 py-2" style="{% if request.endpoint == 'list_rooms' %}background-color: #fff; color: var(--bs-primary); border-radius: 20px;{% else %}color: var(--bs-primary);{% endif %}">Объявления</a>
       </li>
       <!-- Добавляем пункт Архив для просмотра снятых с публикации объявлений -->
       <li class="nav-item">
-        <a href="{{ url_for('archive_rooms') }}" class="nav-link px-3 py-2" style="{% if request.endpoint == 'archive_rooms' %}background-color: #fff; color: var(--bs-primary); border-radius: 20px;{% else %}color: #fff;{% endif %}">Архив</a>
+        <a href="{{ url_for('archive_rooms') }}" class="nav-link px-3 py-2" style="{% if request.endpoint == 'archive_rooms' %}background-color: #fff; color: var(--bs-primary); border-radius: 20px;{% else %}color: var(--bs-primary);{% endif %}">Архив</a>
       </li>
       {# Сотрудники и подписка удалены в упрощённой версии #}
     </ul>
 {% elif session.get('user_role') == 'manager' %}
     <ul class="navbar-nav mx-auto mb-2 mb-lg-0">
       <li class="nav-item">
-        <a href="{{ url_for('calendar_view') }}" class="nav-link px-3 py-2" style="{% if request.endpoint == 'calendar_view' %}background-color: #fff; color: var(--bs-primary); border-radius: 20px;{% else %}color: #fff;{% endif %}">Календарь</a>
+        <a href="{{ url_for('calendar_view') }}" class="nav-link px-3 py-2" style="{% if request.endpoint == 'calendar_view' %}background-color: #fff; color: var(--bs-primary); border-radius: 20px;{% else %}color: var(--bs-primary);{% endif %}">Календарь</a>
       </li>
       {# Дашборд, гости и сотрудники удалены в упрощённой версии #}
     </ul>
