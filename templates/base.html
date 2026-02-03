@@ -956,7 +956,8 @@
                     </li>
                     <!-- Сообщения -->
                     <li>
-                      <a class="dropdown-item d-flex align-items-center" href="{{ url_for('chat_rooms') }}">
+                      {# При нажатии на "Сообщения" сразу открывается основная страница чата #}
+                      <a class="dropdown-item d-flex align-items-center" href="{{ url_for('chat') }}">
                         <i class="bi bi-chat-dots-fill me-2"></i>Сообщения
                       </a>
                     </li>
