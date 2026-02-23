@@ -164,6 +164,17 @@
   border-radius: 20px;
 }
 
+/* Apply rounded corners to the active chat item in the sidebar */
+.chat-list .list-group-item.active {
+  border-radius: 20px;
+}
+
+/* Ensure attachment and emoji buttons have a white background consistent with the input */
+.chat-input-bar .input-group-text {
+  background-color: #fff;
+  border: 1px solid #ced4da;
+}
+
 /* Message bubble styling with tails like popular messaging apps */
 .message-bubble {
   position: relative;
@@ -588,11 +599,17 @@
         }
       });
     }
+    // Flag to prevent sending duplicate messages while a previous send is in progress
+    let isSending = false;
     // Submit the form via fetch so that the page does not reload when sending messages
     const chatForm = document.querySelector('.chat-input-bar form');
     if (chatForm) {
       chatForm.addEventListener('submit', async function(ev) {
         ev.preventDefault();
+        // Don't proceed if a send is already in progress
+        if (isSending) {
+          return;
+        }
         const msg = messageInput ? messageInput.value.trim() : '';
         const f = fileInput && fileInput.files ? fileInput.files[0] : null;
         if (!msg && !f) {
@@ -604,10 +621,12 @@
           fd.append('file', f);
         }
         try {
+          isSending = true;
           const response = await fetch(window.location.pathname, {
             method: 'POST',
             body: fd,
             credentials: 'same-origin',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
           });
           // Clear input fields and preview regardless of response; rely on polling to update messages
           if (messageInput) messageInput.value = '';
@@ -617,6 +636,9 @@
           fetchMessages();
         } catch (err) {
           // Silently ignore errors
+        } finally {
+          // Allow another send
+          isSending = false;
         }
       });
     }

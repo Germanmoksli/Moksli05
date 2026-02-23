@@ -7269,8 +7269,12 @@ def chat(room_id: int):
         message_text = (request.form.get("message") or "").strip()
         file_obj = request.files.get('file')
         if not message_text and (not file_obj or not file_obj.filename):
-            flash("Введите текст сообщения или приложите файл.")
+            # When handling an AJAX/fetch request, return a 400 response instead of redirecting.
+            # This prevents client-side code from following a redirect and sending the request multiple times.
             conn.close()
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return ('', 400)
+            flash("Введите текст сообщения или приложите файл.")
             return redirect(url_for("chat", room_id=room_id))
         file_name = None
         file_type = None
@@ -7291,6 +7295,11 @@ def chat(room_id: int):
                 (room_id, user_id, message_text, timestamp, file_name, file_type)
             )
         conn.close()
+        # If this request was sent via fetch (AJAX), do not redirect. Return an empty
+        # response to signal success. This prevents unnecessary 302 responses and
+        # ensures the front‑end can update immediately without page reload.
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return ('', 204)
         return redirect(url_for("chat", room_id=room_id))
     # GET: display chat messages for the selected room
     # Determine the last seen message ID for the current user (global across rooms)
