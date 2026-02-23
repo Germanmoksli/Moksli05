@@ -3,7 +3,7 @@
 #
 # Render.com runs `pip install -r requirements.txt` during the build
 # phase.  The primary dependencies for this Flask application are
-# listed here and mirror the contents of `app/reliz 26/requirements.txt`.
+# listed here and mirror the contents of the package's requirements.
 
 Flask>=2.2
 Werkzeug>=2.2
