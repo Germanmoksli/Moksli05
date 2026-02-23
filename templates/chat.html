@@ -160,13 +160,16 @@
   /* Slight shadow to separate from messages */
   box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.05);
   padding-bottom: 0.5rem;
+  /* Use the same rounded corners as the rest of the app */
+  border-radius: 20px;
 }
 
 /* Message bubble styling with tails like popular messaging apps */
 .message-bubble {
   position: relative;
   padding: 0.5rem 0.75rem;
-  border-radius: 0.75rem;
+  /* Apply the global border radius used across the app to message bubbles */
+  border-radius: 20px;
   word-wrap: break-word;
 }
 .message-incoming {
@@ -198,6 +201,15 @@
   height: 0;
   border-top: 8px solid #119ffe;
   border-left: 8px solid transparent;
+}
+
+/* Ensure chat container, attachment menu and other chat elements share the same border radius */
+#chat-container {
+  border-radius: 20px !important;
+}
+#attachMenu {
+  border-radius: 20px;
+  overflow: hidden;
 }
 
 /* Emoji picker container */
