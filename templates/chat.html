@@ -110,21 +110,33 @@
         <div id="file-preview" class="mb-2"></div>
         <form method="post" enctype="multipart/form-data">
           <div class="input-group">
-            <!-- Separate icons for different attachment types; all trigger the same file input -->
-            <label for="fileInput" class="input-group-text" style="cursor: pointer;">
-              <i class="bi bi-image"></i>
-            </label>
-            <label for="fileInput" class="input-group-text" style="cursor: pointer;">
-              <i class="bi bi-camera-video"></i>
-            </label>
-            <label for="fileInput" class="input-group-text" style="cursor: pointer;">
-              <i class="bi bi-paperclip"></i>
-            </label>
+            <!-- Single attachment button with drop‑down menu for choosing type -->
+            <div class="position-relative me-1">
+              <!-- Paperclip icon triggers the custom attachment menu -->
+              <span id="attachBtn" class="input-group-text" style="cursor: pointer;">
+                <i class="bi bi-paperclip"></i>
+              </span>
+              <!-- Custom menu appears above the button; items set accept attribute on file input and trigger click -->
+              <div id="attachMenu" class="dropdown-menu" style="position: absolute; bottom: 100%; left: 0; transform: translateY(-0.25rem); display: none; z-index: 1050;">
+                <a class="dropdown-item d-flex align-items-center" href="#" data-accept="image/*">
+                  <i class="bi bi-image me-2"></i><span>Фото</span>
+                </a>
+                <a class="dropdown-item d-flex align-items-center" href="#" data-accept="video/*">
+                  <i class="bi bi-camera-video me-2"></i><span>Видео</span>
+                </a>
+                <a class="dropdown-item d-flex align-items-center" href="#" data-accept="">
+                  <i class="bi bi-file-earmark me-2"></i><span>Документ</span>
+                </a>
+              </div>
+            </div>
+            <!-- Hidden file input used for all attachments -->
             <input type="file" id="fileInput" name="file" class="d-none">
             <input type="text" name="message" class="form-control" placeholder="Введите сообщение..." autocomplete="off">
-            <span id="emojiBtn" class="input-group-text" style="cursor: pointer;">
+            <!-- Emoji button is hidden on small screens; visible on desktop only -->
+            <span id="emojiBtn" class="input-group-text d-none d-md-inline-flex" style="cursor: pointer;">
               <i class="bi bi-emoji-smile"></i>
             </span>
+            <!-- Send button with id for attaching click handler -->
             <button class="btn btn-primary" type="submit" title="Отправить">
               <i class="bi bi-send"></i>
             </button>
@@ -501,6 +513,102 @@
         fetch(typingUrl, { method: 'POST', credentials: 'same-origin' }).catch(() => {});
       });
     }
+
+    // Attachment handling: show drop‑down menu, set file input accept filter and preview file
+    const fileInput = document.getElementById('fileInput');
+    const filePreview = document.getElementById('file-preview');
+    const attachBtn = document.getElementById('attachBtn');
+    const attachMenu = document.getElementById('attachMenu');
+    if (attachBtn && attachMenu) {
+      attachBtn.addEventListener('click', function(ev) {
+        ev.preventDefault();
+        // Toggle menu visibility
+        attachMenu.style.display = (attachMenu.style.display === 'block') ? 'none' : 'block';
+      });
+      // Hide the menu when clicking outside
+      document.addEventListener('click', function(ev) {
+        if (!attachMenu.contains(ev.target) && !attachBtn.contains(ev.target)) {
+          attachMenu.style.display = 'none';
+        }
+      });
+      // When a user chooses an attachment type, set accept filter and open file chooser
+      attachMenu.addEventListener('click', function(ev) {
+        const link = ev.target.closest('a');
+        if (!link) return;
+        ev.preventDefault();
+        const accept = link.getAttribute('data-accept') || '';
+        if (fileInput) {
+          fileInput.accept = accept;
+          fileInput.click();
+        }
+        attachMenu.style.display = 'none';
+      });
+    }
+    // Show a simple preview of selected files (image, video or file name)
+    if (fileInput && filePreview) {
+      fileInput.addEventListener('change', function() {
+        // Clear previous preview
+        filePreview.innerHTML = '';
+        const f = fileInput.files ? fileInput.files[0] : null;
+        if (!f) return;
+        const ext = f.name.split('.').pop().toLowerCase();
+        if (['jpg','jpeg','png','gif','webp'].includes(ext)) {
+          const img = document.createElement('img');
+          img.src = URL.createObjectURL(f);
+          img.className = 'img-fluid rounded';
+          img.style.maxHeight = '200px';
+          filePreview.appendChild(img);
+        } else if (['mp4','webm','ogv','mov'].includes(ext)) {
+          const video = document.createElement('video');
+          video.controls = true;
+          video.className = 'w-100';
+          video.style.maxHeight = '300px';
+          const src = document.createElement('source');
+          src.src = URL.createObjectURL(f);
+          src.type = f.type || 'video/' + ext;
+          video.appendChild(src);
+          video.textContent = 'Ваш браузер не поддерживает воспроизведение видео.';
+          filePreview.appendChild(video);
+        } else {
+          const span = document.createElement('span');
+          span.textContent = f.name;
+          filePreview.appendChild(span);
+        }
+      });
+    }
+    // Submit the form via fetch so that the page does not reload when sending messages
+    const chatForm = document.querySelector('.chat-input-bar form');
+    if (chatForm) {
+      chatForm.addEventListener('submit', async function(ev) {
+        ev.preventDefault();
+        const msg = messageInput ? messageInput.value.trim() : '';
+        const f = fileInput && fileInput.files ? fileInput.files[0] : null;
+        if (!msg && !f) {
+          return;
+        }
+        const fd = new FormData();
+        fd.append('message', msg);
+        if (f) {
+          fd.append('file', f);
+        }
+        try {
+          const response = await fetch(window.location.pathname, {
+            method: 'POST',
+            body: fd,
+            credentials: 'same-origin',
+          });
+          // Clear input fields and preview regardless of response; rely on polling to update messages
+          if (messageInput) messageInput.value = '';
+          if (fileInput) fileInput.value = '';
+          if (filePreview) filePreview.innerHTML = '';
+          // Immediately request new messages to reflect the sent message quickly
+          fetchMessages();
+        } catch (err) {
+          // Silently ignore errors
+        }
+      });
+    }
+
     // Start polling at regular intervals
     setInterval(fetchMessages, 3000);
     setInterval(fetchTyping, 2000);
