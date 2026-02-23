@@ -104,6 +104,8 @@
           </div>
         {% endfor %}
       </div>
+      <!-- Typing indicator shows when other participants are currently typing -->
+      <div id="typingIndicator" class="small text-muted mb-1" style="display: none;"></div>
       <div class="chat-input-bar mt-2">
         <div id="file-preview" class="mb-2"></div>
         <form method="post" enctype="multipart/form-data">
@@ -296,6 +298,213 @@
     // As a fallback, send the seen event right before the page unloads
     window.addEventListener('beforeunload', sendSeen);
   })();
+</script>
+
+<script>
+  // Real‑time chat updates and typing indicator.  This script polls the server
+  // for new messages and typing statuses, updates the DOM accordingly and
+  // sends typing notifications when the user types.
+  document.addEventListener('DOMContentLoaded', function() {
+    const chatContainer = document.getElementById('chat-container');
+    // Determine the initial last message ID and date based on the messages rendered server‑side.
+    let lastMessageId = {{ messages[-1].id if messages|length > 0 else 0 }};
+    let lastDate = {% if messages|length > 0 %}'{{ messages[-1].timestamp.split(' ')[0] }}'{% else %}null{% endif %};
+    const currentUserId = {{ session.get('user_id') or 0 }};
+    const messagesUrl = "{{ url_for('chat_messages_json', room_id=room.id) }}";
+    const typingUrl = "{{ url_for('chat_typing', room_id=room.id) }}";
+    const typingIndicator = document.getElementById('typingIndicator');
+    // Scroll to bottom on initial load
+    if (chatContainer) {
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+    // Helper to format a date string (YYYY-MM-DD) into Russian day and month (e.g. '15 августа')
+    function formatDateToRussian(dateStr) {
+      try {
+        const parts = dateStr.split('-');
+        const month = parseInt(parts[1], 10);
+        const day = parseInt(parts[2], 10);
+        const months = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+        return day + ' ' + months[month - 1];
+      } catch (e) {
+        return dateStr;
+      }
+    }
+    // Function to append a single message object to the chat container
+    function appendMessage(msg) {
+      if (!chatContainer) return;
+      // Insert date separator if needed
+      const dateStr = msg.timestamp.split(' ')[0];
+      if (!lastDate || dateStr !== lastDate) {
+        const dateDiv = document.createElement('div');
+        dateDiv.className = 'text-center text-muted small my-2';
+        dateDiv.textContent = formatDateToRussian(dateStr);
+        chatContainer.appendChild(dateDiv);
+        lastDate = dateStr;
+      }
+      // Wrapper for the message
+      const rowDiv = document.createElement('div');
+      rowDiv.className = 'd-flex mb-2 ' + (msg.user_id === currentUserId ? 'justify-content-end' : 'justify-content-start');
+      rowDiv.id = 'msg-' + msg.id;
+      // If the message is incoming, render the avatar
+      if (msg.user_id !== currentUserId) {
+        const avatarLink = document.createElement('a');
+        avatarLink.href = '/employee/' + msg.user_id;
+        avatarLink.className = 'me-2';
+        avatarLink.title = 'Профиль';
+        let avatarElem;
+        if (msg.author_photo) {
+          avatarElem = document.createElement('img');
+          avatarElem.src = '/static/' + msg.author_photo;
+          avatarElem.className = 'rounded-circle';
+          avatarElem.alt = '';
+          avatarElem.style.width = '40px';
+          avatarElem.style.height = '40px';
+          avatarElem.style.objectFit = 'cover';
+        } else {
+          avatarElem = document.createElement('div');
+          avatarElem.className = 'avatar-placeholder d-flex align-items-center justify-content-center rounded-circle';
+          avatarElem.style.width = '40px';
+          avatarElem.style.height = '40px';
+          avatarElem.textContent = (msg.author_name && msg.author_name.length > 0) ? msg.author_name.charAt(0).toUpperCase() : '';
+        }
+        avatarLink.appendChild(avatarElem);
+        rowDiv.appendChild(avatarLink);
+      }
+      // Content container
+      const contentDiv = document.createElement('div');
+      contentDiv.className = 'd-flex flex-column';
+      contentDiv.style.maxWidth = '70%';
+      // Author name (for incoming messages)
+      if (msg.user_id !== currentUserId) {
+        const nameDiv = document.createElement('div');
+        nameDiv.className = 'fw-semibold text-secondary small mb-1';
+        const nameLink = document.createElement('a');
+        nameLink.href = '/employee/' + msg.user_id;
+        nameLink.className = 'text-decoration-none text-secondary';
+        nameLink.textContent = msg.author_name;
+        nameDiv.appendChild(nameLink);
+        contentDiv.appendChild(nameDiv);
+      }
+      // Message bubble
+      const bubble = document.createElement('div');
+      bubble.className = 'message-bubble ' + (msg.user_id === currentUserId ? 'message-outgoing' : 'message-incoming');
+      // Attachment, if any
+      if (msg.file_name) {
+        const ext = msg.file_name.split('.').pop().toLowerCase();
+        const fileDiv = document.createElement('div');
+        fileDiv.className = 'mb-2';
+        if (['jpg','jpeg','png','gif','webp'].includes(ext)) {
+          const img = document.createElement('img');
+          img.src = '/static/uploads/chat_files/' + encodeURIComponent(msg.file_name);
+          img.alt = 'Изображение';
+          img.className = 'img-fluid rounded';
+          img.style.maxHeight = '200px';
+          fileDiv.appendChild(img);
+        } else if (['mp4','webm','ogv','mov'].includes(ext)) {
+          const video = document.createElement('video');
+          video.controls = true;
+          video.className = 'w-100';
+          video.style.maxHeight = '300px';
+          const source = document.createElement('source');
+          source.src = '/static/uploads/chat_files/' + encodeURIComponent(msg.file_name);
+          source.type = 'video/' + ext;
+          video.appendChild(source);
+          video.textContent = 'Ваш браузер не поддерживает воспроизведение видео.';
+          fileDiv.appendChild(video);
+        } else {
+          const link = document.createElement('a');
+          link.href = '/static/uploads/chat_files/' + encodeURIComponent(msg.file_name);
+          link.className = 'text-decoration-none';
+          link.download = '';
+          link.textContent = msg.file_name;
+          fileDiv.appendChild(link);
+        }
+        bubble.appendChild(fileDiv);
+      }
+      // Text content
+      if (msg.message) {
+        const textDiv = document.createElement('div');
+        textDiv.className = 'mb-1';
+        textDiv.style.whiteSpace = 'pre-wrap';
+        textDiv.style.wordWrap = 'break-word';
+        textDiv.textContent = msg.message;
+        bubble.appendChild(textDiv);
+      }
+      // Meta (time and ticks)
+      const metaDiv = document.createElement('div');
+      metaDiv.className = 'd-flex justify-content-end align-items-center';
+      metaDiv.style.fontSize = '0.75rem';
+      const timeSpan = document.createElement('span');
+      timeSpan.className = 'me-1';
+      timeSpan.style.color = (msg.user_id === currentUserId) ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.6)';
+      timeSpan.textContent = msg.timestamp.substring(11, 16);
+      metaDiv.appendChild(timeSpan);
+      if (msg.user_id === currentUserId) {
+        const icon = document.createElement('i');
+        icon.style.fontSize = '0.9rem';
+        if (msg.read_by_all) {
+          icon.className = 'bi bi-check2-all';
+          icon.style.color = 'rgba(255,255,255,0.8)';
+        } else {
+          icon.className = 'bi bi-check';
+          icon.style.color = 'rgba(255,255,255,0.8)';
+        }
+        metaDiv.appendChild(icon);
+      }
+      bubble.appendChild(metaDiv);
+      contentDiv.appendChild(bubble);
+      rowDiv.appendChild(contentDiv);
+      chatContainer.appendChild(rowDiv);
+    }
+    // Poll the server for new messages
+    async function fetchMessages() {
+      try {
+        const res = await fetch(messagesUrl + '?after=' + lastMessageId, { credentials: 'same-origin' });
+        if (!res.ok) return;
+        const data = await res.json();
+        const msgs = data.messages || [];
+        msgs.forEach(function(m) {
+          appendMessage(m);
+          if (m.id > lastMessageId) {
+            lastMessageId = m.id;
+          }
+        });
+        if (msgs.length > 0 && chatContainer) {
+          chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+      } catch (e) {
+        // Ignore errors quietly
+      }
+    }
+    // Poll the server for typing statuses
+    async function fetchTyping() {
+      try {
+        const res = await fetch(typingUrl, { credentials: 'same-origin' });
+        if (!res.ok) return;
+        const data = await res.json();
+        const names = data.typing_users || [];
+        if (names.length > 0) {
+          typingIndicator.textContent = names.join(', ') + ' печатает...';
+          typingIndicator.style.display = '';
+        } else {
+          typingIndicator.textContent = '';
+          typingIndicator.style.display = 'none';
+        }
+      } catch (e) {
+        // Ignore errors
+      }
+    }
+    // Send typing updates whenever the user types into the message input
+    const messageInput = document.querySelector('input[name="message"]');
+    if (messageInput) {
+      messageInput.addEventListener('input', function() {
+        fetch(typingUrl, { method: 'POST', credentials: 'same-origin' }).catch(() => {});
+      });
+    }
+    // Start polling at regular intervals
+    setInterval(fetchMessages, 3000);
+    setInterval(fetchTyping, 2000);
+  });
 </script>
 
 <!-- Hidden beacon image: ensures the room is marked as seen even if JavaScript fails -->

@@ -1,3 +1,4 @@
+
 """
 Flask web application for managing an apart‑hotel with a Bootstrap‑styled
 interface.
@@ -3000,6 +3001,83 @@ def ensure_user_room_last_seen_table(conn: sqlite3.Connection) -> None:
         )
         conn.commit()
     except Exception:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+
+
+# ---------------------------------------------------------------------------
+# Typing status table for chat
+#
+# To implement a “user is typing…” indicator in the chat interface, we need
+# to track which users have recently interacted with the message input.
+# The ``typing_status`` table stores a timestamp for each (room_id, user_id)
+# combination.  When a user presses a key in the chat input, the front‑end
+# sends a POST request to ``/chat/<room_id>/typing`` which upserts the
+# current timestamp.  On the GET side the endpoint ``/chat/<room_id>/typing``
+# returns a list of participants in that room whose ``last_active`` timestamp
+# is within a short window (for example, five seconds).  Clients display
+# those names as “печатает…”.  Rows older than this window are purged
+# automatically when fetching statuses.  A composite primary key ensures
+# that there is at most one record per user per room.
+def ensure_typing_status_table(conn: sqlite3.Connection) -> None:
+    """Ensure the typing_status table exists.
+
+    This helper creates the ``typing_status`` table if it does not
+    already exist.  The table references ``chat_rooms`` and ``users`` via
+    foreign keys.  Rows cascade on delete so that no stale typing
+    indicators persist after a user or room is removed.  The
+    ``last_active`` column is stored as a TEXT timestamp (in
+    ``YYYY‑MM‑DD HH:MM:SS`` format) for portability across database
+    backends.
+    """
+    # Clear any failed transaction state.  Without this, a prior SQL
+    # error could leave the connection in an aborted state on
+    # PostgreSQL, causing subsequent statements to raise InFailedSqlTransaction.
+    try:
+        conn.rollback()
+    except Exception:
+        pass
+    # Ensure dependent tables exist.  These calls are idempotent and
+    # safeguard against foreign key errors during CREATE TABLE.
+    try:
+        ensure_chat_rooms_table(conn)
+    except Exception:
+        pass
+    try:
+        # Verify that the users table exists by selecting from it.  If it
+        # does not exist, the CREATE TABLE below will fail; we ignore any
+        # exceptions here.
+        conn.execute('SELECT 1 FROM users LIMIT 1')
+    except Exception:
+        pass
+    # Create the typing_status table.  Use a composite primary key so
+    # each (room_id, user_id) pair appears at most once.  Wrap the DDL
+    # and commit in a try/except to rollback on failure.
+    try:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS typing_status (
+                room_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                last_active TEXT NOT NULL,
+                PRIMARY KEY (room_id, user_id),
+                FOREIGN KEY (room_id) REFERENCES chat_rooms(id) ON DELETE CASCADE,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+            """
+        )
+        # Explicitly commit DDL so that the new table is visible to
+        # subsequent queries.  On SQLite this is a no‑op but on
+        # PostgreSQL it is required.
+        try:
+            conn.commit()
+        except Exception:
+            pass
+    except Exception:
+        # Roll back on any failure to prevent the connection from being
+        # left in an aborted transaction state.
         try:
             conn.rollback()
         except Exception:
@@ -7735,6 +7813,229 @@ def mark_chat_seen(room_id: int):
     conn.close()
     # Respond with 204 No Content. This avoids triggering any redirects on the client.
     return ('', 204)
+
+
+# ---------------------------------------------------------------------------
+# Real‑time chat: message retrieval and typing indicator endpoints
+#
+# These endpoints support live updates in the chat interface without requiring
+# a full page refresh.  The ``messages_json`` endpoint returns any new
+# messages in a given room with IDs greater than a supplied ``after``
+# parameter.  The ``typing`` endpoint uses GET to query which other
+# participants are currently typing in the room, and POST to record
+# typing activity for the current user.  Both endpoints verify that
+# the caller is a member of the specified room (except for the global
+# chat with id=1) and perform any necessary schema initialization on
+# demand.
+
+@app.route('/chat/<int:room_id>/messages_json')
+@login_required
+def chat_messages_json(room_id: int):
+    """Return JSON for new chat messages in a room.
+
+    The client periodically polls this endpoint with a query parameter
+    ``after`` specifying the highest message ID it has already
+    received.  The response contains a list of messages with IDs
+    strictly greater than ``after``.  Each message object includes
+    author information and read receipt status consistent with the
+    rendering logic used in the main chat page.  If the user is not a
+    member of the room (excluding the global chat), an empty list is
+    returned.
+    """
+    current_user_id = session.get('user_id')
+    if not current_user_id:
+        return jsonify(messages=[])
+    # Parse the 'after' parameter from the query string; default to 0
+    try:
+        after_id = int(request.args.get('after', 0))
+    except Exception:
+        after_id = 0
+    conn = get_db_connection()
+    # Ensure necessary chat tables exist.  Without these calls the
+    # subsequent queries may fail if the database was not initialized.
+    ensure_chat_rooms_table(conn)
+    ensure_chat_room_members_table(conn)
+    ensure_messages_table(conn)
+    ensure_message_file_columns(conn)
+    ensure_last_seen_table(conn)
+    ensure_user_room_last_seen_table(conn)
+    try:
+        ensure_photo_column(conn)
+    except Exception:
+        pass
+    # Verify membership for private/group chats.  The global chat
+    # (room_id=1) is open to all users.
+    if room_id != 1:
+        membership = conn.execute(
+            'SELECT 1 FROM chat_room_members WHERE room_id = ? AND user_id = ?',
+            (room_id, current_user_id)
+        ).fetchone()
+        if not membership:
+            conn.close()
+            return jsonify(messages=[])
+    # Fetch messages newer than 'after_id'.  Join on users to pull
+    # author details.  Calculate the minimum last seen message ID
+    # across all other users to determine read receipts for the
+    # sender.  Order ascending so messages appear in chronological
+    # order.
+    rows = conn.execute(
+        """
+        SELECT m.id, m.user_id, m.message, m.timestamp, m.file_name, m.file_type,
+               u.username, u.name AS author_name, u.photo AS author_photo,
+               COALESCE((SELECT MIN(last_seen_message_id)
+                         FROM user_last_seen uls
+                         WHERE uls.user_id != m.user_id), 0) AS min_last_seen_except_sender
+        FROM messages m
+        JOIN users u ON m.user_id = u.id
+        WHERE m.room_id = ? AND m.id > ?
+        ORDER BY m.id ASC
+        """,
+        (room_id, after_id)
+    ).fetchall()
+    message_list: list[dict[str, Any]] = []
+    # Determine existing last seen ID for the current user so that
+    # unread separators can be calculated.  In this endpoint we don't
+    # need the separator itself but we update last seen below.
+    last_seen_id = 0
+    row_last = conn.execute(
+        'SELECT last_seen_message_id FROM user_last_seen WHERE user_id = ?',
+        (current_user_id,)
+    ).fetchone()
+    if row_last and row_last['last_seen_message_id'] is not None:
+        try:
+            last_seen_id = int(row_last['last_seen_message_id'])
+        except Exception:
+            last_seen_id = 0
+    # Build message objects and compute read receipts
+    for row in rows:
+        msg = dict(row)
+        # Sanitize author_photo: clear if file missing
+        try:
+            photo_val = msg.get('author_photo')
+            if photo_val:
+                file_path = os.path.join(app.static_folder, photo_val)
+                if not os.path.exists(file_path):
+                    msg['author_photo'] = None
+        except Exception:
+            msg['author_photo'] = None
+        # Determine whether to show ticks (only for messages authored by current user)
+        msg['show_ticks'] = (current_user_id is not None and msg['user_id'] == current_user_id)
+        # Compute read_by_all using min_last_seen_except_sender
+        msg['read_by_all'] = False
+        try:
+            min_last_seen = int(msg.get('min_last_seen_except_sender') or 0)
+        except Exception:
+            min_last_seen = 0
+        if msg['show_ticks'] and min_last_seen >= msg['id']:
+            msg['read_by_all'] = True
+        message_list.append(msg)
+    # Update last seen tables if there are new messages.  This marks
+    # messages as read immediately upon retrieval.  Without this, read
+    # receipts and unread indicators could be stale until the user
+    # navigates away or triggers the mark_chat_seen beacon.
+    if current_user_id and message_list:
+        max_id = message_list[-1]['id']
+        with conn:
+            conn.execute(
+                'INSERT INTO user_last_seen (user_id, last_seen_message_id) VALUES (?, ?) '
+                'ON CONFLICT(user_id) DO UPDATE SET last_seen_message_id = excluded.last_seen_message_id',
+                (current_user_id, max_id)
+            )
+            conn.execute(
+                'INSERT INTO user_room_last_seen (user_id, room_id, last_seen_message_id) VALUES (?, ?, ?) '
+                'ON CONFLICT(user_id, room_id) DO UPDATE SET last_seen_message_id = excluded.last_seen_message_id',
+                (current_user_id, room_id, max_id)
+            )
+    conn.close()
+    # Convert each message row to a plain dict for JSON serialization
+    out_msgs = []
+    for m in message_list:
+        out_msgs.append({
+            'id': m['id'],
+            'user_id': m['user_id'],
+            'message': m['message'],
+            'timestamp': m['timestamp'],
+            'file_name': m['file_name'],
+            'file_type': m['file_type'],
+            'author_name': m['author_name'],
+            'author_photo': m['author_photo'],
+            'show_ticks': m['show_ticks'],
+            'read_by_all': m['read_by_all'],
+        })
+    return jsonify(messages=out_msgs)
+
+
+@app.route('/chat/<int:room_id>/typing', methods=['GET', 'POST'])
+@login_required
+def chat_typing(room_id: int):
+    """Query or update typing status for the current chat room.
+
+    When called with POST, this endpoint records that the logged‑in
+    user is currently typing in the specified room by updating the
+    ``typing_status`` table with the current timestamp.  On GET it
+    returns a list of other participants in the room who have a
+    recent (within the past few seconds) typing entry.  Membership
+    checks are enforced for private/group chats.  Expired entries
+    older than five seconds are purged automatically.
+    """
+    current_user_id = session.get('user_id')
+    if not current_user_id:
+        # Should never happen because of @login_required, but return empty
+        return jsonify(typing_users=[])
+    conn = get_db_connection()
+    # Ensure necessary tables exist
+    ensure_chat_rooms_table(conn)
+    ensure_chat_room_members_table(conn)
+    ensure_typing_status_table(conn)
+    # Verify membership for non‑global chats
+    if room_id != 1:
+        membership = conn.execute(
+            'SELECT 1 FROM chat_room_members WHERE room_id = ? AND user_id = ?',
+            (room_id, current_user_id)
+        ).fetchone()
+        if not membership:
+            conn.close()
+            if request.method == 'POST':
+                return ('', 204)
+            return jsonify(typing_users=[])
+    # Handle POST: update typing status
+    if request.method == 'POST':
+        # Use current time in string format; rely on server timezone
+        now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        with conn:
+            conn.execute(
+                'INSERT INTO typing_status (room_id, user_id, last_active) VALUES (?, ?, ?) '
+                'ON CONFLICT(room_id, user_id) DO UPDATE SET last_active = excluded.last_active',
+                (room_id, current_user_id, now_str)
+            )
+        conn.close()
+        # Respond with 204 No Content so fetch() resolves quietly
+        return ('', 204)
+    # Handle GET: fetch names of users currently typing
+    try:
+        # Calculate expiry threshold (entries older than 5 seconds are expired)
+        expiry_time = datetime.now() - timedelta(seconds=5)
+        expiry_str = expiry_time.strftime('%Y-%m-%d %H:%M:%S')
+        # Remove expired rows
+        with conn:
+            conn.execute(
+                'DELETE FROM typing_status WHERE last_active < ?',
+                (expiry_str,)
+            )
+    except Exception:
+        # Ignore any deletion errors; continue retrieving current rows
+        pass
+    rows = conn.execute(
+        'SELECT ts.user_id, u.name, u.username FROM typing_status ts JOIN users u ON ts.user_id = u.id '
+        'WHERE ts.room_id = ? AND ts.user_id != ?',
+        (room_id, current_user_id)
+    ).fetchall()
+    typing_users: list[str] = []
+    for row in rows:
+        display = row['name'] if row['name'] else row['username']
+        typing_users.append(display)
+    conn.close()
+    return jsonify(typing_users=typing_users)
 
 
 # ---------------------------------------------------------------------------
