@@ -196,50 +196,61 @@
   word-wrap: break-word;
 }
 
-/* Incoming (other user) messages: light grey bubble with a tail on the left. */
+/* Incoming (other user) messages: light grey bubble with a smooth tail on the left. */
 .message-incoming {
   background-color: #f0f2f5;
   color: #000;
+  position: relative;
 }
-/* Remove any inherited ::before pointers (if defined elsewhere) */
+/* Tail construction for incoming messages: combine a coloured shape and a cutout
+   to create a smooth, elongated “tail” that blends into the bubble. */
 .message-incoming::before {
-  content: none;
-}
-.message-incoming::after {
-  /* Left tail: small rotated square forming a rounded pointer */
   content: "";
   position: absolute;
-  /* Adjusted size and position to create a more subtle tail */
-  bottom: 0.35rem;
-  left: -0.45rem;
-  width: 0.7rem;
-  height: 0.7rem;
+  bottom: 0;
+  left: -0.8rem;
+  width: 1.4rem;
+  height: 1.3rem;
   background-color: #f0f2f5;
-  border-bottom-right-radius: 0.5rem;
-  transform: rotate(45deg);
+  border-bottom-right-radius: 1.3rem;
+}
+.message-incoming::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: -0.4rem;
+  width: 0.8rem;
+  height: 1.3rem;
+  background-color: #f8f9fa;
+  border-bottom-right-radius: 1.3rem;
 }
 
-/* Outgoing (current user) messages: blue bubble with white text and a tail on the right. */
+/* Outgoing (current user) messages: blue bubble with white text and a smooth tail on the right. */
 .message-outgoing {
   background-color: #119ffe;
   color: #fff;
+  position: relative;
 }
-/* Remove any inherited ::before pointers (if defined elsewhere) */
+/* Tail construction for outgoing messages: coloured shape and cutout on the right. */
 .message-outgoing::before {
-  content: none;
-}
-.message-outgoing::after {
-  /* Right tail: mirror of the incoming tail */
   content: "";
   position: absolute;
-  /* Adjusted size and position to create a more subtle tail */
-  bottom: 0.35rem;
-  right: -0.45rem;
-  width: 0.7rem;
-  height: 0.7rem;
+  bottom: 0;
+  right: -0.8rem;
+  width: 1.4rem;
+  height: 1.3rem;
   background-color: #119ffe;
-  border-bottom-left-radius: 0.5rem;
-  transform: rotate(-45deg);
+  border-bottom-left-radius: 1.3rem;
+}
+.message-outgoing::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  right: -0.4rem;
+  width: 0.8rem;
+  height: 1.3rem;
+  background-color: #f8f9fa;
+  border-bottom-left-radius: 1.3rem;
 }
 
 /* Ensure chat container, attachment menu and other chat elements share the same border radius */
