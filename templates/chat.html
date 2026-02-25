@@ -175,6 +175,30 @@
   border: 1px solid #ced4da;
 }
 
+/* Background pattern for chat wrapper.  The first layer sets a plain
+   white base colour; the second applies a repeating seamless pattern.
+   Place your pattern image (512x512 px tile) in the static folder
+   under the name chat-pattern.png.  We reference it via Flask's
+   url_for helper.  The pattern is repeated without scaling.
+   On mobile, the background scrolls with the messages. */
+.chat-wrapper {
+  position: relative;
+  background-color: #ffffff;
+  background-image: url("{{ url_for('static', filename='chat-pattern.png') }}");
+  background-repeat: repeat;
+  background-size: 512px 512px;
+}
+@media (max-width: 767.98px) {
+  .chat-wrapper {
+    background-attachment: scroll;
+  }
+}
+@media (min-width: 768px) {
+  .chat-wrapper {
+    background-attachment: scroll;
+  }
+}
+
 /* Message bubble styling with tails like popular messaging apps */
 /*
   Styles for individual message bubbles.  These are designed to match
