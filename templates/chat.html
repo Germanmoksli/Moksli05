@@ -209,12 +209,13 @@
   /* Left tail: small rotated square forming a rounded pointer */
   content: "";
   position: absolute;
-  bottom: 0.4rem;
-  left: -0.6rem;
-  width: 1rem;
-  height: 1rem;
+  /* Adjusted size and position to create a more subtle tail */
+  bottom: 0.35rem;
+  left: -0.45rem;
+  width: 0.7rem;
+  height: 0.7rem;
   background-color: #f0f2f5;
-  border-bottom-right-radius: 0.8rem;
+  border-bottom-right-radius: 0.5rem;
   transform: rotate(45deg);
 }
 
@@ -231,12 +232,13 @@
   /* Right tail: mirror of the incoming tail */
   content: "";
   position: absolute;
-  bottom: 0.4rem;
-  right: -0.6rem;
-  width: 1rem;
-  height: 1rem;
+  /* Adjusted size and position to create a more subtle tail */
+  bottom: 0.35rem;
+  right: -0.45rem;
+  width: 0.7rem;
+  height: 0.7rem;
   background-color: #119ffe;
-  border-bottom-left-radius: 0.8rem;
+  border-bottom-left-radius: 0.5rem;
   transform: rotate(-45deg);
 }
 
