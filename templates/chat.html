@@ -38,7 +38,7 @@
     </div>
     <div class="chat-wrapper d-flex flex-column flex-grow-1 px-3 pb-3" style="min-height: 0; overflow: hidden;">
       <!-- Chat container: scrollable area for messages -->
-      <div id="chat-container" class="border rounded p-3 overflow-auto flex-grow-1" style="background-color: #f8f9fa;">
+      <div id="chat-container" class="border rounded p-3 overflow-auto flex-grow-1">
         {% for msg in messages %}
           {% set date_str = msg.timestamp.split(' ')[0] %}
           {% set time_str = msg.timestamp[11:16] %}
@@ -184,9 +184,7 @@
 .chat-wrapper {
   position: relative;
   background-color: #ffffff;
-  background-image: url("{{ url_for('static', filename='chat-pattern.png') }}");
-  background-repeat: repeat;
-  background-size: 512px 512px;
+  /* Pattern removed from wrapper; applied to the chat container instead */
 }
 @media (max-width: 767.98px) {
   .chat-wrapper {
@@ -285,6 +283,16 @@
 /* Ensure chat container, attachment menu and other chat elements share the same border radius */
 #chat-container {
   border-radius: 20px !important;
+  /* Set a repeating pattern background so messages appear over the pattern.
+     The pattern file (512x512px tile) must be placed in the project's static folder
+     under the name chat-pattern.png.  We use url_for to generate the correct URL.
+     The background image repeats across the container without scaling, and scrolls
+     naturally with the message list. */
+  background-color: #ffffff;
+  background-image: url("{{ url_for('static', filename='chat-pattern.png') }}");
+  background-repeat: repeat;
+  background-size: 512px 512px;
+  background-attachment: scroll;
 }
 #attachMenu {
   border-radius: 20px;
