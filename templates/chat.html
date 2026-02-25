@@ -204,25 +204,29 @@
 }
 /* Tail construction for incoming messages: combine a coloured shape and a cutout
    to create a smooth, elongated “tail” that blends into the bubble. */
+/* Incoming tail: use two layers to create a curved crescent shape.  The
+   coloured layer draws the tail, and the cutout layer (matching the
+   page background) removes part of it to create the crescent.  Dimensions
+   approximate Telegram’s style. */
 .message-incoming::before {
   content: "";
   position: absolute;
   bottom: 0;
-  left: -0.8rem;
-  width: 1.4rem;
-  height: 1.3rem;
+  left: -0.4rem;
+  width: 1.2rem;
+  height: 1.5rem;
   background-color: #f0f2f5;
-  border-bottom-right-radius: 1.3rem;
+  border-bottom-right-radius: 1rem 0.9rem;
 }
 .message-incoming::after {
   content: "";
   position: absolute;
   bottom: 0;
-  left: -0.4rem;
-  width: 0.8rem;
-  height: 1.3rem;
+  left: -1.6rem;
+  width: 1.6rem;
+  height: 1.5rem;
   background-color: #f8f9fa;
-  border-bottom-right-radius: 1.3rem;
+  border-bottom-right-radius: 0.7rem;
 }
 
 /* Outgoing (current user) messages: blue bubble with white text and a smooth tail on the right. */
@@ -232,25 +236,26 @@
   position: relative;
 }
 /* Tail construction for outgoing messages: coloured shape and cutout on the right. */
+/* Outgoing tail: mirror of the incoming tail on the right side. */
 .message-outgoing::before {
   content: "";
   position: absolute;
   bottom: 0;
-  right: -0.8rem;
-  width: 1.4rem;
-  height: 1.3rem;
+  right: -0.4rem;
+  width: 1.2rem;
+  height: 1.5rem;
   background-color: #119ffe;
-  border-bottom-left-radius: 1.3rem;
+  border-bottom-left-radius: 1rem 0.9rem;
 }
 .message-outgoing::after {
   content: "";
   position: absolute;
   bottom: 0;
-  right: -0.4rem;
-  width: 0.8rem;
-  height: 1.3rem;
+  right: -1.6rem;
+  width: 1.6rem;
+  height: 1.5rem;
   background-color: #f8f9fa;
-  border-bottom-left-radius: 1.3rem;
+  border-bottom-left-radius: 0.7rem;
 }
 
 /* Ensure chat container, attachment menu and other chat elements share the same border radius */
