@@ -177,61 +177,67 @@
 
 /* Message bubble styling with tails like popular messaging apps */
 /*
-  Styles for individual message bubbles.  To mimic popular messaging apps like
-  Telegram or WhatsApp, each bubble has its own rounded shape and a small
-  pointer on the side.  The generic .message-bubble class defines common
-  padding and margin, while the incoming/outgoing variants set the colours
-  and customised border radii.  Pseudo‑elements are used to draw the
-  triangular pointers that attach the bubble to the avatar side.
+  Styles for individual message bubbles.  These are designed to match
+  the “about‑me” bubble used on profile pages.  Each message appears
+  as a rounded bubble with a small “tail” pointing toward the sender
+  avatar.  A subtle shadow helps separate the bubbles from the
+  background.  The .message-bubble class holds common properties,
+  while .message-incoming and .message-outgoing define colours and
+  pointer placement.
 */
 .message-bubble {
   position: relative;
-  padding: 0.5rem 0.75rem;
+  padding: 0.5rem 1rem;
   margin: 0.25rem 0;
   display: inline-block;
-  word-wrap: break-word;
   max-width: 100%;
+  border-radius: 1.5rem;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  word-wrap: break-word;
 }
 
-/* Incoming (other user) messages: light grey background with a pointer on
-   the left.  Rounded corners on three sides with a smaller radius on the
-   bottom‑left to integrate with the pointer. */
+/* Incoming (other user) messages: light grey bubble with a tail on the left. */
 .message-incoming {
-  background-color: #e9ecef;
+  background-color: #f0f2f5;
   color: #000;
-  border-radius: 1rem 1rem 1rem 0.25rem;
 }
+/* Remove any inherited ::before pointers (if defined elsewhere) */
 .message-incoming::before {
-  /* Left pointer: draw a small triangle using borders.  The triangle
-     attaches at the bottom of the bubble and points towards the avatar. */
+  content: none;
+}
+.message-incoming::after {
+  /* Left tail: small rotated square forming a rounded pointer */
   content: "";
   position: absolute;
-  bottom: 0.25rem;
-  left: -0.5rem;
-  width: 0;
-  height: 0;
-  border-top: 0.5rem solid #e9ecef;
-  border-right: 0.5rem solid transparent;
+  bottom: 0.4rem;
+  left: -0.6rem;
+  width: 1rem;
+  height: 1rem;
+  background-color: #f0f2f5;
+  border-bottom-right-radius: 0.8rem;
+  transform: rotate(45deg);
 }
 
-/* Outgoing (current user) messages: blue background with white text and a
-   pointer on the right.  Rounded corners on three sides with a smaller
-   radius on the bottom‑right to integrate with the pointer. */
+/* Outgoing (current user) messages: blue bubble with white text and a tail on the right. */
 .message-outgoing {
   background-color: #119ffe;
   color: #fff;
-  border-radius: 1rem 1rem 0.25rem 1rem;
 }
+/* Remove any inherited ::before pointers (if defined elsewhere) */
 .message-outgoing::before {
-  /* Right pointer: mirror of the incoming pointer on the opposite side. */
+  content: none;
+}
+.message-outgoing::after {
+  /* Right tail: mirror of the incoming tail */
   content: "";
   position: absolute;
-  bottom: 0.25rem;
-  right: -0.5rem;
-  width: 0;
-  height: 0;
-  border-top: 0.5rem solid #119ffe;
-  border-left: 0.5rem solid transparent;
+  bottom: 0.4rem;
+  right: -0.6rem;
+  width: 1rem;
+  height: 1rem;
+  background-color: #119ffe;
+  border-bottom-left-radius: 0.8rem;
+  transform: rotate(-45deg);
 }
 
 /* Ensure chat container, attachment menu and other chat elements share the same border radius */
