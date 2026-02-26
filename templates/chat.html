@@ -405,7 +405,13 @@
      match the size of the icon.  Remove default padding and center the icon. */
   #attachBtn,
   #emojiBtn {
-    padding: 0;
+    /* Reduce button footprint so it closely matches the icon size and add some horizontal spacing */
+    padding: 0.25rem;
+    /* Provide extra space to the right of each icon so they don't touch
+       neighbouring controls.  The left margin is zero to align the first
+       icon with the edge of the form. */
+    margin-right: 0.5rem;
+    margin-left: 0;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -422,6 +428,8 @@
     width: 2.5rem;
     height: 2.5rem;
     padding: 0;
+    /* Separate the send button from the preceding icons */
+    margin-left: 0.5rem;
   }
   .chat-input-bar button.btn-primary i {
     font-size: 1.25rem;
@@ -430,6 +438,17 @@
   /* Ensure chat container has no border to avoid visible lines around the message area */
   #chat-container {
     border: none;
+  }
+
+  /* Vertically centre the controls within the input group.  Without this,
+     small icon buttons may sit lower than the text field. */
+  .chat-input-bar .input-group {
+    align-items: center;
+  }
+
+  /* Align items vertically centered within the input group so icons and input align nicely */
+  .chat-input-bar .input-group {
+    align-items: center;
   }
 </style>
 <script>
