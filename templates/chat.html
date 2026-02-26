@@ -299,16 +299,14 @@
      is the repeating pattern tile.  Each layer can specify its own repeat and size. */
   /* Match the chat background colour to the top navigation (light grey) */
   background-color: #f8f9fa;
-  background-image:
-    /* Semi‑transparent overlay using the same light grey colour to soften the pattern */
-    linear-gradient(rgba(248,249,250,0.85), rgba(248,249,250,0.85)),
-    url("{{ url_for('static', filename='chat-pattern.webp') }}");
-  background-repeat: no-repeat, repeat;
-  background-size: 100% 100%, 512px 512px;
-  background-attachment: scroll, scroll;
+  /* Apply only the seamless pattern as a repeating background.  The pattern
+     will blend with the grey background colour. */
+  background-image: url("{{ url_for('static', filename='chat-pattern.webp') }}");
+  background-repeat: repeat;
+  background-size: 512px 512px;
+  background-attachment: scroll;
   /* Clip the patterned background to the rounded corners so it doesn't spill
-     outside the container.  Without overflow hidden, the semi‑transparent
-     overlay can show beyond the border radius. */
+     outside the container. */
   overflow: hidden;
 }
 #attachMenu {
