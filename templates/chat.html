@@ -401,6 +401,16 @@
     line-height: 1;
   }
 
+  /* Shrink the attachment and emoji buttons themselves so that their outer dimensions
+     match the size of the icon.  Remove default padding and center the icon. */
+  #attachBtn,
+  #emojiBtn {
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
   /* Style the send button as a perfect circle and enlarge its icon */
   .chat-input-bar button.btn-primary {
     border-radius: 50%;
