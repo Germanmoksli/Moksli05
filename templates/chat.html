@@ -288,11 +288,16 @@
      under the name chat-pattern.png.  We use url_for to generate the correct URL.
      The background image repeats across the container without scaling, and scrolls
      naturally with the message list. */
+  /* Apply a semi‑transparent white overlay on top of the pattern to reduce its contrast.
+     The first background layer is a white linear gradient with opacity, and the second layer
+     is the repeating pattern tile.  Each layer can specify its own repeat and size. */
   background-color: #ffffff;
-  background-image: url("{{ url_for('static', filename='chat-pattern.png') }}");
-  background-repeat: repeat;
-  background-size: 512px 512px;
-  background-attachment: scroll;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.85), rgba(255,255,255,0.85)),
+    url("{{ url_for('static', filename='chat-pattern.png') }}");
+  background-repeat: no-repeat, repeat;
+  background-size: 100% 100%, 512px 512px;
+  background-attachment: scroll, scroll;
 }
 #attachMenu {
   border-radius: 20px;
@@ -368,6 +373,22 @@
     height: 8px;
     border-radius: 50%;
     background-color: #119ffe;
+  }
+
+  /* Media attachments inside message bubbles should take the full width of the bubble
+     and not leave excessive white space above or below.  Ensure images and videos
+     display as block elements, scale proportionally and have rounded corners. */
+  .message-bubble img,
+  .message-bubble video {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    border-radius: 1rem;
+    margin-bottom: 0.25rem;
+  }
+  /* Reduce bottom margin on the wrapper div used for attachments */
+  .message-bubble > div.mb-2 {
+    margin-bottom: 0.25rem;
   }
 </style>
 <script>
