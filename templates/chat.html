@@ -306,6 +306,10 @@
   background-repeat: no-repeat, repeat;
   background-size: 100% 100%, 512px 512px;
   background-attachment: scroll, scroll;
+  /* Clip the patterned background to the rounded corners so it doesn't spill
+     outside the container.  Without overflow hidden, the semi‑transparent
+     overlay can show beyond the border radius. */
+  overflow: hidden;
 }
 #attachMenu {
   border-radius: 20px;
