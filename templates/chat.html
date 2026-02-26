@@ -43,7 +43,7 @@
           {% set date_str = msg.timestamp.split(' ')[0] %}
           {% set time_str = msg.timestamp[11:16] %}
           {% if loop.first or date_str != messages[loop.index0 - 1].timestamp.split(' ')[0] %}
-            <div class="text-center text-muted small my-2">{{ date_str|russian_date }}</div>
+            <div class="text-center my-2"><span class="date-pill">{{ date_str|russian_date }}</span></div>
           {% endif %}
           <div id="msg-{{ msg.id }}" class="d-flex mb-2 {% if msg.user_id == session.get('user_id') %}justify-content-end{% else %}justify-content-start{% endif %}">
             {% if msg.user_id != session.get('user_id') %}
@@ -90,7 +90,7 @@
                   <div class="mb-1" style="white-space: pre-wrap; word-wrap: break-word;">{{ msg.message }}</div>
                 {% endif %}
                 <div class="d-flex justify-content-end align-items-center" style="font-size: 0.75rem;">
-                  <span class="me-1" style="{% if msg.user_id == session.get('user_id') %}color: rgba(255,255,255,0.5);{% else %}color: rgba(0,0,0,0.6);{% endif %}">{{ time_str }}</span>
+                  <span class="me-1" data-timestamp="{{ msg.timestamp }}" style="{% if msg.user_id == session.get('user_id') %}color: rgba(255,255,255,0.5);{% else %}color: rgba(0,0,0,0.6);{% endif %}">{{ time_str }}</span>
                   {% if msg.show_ticks %}
                     {% if msg.read_by_all %}
                       <i class="bi bi-check2-all" style="font-size: 0.9rem; color: {% if msg.user_id == session.get('user_id') %}rgba(255,255,255,0.8){% else %}rgba(0,0,0,0.6){% endif %};"></i>
@@ -109,11 +109,11 @@
       <div class="chat-input-bar mt-2">
         <div id="file-preview" class="mb-2"></div>
         <form method="post" enctype="multipart/form-data">
-          <div class="input-group">
-            <!-- Single attachment button with drop‑down menu for choosing type -->
-            <div class="position-relative me-1">
-              <!-- Paperclip icon triggers the custom attachment menu -->
-              <span id="attachBtn" class="input-group-text" style="cursor: pointer;">
+          <div class="input-group align-items-center">
+            <!-- Attachment button: shifted slightly from the left edge by a left margin.  The wrapper
+                 is positioned relative so the drop‑down menu can be absolutely positioned. -->
+            <div class="position-relative me-1 ms-2">
+              <span id="attachBtn" class="attach-btn" style="cursor: pointer;">
                 <i class="bi bi-paperclip"></i>
               </span>
               <!-- Custom menu appears above the button; items set accept attribute on file input and trigger click -->
@@ -131,11 +131,14 @@
             </div>
             <!-- Hidden file input used for all attachments -->
             <input type="file" id="fileInput" name="file" class="d-none">
-            <input type="text" name="message" class="form-control" placeholder="Введите сообщение..." autocomplete="off">
-            <!-- Emoji button is hidden on small screens; visible on desktop only -->
-            <span id="emojiBtn" class="input-group-text d-none d-md-inline-flex" style="cursor: pointer;">
-              <i class="bi bi-emoji-smile"></i>
-            </span>
+            <!-- Message input and emoji button are wrapped together so the emoji appears inside the field on the right -->
+            <div class="position-relative flex-grow-1 me-1">
+              <input type="text" name="message" class="form-control pe-5" placeholder="Введите сообщение..." autocomplete="off">
+              <!-- Emoji button appears inside the input on desktop; absolute positioning aligns it to the right -->
+              <span id="emojiBtn" class="emoji-btn d-none d-md-inline-flex" style="cursor: pointer; position: absolute; top: 50%; transform: translateY(-50%); right: 0.75rem;">
+                <i class="bi bi-emoji-smile"></i>
+              </span>
+            </div>
             <!-- Send button with id for attaching click handler -->
             <button class="btn btn-primary" type="submit" title="Отправить">
               <i class="bi bi-send"></i>
@@ -403,15 +406,19 @@
 
   /* Shrink the attachment and emoji buttons themselves so that their outer dimensions
      match the size of the icon.  Remove default padding and center the icon. */
-  #attachBtn,
-  #emojiBtn {
-    /* Reduce button footprint so it closely matches the icon size and add some horizontal spacing */
+  /* Attachment button styling.  Provide a small margin to the right to separate it
+     from the input wrapper.  Left margin is handled by the wrapper's ms-2 class. */
+  #attachBtn {
     padding: 0.25rem;
-    /* Provide extra space to the right of each icon so they don't touch
-       neighbouring controls.  The left margin is zero to align the first
-       icon with the edge of the form. */
     margin-right: 0.5rem;
-    margin-left: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  /* Emoji button inside the input field.  Do not apply external margins since it's
+     absolutely positioned within the wrapper. */
+  #emojiBtn {
+    padding: 0.25rem;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -438,6 +445,19 @@
   /* Ensure chat container has no border to avoid visible lines around the message area */
   #chat-container {
     border: none;
+  }
+
+  /* Date separators appear as small pills with semi‑transparent white background
+     to stand out against the patterned chat background.  They inherit the same
+     border radius as other UI elements. */
+  .date-pill {
+    display: inline-block;
+    background-color: rgba(255, 255, 255, 0.5);
+    border-radius: 20px;
+    padding: 0.25rem 0.75rem;
+    color: #444;
+    font-size: 0.75rem;
+    font-weight: 500;
   }
 
   /* Vertically centre the controls within the input group.  Without this,
@@ -498,6 +518,22 @@
   // sends typing notifications when the user types.
   document.addEventListener('DOMContentLoaded', function() {
     const chatContainer = document.getElementById('chat-container');
+
+    // Convert any time spans with data-timestamp attributes to the user's local time.
+    (function localizeExistingTimes() {
+      const tsElems = document.querySelectorAll('[data-timestamp]');
+      tsElems.forEach(function(el) {
+        const ts = el.getAttribute('data-timestamp');
+        if (ts) {
+          try {
+            const dateObj = new Date(ts.replace(' ', 'T'));
+            el.textContent = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          } catch (e) {
+            // ignore parse errors and leave existing text
+          }
+        }
+      });
+    })();
     // Determine the initial last message ID and date based on the messages rendered server‑side.
     let lastMessageId = {{ messages[-1].id if messages|length > 0 else 0 }};
     let lastDate = {% if messages|length > 0 %}'{{ messages[-1].timestamp.split(' ')[0] }}'{% else %}null{% endif %};
@@ -524,12 +560,14 @@
     // Function to append a single message object to the chat container
     function appendMessage(msg) {
       if (!chatContainer) return;
-      // Insert date separator if needed
+      // Insert date separator if needed.  Render the date as a pill with
+      // translucent background so it stands out from the patterned chat.
       const dateStr = msg.timestamp.split(' ')[0];
       if (!lastDate || dateStr !== lastDate) {
         const dateDiv = document.createElement('div');
-        dateDiv.className = 'text-center text-muted small my-2';
-        dateDiv.textContent = formatDateToRussian(dateStr);
+        dateDiv.className = 'text-center my-2';
+        // Use innerHTML to insert a span with the date pill class
+        dateDiv.innerHTML = '<span class="date-pill">' + formatDateToRussian(dateStr) + '</span>';
         chatContainer.appendChild(dateDiv);
         lastDate = dateStr;
       }
@@ -629,7 +667,17 @@
       const timeSpan = document.createElement('span');
       timeSpan.className = 'me-1';
       timeSpan.style.color = (msg.user_id === currentUserId) ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.6)';
-      timeSpan.textContent = msg.timestamp.substring(11, 16);
+      // Display time using the user's local timezone.  Convert the message
+      // timestamp (YYYY-MM-DD HH:MM:SS) into a Date object and format it
+      // with only hour and minute.
+      try {
+        const dateObj = new Date(msg.timestamp.replace(' ', 'T'));
+        const localTime = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        timeSpan.textContent = localTime;
+      } catch (e) {
+        // Fallback: just slice the HH:MM part
+        timeSpan.textContent = msg.timestamp.substring(11, 16);
+      }
       metaDiv.appendChild(timeSpan);
       if (msg.user_id === currentUserId) {
         const icon = document.createElement('i');
