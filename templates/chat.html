@@ -171,8 +171,10 @@
 
 /* Ensure attachment and emoji buttons have a white background consistent with the input */
 .chat-input-bar .input-group-text {
-  background-color: #fff;
-  border: 1px solid #ced4da;
+  /* Remove border and background for attach/emoji buttons; they inherit transparency */
+  background-color: transparent;
+  border: none;
+  box-shadow: none;
 }
 
 /* Background pattern for chat wrapper.  The first layer sets a plain
@@ -390,6 +392,29 @@
   /* Reduce bottom margin on the wrapper div used for attachments */
   .message-bubble > div.mb-2 {
     margin-bottom: 0.25rem;
+  }
+
+  /* Enlarge icons inside attachment (paperclip) and emoji buttons without changing button size */
+  #attachBtn i,
+  #emojiBtn i {
+    font-size: 1.5rem;
+  }
+
+  /* Style the send button as a perfect circle and enlarge its icon */
+  .chat-input-bar button.btn-primary {
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem; /* keep size consistent */
+  }
+  .chat-input-bar button.btn-primary i {
+    font-size: 1.5rem;
+  }
+
+  /* Ensure chat container has no border to avoid visible lines around the message area */
+  #chat-container {
+    border: none;
   }
 </style>
 <script>
