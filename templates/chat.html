@@ -297,17 +297,10 @@
   /* Apply a semi‑transparent white overlay on top of the pattern to reduce its contrast.
      The first background layer is a white linear gradient with opacity, and the second layer
      is the repeating pattern tile.  Each layer can specify its own repeat and size. */
-  /* Base background and pattern.  A semi‑transparent white overlay softens
-     the repeating tile, and the second layer provides the seamless pattern.
-     These properties mirror the earlier working version before the last
-     adjustments. */
-  background-color: #ffffff;
-  background-image:
-    linear-gradient(rgba(255,255,255,0.85), rgba(255,255,255,0.85)),
-    url("{{ url_for('static', filename='chat-pattern.webp') }}");
-  background-repeat: no-repeat, repeat;
-  background-size: 100% 100%, 512px 512px;
-  background-attachment: scroll, scroll;
+  /* Use the same light grey background as the navigation bar for the chat area.
+     Remove the patterned tile so that messages sit on a solid grey surface. */
+  background-color: #f8f9fa;
+  background-image: none;
 }
 #attachMenu {
   border-radius: 20px;
