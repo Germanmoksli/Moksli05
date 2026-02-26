@@ -38,7 +38,7 @@
     </div>
     <div class="chat-wrapper d-flex flex-column flex-grow-1 px-3 pb-3" style="min-height: 0; overflow: hidden;">
       <!-- Chat container: scrollable area for messages -->
-      <div id="chat-container" class="border rounded p-3 overflow-auto flex-grow-1">
+      <div id="chat-container" class="rounded p-3 overflow-auto flex-grow-1">
         {% for msg in messages %}
           {% set date_str = msg.timestamp.split(' ')[0] %}
           {% set time_str = msg.timestamp[11:16] %}
@@ -178,12 +178,13 @@
 /* Background pattern for chat wrapper.  The first layer sets a plain
    white base colour; the second applies a repeating seamless pattern.
    Place your pattern image (512x512 px tile) in the static folder
-   under the name chat-pattern.png.  We reference it via Flask's
+     under the name chat-pattern.webp.  We reference it via Flask's
    url_for helper.  The pattern is repeated without scaling.
    On mobile, the background scrolls with the messages. */
 .chat-wrapper {
   position: relative;
-  background-color: #ffffff;
+  /* Use our light grey background for the area surrounding the chat container. */
+  background-color: #f8f9fa;
   /* Pattern removed from wrapper; applied to the chat container instead */
 }
 @media (max-width: 767.98px) {
@@ -285,7 +286,7 @@
   border-radius: 20px !important;
   /* Set a repeating pattern background so messages appear over the pattern.
      The pattern file (512x512px tile) must be placed in the project's static folder
-     under the name chat-pattern.png.  We use url_for to generate the correct URL.
+     under the name chat-pattern.webp.  We use url_for to generate the correct URL.
      The background image repeats across the container without scaling, and scrolls
      naturally with the message list. */
   /* Apply a semi‑transparent white overlay on top of the pattern to reduce its contrast.
@@ -294,7 +295,7 @@
   background-color: #ffffff;
   background-image:
     linear-gradient(rgba(255,255,255,0.85), rgba(255,255,255,0.85)),
-    url("{{ url_for('static', filename='chat-pattern.png') }}");
+    url("{{ url_for('static', filename='chat-pattern.webp') }}");
   background-repeat: no-repeat, repeat;
   background-size: 100% 100%, 512px 512px;
   background-attachment: scroll, scroll;
