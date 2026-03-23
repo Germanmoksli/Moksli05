@@ -297,14 +297,17 @@
   /* Apply a semi‑transparent white overlay on top of the pattern to reduce its contrast.
      The first background layer is a white linear gradient with opacity, and the second layer
      is the repeating pattern tile.  Each layer can specify its own repeat and size. */
-  /* Use our seamless pattern as the background for the message area so that
-     messages appear over the tile.  The base colour is white, and the
-     pattern repeats without scaling. */
-  background-color: #ffffff;
-  background-image: url("{{ url_for('static', filename='chat-pattern.webp') }}");
-  background-repeat: repeat;
-  background-size: 512px 512px;
-  background-attachment: scroll;
+  /* Show the pattern behind messages with partial transparency.  The base
+     colour is the same grey as the side menu (#f8f9fa), and we apply a
+     semi‑transparent overlay to reduce the pattern’s visibility to about
+     30% (i.e. 70% transparent). */
+  background-color: #f8f9fa;
+  background-image:
+    linear-gradient(rgba(248,249,250,0.7), rgba(248,249,250,0.7)),
+    url("{{ url_for('static', filename='chat-pattern.webp') }}");
+  background-repeat: no-repeat, repeat;
+  background-size: 100% 100%, 512px 512px;
+  background-attachment: scroll, scroll;
 }
 #attachMenu {
   border-radius: 20px;
