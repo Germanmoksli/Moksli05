@@ -159,7 +159,8 @@
   bottom: 0;
   left: 0;
   right: 0;
-  background-color: #f8f9fa;
+  /* Match the chat list background colour (#f0f2f5). */
+  background-color: #f0f2f5;
   /* Slight shadow to separate from messages */
   box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.05);
   padding-bottom: 0.5rem;
@@ -189,7 +190,8 @@
 .chat-wrapper {
   position: relative;
   /* Use our light grey background for the area surrounding the chat container. */
-  background-color: #f8f9fa;
+  /* Match the chat list background colour (#f0f2f5). */
+  background-color: #f0f2f5;
   /* Pattern removed from wrapper; applied to the chat container instead */
 }
 @media (max-width: 767.98px) {
@@ -253,7 +255,8 @@
   left: -1.6rem;
   width: 1.6rem;
   height: 1.5rem;
-  background-color: #f8f9fa;
+  /* Tail cutout matches the chat container background (#f0f2f5). */
+  background-color: #f0f2f5;
   border-bottom-right-radius: 0.7rem;
 }
 
@@ -282,7 +285,8 @@
   right: -1.6rem;
   width: 1.6rem;
   height: 1.5rem;
-  background-color: #f8f9fa;
+  /* Tail cutout matches the chat container background (#f0f2f5). */
+  background-color: #f0f2f5;
   border-bottom-left-radius: 0.7rem;
 }
 
@@ -298,12 +302,15 @@
      The first background layer is a white linear gradient with opacity, and the second layer
      is the repeating pattern tile.  Each layer can specify its own repeat and size. */
   /* Show the pattern behind messages with partial transparency.  The base
-     colour is the same grey as the side menu (#f8f9fa), and we apply a
+     colour is the same grey as the side menu (#f0f2f5), and we apply a
      semi‑transparent overlay to reduce the pattern’s visibility to about
      30% (i.e. 70% transparent). */
-  background-color: #f8f9fa;
+  /* Base colour matches the chat list background. */
+  background-color: #f0f2f5;
+  /* Apply a semi‑transparent overlay using the same grey colour with 30% opacity
+     so the pattern is roughly 70% visible. */
   background-image:
-    linear-gradient(rgba(248,249,250,0.7), rgba(248,249,250,0.7)),
+    linear-gradient(rgba(240,242,245,0.3), rgba(240,242,245,0.3)),
     url("{{ url_for('static', filename='chat-pattern.webp') }}");
   background-repeat: no-repeat, repeat;
   background-size: 100% 100%, 512px 512px;
@@ -352,7 +359,8 @@
   right: -6px;
   width: 22px;
   height: 22px;
-  background-color: #f8f9fa;
+  /* Match the chat container background. */
+  background-color: #f0f2f5;
   border: 1px solid #ced4da;
 }
 
