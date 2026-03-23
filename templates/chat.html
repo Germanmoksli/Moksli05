@@ -45,7 +45,7 @@
           {% if loop.first or date_str != messages[loop.index0 - 1].timestamp.split(' ')[0] %}
             <div class="text-center my-2"><span class="date-pill">{{ date_str|russian_date }}</span></div>
           {% endif %}
-          <div id="msg-{{ msg.id }}" class="d-flex mb-2 {% if msg.user_id == session.get('user_id') %}justify-content-end{% else %}justify-content-start{% endif %}">
+          <div id="msg-{{ msg.id }}" class="d-flex mb-2 {% if msg.user_id == session.get('user_id') %}justify-content-end{% else %}justify-content-start{% endif %} align-items-end">
             {% if msg.user_id != session.get('user_id') %}
               {# Показываем фотографию автора сообщения, если она есть.  Если
                  фотографии нет, отображаем coloured placeholder с первой
@@ -63,13 +63,7 @@
               {% endif %}
             {% endif %}
             <div class="d-flex flex-column" style="max-width: 70%;">
-              {% if msg.user_id != session.get('user_id') %}
-                <div class="fw-semibold text-secondary small mb-1">
-                  <a href="{{ url_for('employee_profile', user_id=msg.user_id) }}" class="text-decoration-none text-secondary">
-                    {{ msg.author_name }}
-                  </a>
-                </div>
-              {% endif %}
+              {# Do not display the author's name in chat. #}
               <div class="message-bubble {% if msg.user_id == session.get('user_id') %}message-outgoing{% else %}message-incoming{% endif %}">
                 {% if msg.file_name %}
                   {% set ext = msg.file_name.rsplit('.', 1)[-1]|lower %}
@@ -304,13 +298,13 @@
   /* Show the pattern behind messages with partial transparency.  The base
      colour is the same grey as the side menu (#f0f2f5), and we apply a
      semi‑transparent overlay to reduce the pattern’s visibility to about
-     30% (i.e. 70% transparent). */
+     50% (i.e. 50% transparent). */
   /* Base colour matches the chat list background. */
   background-color: #f0f2f5;
-  /* Apply a semi‑transparent overlay using the same grey colour with 30% opacity
-     so the pattern is roughly 70% visible. */
+  /* Apply a semi‑transparent overlay using the same grey colour with 50% opacity
+     so the pattern is roughly 50% visible. */
   background-image:
-    linear-gradient(rgba(240,242,245,0.3), rgba(240,242,245,0.3)),
+    linear-gradient(rgba(240,242,245,0.5), rgba(240,242,245,0.5)),
     url("{{ url_for('static', filename='chat-pattern.webp') }}");
   background-repeat: no-repeat, repeat;
   background-size: 100% 100%, 512px 512px;
@@ -464,7 +458,8 @@
      border radius as other UI elements. */
   .date-pill {
     display: inline-block;
-    background-color: rgba(255, 255, 255, 0.5);
+    /* Use the same grey colour as the chat list for the date pill background. */
+    background-color: #f0f2f5;
     border-radius: 20px;
     padding: 0.25rem 0.75rem;
     color: #444;
@@ -585,7 +580,8 @@
       }
       // Wrapper for the message
       const rowDiv = document.createElement('div');
-      rowDiv.className = 'd-flex mb-2 ' + (msg.user_id === currentUserId ? 'justify-content-end' : 'justify-content-start');
+      // Align items to the bottom so the avatar sits at the baseline of the message bubble.
+      rowDiv.className = 'd-flex mb-2 ' + (msg.user_id === currentUserId ? 'justify-content-end' : 'justify-content-start') + ' align-items-end';
       rowDiv.id = 'msg-' + msg.id;
       // If the message is incoming, render the avatar
       if (msg.user_id !== currentUserId) {
@@ -616,17 +612,7 @@
       const contentDiv = document.createElement('div');
       contentDiv.className = 'd-flex flex-column';
       contentDiv.style.maxWidth = '70%';
-      // Author name (for incoming messages)
-      if (msg.user_id !== currentUserId) {
-        const nameDiv = document.createElement('div');
-        nameDiv.className = 'fw-semibold text-secondary small mb-1';
-        const nameLink = document.createElement('a');
-        nameLink.href = '/employee/' + msg.user_id;
-        nameLink.className = 'text-decoration-none text-secondary';
-        nameLink.textContent = msg.author_name;
-        nameDiv.appendChild(nameLink);
-        contentDiv.appendChild(nameDiv);
-      }
+      // Do not display the author's name in chat. The avatar and bubble suffice.
       // Message bubble
       const bubble = document.createElement('div');
       bubble.className = 'message-bubble ' + (msg.user_id === currentUserId ? 'message-outgoing' : 'message-incoming');
