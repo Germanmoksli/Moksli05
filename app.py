@@ -9949,12 +9949,15 @@ def new_room_step5():
             except Exception:
                 trimmed_name = property_name[:40]
             session['new_listing_property_name'] = trimmed_name
-        # Main description: limit to 400 characters
+        # Main description: limit to 850 characters
+        # Trim whitespace and truncate at 850 characters to prevent overly long
+        # descriptions from being stored.  The HTML form enforces the same
+        # maxlength, so this is a final safeguard server‑side.
         main_desc = request.form.get('main_description', '')
         try:
-            trimmed_desc = main_desc.strip()[:400]
+            trimmed_desc = main_desc.strip()[:850]
         except Exception:
-            trimmed_desc = main_desc[:400]
+            trimmed_desc = main_desc[:850]
         session['new_listing_main_description'] = trimmed_desc
         # Guest notes are no longer used but kept for backward compatibility
         guest_notes = request.form.get('guest_notes', '')

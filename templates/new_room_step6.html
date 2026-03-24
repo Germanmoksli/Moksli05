@@ -51,23 +51,23 @@
     <h2 class="fw-bold fs-2 mb-4 text-start">Правила дома</h2>
     <form method="post" id="rulesForm" action="{{ url_for('new_room_step6') }}">
       <!-- Make the entire row clickable to open the time picker and restrict the time
-           selection to 30‑minute increments starting from 12:00.  The
+           selection to 15‑minute increments starting from 12:00.  The
            container has a pointer cursor to indicate interactivity. -->
       <!-- Часы и минуты в одном ряду: два поля занимают половину ширины.  
-           Используем time‑input с шагом 15 минут и паттерном, разрешающим только 00, 15 или 30 минут. 
-           Минимальное время — 12:00, максимальное — 23:30. При клике по всему блоку открывается выбор времени. -->
+           Используем time‑input с шагом 15 минут и паттерном, разрешающим только 00, 15, 30 или 45 минут. 
+           Минимальное время — 12:00, максимальное — 23:45. При клике по всему блоку открывается выбор времени. -->
       <div class="row mb-3">
         <div class="col-12 col-md-6" id="checkInRow" style="cursor: pointer;">
           <label for="check_in_time" class="form-label fw-bold">Время заезда</label>
-          <input type="time" class="form-control" id="check_in_time" name="check_in_time"
-                 value="{{ check_in_time }}" step="900" min="12:00" max="23:30"
-                 pattern="^(?:1[2-9]|2[0-3]):(?:00|15|30)$">
+        <input type="time" class="form-control" id="check_in_time" name="check_in_time"
+                 value="{{ check_in_time }}" step="900" min="12:00" max="23:45"
+                 pattern="^(?:1[2-9]|2[0-3]):(?:00|15|30|45)$">
         </div>
         <div class="col-12 col-md-6" id="checkOutRow" style="cursor: pointer;">
           <label for="check_out_time" class="form-label fw-bold">Время выезда</label>
-          <input type="time" class="form-control" id="check_out_time" name="check_out_time"
-                 value="{{ check_out_time }}" step="900" min="12:00" max="23:30"
-                 pattern="^(?:1[2-9]|2[0-3]):(?:00|15|30)$">
+        <input type="time" class="form-control" id="check_out_time" name="check_out_time"
+                 value="{{ check_out_time }}" step="900" min="12:00" max="23:45"
+                 pattern="^(?:1[2-9]|2[0-3]):(?:00|15|30|45)$">
         </div>
       </div>
       <div class="mb-3">

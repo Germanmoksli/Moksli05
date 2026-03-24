@@ -59,8 +59,15 @@
       <!-- Main description -->
       <div class="mb-4">
         <label for="main_description" class="form-label fw-bold">Основное описание</label>
-        <textarea class="form-control" id="main_description" name="main_description" rows="6" maxlength="400" required>{{ main_description }}</textarea>
-        <div class="form-text text-end"><span id="mainDescCount">0</span>/400</div>
+        {#
+          Increase the character limit for the main description to 850 characters.  The
+          maxlength attribute enforces the limit at the HTML level while the counter
+          below displays the current number of characters entered relative to the
+          850‑character maximum.  When modifying this limit, ensure both the
+          maxlength attribute and the counter suffix match.
+        #}
+        <textarea class="form-control" id="main_description" name="main_description" rows="6" maxlength="850" required>{{ main_description }}</textarea>
+        <div class="form-text text-end"><span id="mainDescCount">0</span>/850</div>
       </div>
       {# The guest notes field has been removed as per the new requirements. #}
     </form>
