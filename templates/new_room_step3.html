@@ -180,6 +180,12 @@
         font-size: 1.75rem;
         margin-bottom: 0.5rem;
       }
+      /* Устанавливаем размеры для пользовательских SVG‑иконок внутри блока .icon.  
+         Они должны соответствовать размеру шрифта, используемого для bootstrap‑иконок. */
+      .amenity-tile .icon img {
+        width: 1.75rem;
+        height: 1.75rem;
+      }
       .amenity-tile .label {
         font-size: 1rem;
         font-weight: 500;
@@ -232,7 +238,10 @@
         <div class="col">
           <label class="amenity-tile" for="amenity_washing_machine">
             <input type="checkbox" id="amenity_washing_machine" name="amenities" value="washing_machine" {% if 'washing_machine' in selected %}checked{% endif %}>
-            <span class="icon"><i class="bi bi-washer"></i></span>
+            <!-- Используем собственную SVG‑иконку стиральной машины -->
+            <span class="icon">
+              <img src="{{ url_for('static', filename='icons/washing-machine-icon.svg') }}" alt="Стиральная машина" class="amenity-icon">
+            </span>
             <span class="label">Стиральная машина</span>
           </label>
         </div>
@@ -240,7 +249,10 @@
         <div class="col">
           <label class="amenity-tile" for="amenity_microwave">
             <input type="checkbox" id="amenity_microwave" name="amenities" value="microwave" {% if 'microwave' in selected %}checked{% endif %}>
-            <span class="icon"><i class="bi bi-microwave"></i></span>
+            <!-- Собственная SVG‑иконка микроволновой печи -->
+            <span class="icon">
+              <img src="{{ url_for('static', filename='icons/microwave-icon.svg') }}" alt="Микроволновая печь" class="amenity-icon">
+            </span>
             <span class="label">Микроволновая печь</span>
           </label>
         </div>
@@ -248,7 +260,10 @@
         <div class="col">
           <label class="amenity-tile" for="amenity_iron">
             <input type="checkbox" id="amenity_iron" name="amenities" value="iron" {% if 'iron' in selected %}checked{% endif %}>
-            <span class="icon"><i class="bi bi-iron"></i></span>
+            <!-- Собственная SVG‑иконка утюга -->
+            <span class="icon">
+              <img src="{{ url_for('static', filename='icons/iron-icon.svg') }}" alt="Утюг" class="amenity-icon">
+            </span>
             <span class="label">Утюг</span>
           </label>
         </div>

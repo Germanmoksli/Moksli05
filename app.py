@@ -9603,11 +9603,49 @@ def new_room_step4():
         return redirect(url_for('new_room_step3'))
     # Handle file uploads on POST
     if request.method == 'POST':
+        """
+        Обработка POST‑запроса для шага 4.  При асинхронной загрузке фотографии
+        отправляются на сервер отдельным эндпоинтом, поэтому при нажатии на
+        кнопку «Далее» ожидаются только данные о порядке фото.  Если же
+        поступили файлы (например, старый сценарий), то продолжается прежняя
+        логика загрузки.
+        """
+        # Если клиент отправил файлы напрямую (старый сценарий), сохраняем их
+        # аналогично прежней реализации.
         files = request.files.getlist('photos')
+        # Если нет загруженных файлов, обрабатываем только порядок существующих
+        # фотографий.  Список имен фотографий хранится в сессии.
+        if not files or len(files) == 0:
+            # Порядок передается в виде строк, разделенных запятыми.  Каждый
+            # элемент — имя файла или пустая строка (если фото ещё не
+            # загрузилось).  Удаляем пустые элементы и переупорядочиваем
+            # список `new_listing_photos` в соответствии с порядком.
+            order_str = request.form.get('photo_order', '') or ''
+            # Получаем текущий список загруженных файлов из сессии
+            current_photos: list[str] = session.get('new_listing_photos', [])
+            # Строим новый список в указанном порядке.  Используем только те
+            # элементы, которые присутствуют в current_photos.
+            new_order: list[str] = []
+            if order_str:
+                for name in order_str.split(','):
+                    name = name.strip()
+                    if name and name in current_photos and name not in new_order:
+                        new_order.append(name)
+                # Добавляем оставшиеся элементы, не указанные явно, в конец
+                for name in current_photos:
+                    if name not in new_order:
+                        new_order.append(name)
+                session['new_listing_photos'] = new_order
+            # Если порядок не передан, не меняем порядок
+            return redirect(url_for('new_room_step5'))
+        # -------------------------------------------------------------------
+        # Старый путь: загрузка файлов непосредственно при нажатии «Далее».
+        # Этот блок сохранился для обратной совместимости, если по каким‑то
+        # причинам фотографии были отправлены стандартной формой.
         # Limit to the first 100 files
         if len(files) > 100:
             files = files[:100]
-        # Optional: handle reordering if provided via hidden input
+        # Optional: handle reordering if provided via hidden input (for legacy)
         order_str = request.form.get('photo_order', '')
         order_indices: list[int] = []
         if order_str:
@@ -9626,52 +9664,30 @@ def new_room_step4():
                     ordered_files.append(f)
             files = ordered_files
         saved_filenames: list[str] = []
-        # For each uploaded file, we save it to disk when possible and also
-        # capture its base64‑encoded contents.  In addition to storing the
-        # base64 in the session (which can overflow cookie size limits), we
-        # persist the data into a temporary database table keyed by a
-        # per‑session identifier.  This ensures that even when the session
-        # cookie truncates large values, the image data can be retrieved at
-        # publish time.
         photo_data_map: dict[str, str] = {}
-        # Acquire a database connection for inserting temporary photo records
         temp_conn = None
         try:
             temp_conn = get_db_connection()
-            # Ensure the temp table exists before inserting
             ensure_room_photos_temp_table(temp_conn)
         except Exception:
             temp_conn = None
-        # Determine a per‑session identifier for temporary photo storage.  If one
-        # does not exist yet, generate a new UUID and persist it in the session.
         sid = session.get('_upload_temp_id')
         if not sid:
             sid = uuid.uuid4().hex
             session['_upload_temp_id'] = sid
         for file in files:
-            # Skip empty or missing file objects
             if not file or file.filename == '':
                 continue
             filename = secure_filename(file.filename)
             ext = os.path.splitext(filename)[1].lower()
-            # Only allow supported image formats
             if ext not in {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'}:
                 continue
-            # Create a unique name for the stored file so multiple uploads don't collide
             unique_name = f"{uuid.uuid4().hex}{ext}"
-            # Read the uploaded file into memory before saving it.  Reading
-            # first ensures that we have the image contents even on hosts where
-            # file saving may fail or the filesystem is read‑only.  After
-            # reading we reset the stream pointer back to the beginning so
-            # that subsequent calls to ``file.save`` still write the full file.
             file_bytes: bytes | None = None
             try:
                 file_bytes = file.read()
             except Exception:
                 file_bytes = None
-            # Reset the stream position to the beginning so saving writes
-            # the complete content.  Try the common attributes ``seek`` on
-            # the FileStorage itself and on the underlying ``stream``.
             try:
                 file.seek(0)
             except Exception:
@@ -9680,20 +9696,12 @@ def new_room_step4():
                 except Exception:
                     pass
             data_str: str | None = None
-            # If we successfully read bytes, encode them to base64 and
-            # store them keyed by the unique filename.  Use a try/except
-            # around base64 encoding to gracefully skip any unexpected
-            # errors; invalid or empty data will simply be omitted from the
-            # photo_data_map and temp table.
             if file_bytes:
                 try:
                     data_str = base64.b64encode(file_bytes).decode('utf-8')
                     photo_data_map[unique_name] = data_str
                 except Exception:
                     data_str = None
-            # Attempt to insert into the temporary table if we have a
-            # base64‑encoded string and a valid database connection.  Even
-            # if the insert fails, the data may still be in the session.
             if data_str and temp_conn:
                 try:
                     temp_conn.execute(
@@ -9702,22 +9710,11 @@ def new_room_step4():
                     )
                 except Exception:
                     pass
-            # Attempt to save the file to the uploads directory.  Saving
-            # happens after reading so that read operations don't consume
-            # the stream for the save.  If saving fails (e.g. because the
-            # filesystem is read‑only), we still retain the base64 data
-            # captured above.  Note that ``secure_filename`` sanitizes
-            # filenames but does not modify the generated unique_name.
             try:
                 file.save(os.path.join(UPLOAD_ROOMS_FOLDER, unique_name))
             except Exception:
-                # Ignore save errors; rely on base64 data instead
                 pass
-            # Whether or not saving to disk succeeded, record the name in
-            # ``saved_filenames`` so that it will be inserted into the
-            # ``room_photos`` table when the listing is published.
             saved_filenames.append(unique_name)
-        # Commit and close the temporary connection, if opened
         if temp_conn:
             try:
                 temp_conn.commit()
@@ -9727,19 +9724,7 @@ def new_room_step4():
                 temp_conn.close()
             except Exception:
                 pass
-        # Persist filenames in the session so subsequent steps know that photos
-        # have been uploaded.  Do not store raw base64 image data in the
-        # session because doing so can easily exceed cookie size limits and
-        # cause server errors (e.g. 502/520).  The raw image bytes are
-        # instead kept in the temporary ``room_photos_temp`` table keyed by
-        # ``_upload_temp_id`` and will be retrieved when the listing is
-        # published.  This reduces the size of the session cookie and
-        # avoids gateway errors.
         session['new_listing_photos'] = saved_filenames
-        # No longer persist photo_data_map in the session.  The data is
-        # available via the temporary table when publishing (see
-        # new_room_step9()).
-        # After uploading photos, proceed to the next step (descriptions)
         return redirect(url_for('new_room_step5'))
     # On GET display the upload interface
     # For a nine‑step wizard, step 4 corresponds to roughly 44%% progress
@@ -9756,6 +9741,144 @@ def new_room_step4():
         hide_nav=True,
         existing_photos=existing_photos,
     )
+
+
+# -----------------------------------------------------------------------------
+# Asynchronous photo upload and deletion endpoints for the new listing wizard.
+# These routes allow the client to upload photos immediately after selection
+# during step 4 and remove them if the user deletes a preview.  Uploaded
+# photos are stored in the same uploads directory and temporary table as
+# traditional uploads.  Filenames are appended to the ``new_listing_photos``
+# session list so that subsequent steps know which photos have been uploaded.
+
+@app.route('/rooms/new/upload_photo', methods=['POST'])
+@login_required
+@roles_required('owner')
+def upload_new_listing_photo():
+    """Upload a single photo asynchronously during the new listing wizard.
+
+    Expects a multipart/form-data request with a single file field named
+    ``file``.  The uploaded image is validated, stored on disk in the
+    ``UPLOAD_ROOMS_FOLDER``, and its base64 representation is inserted into
+    the ``room_photos_temp`` table keyed by the user’s session ID.  The
+    resulting filename is added to the ``new_listing_photos`` list stored in
+    the user’s session.  A JSON response is returned containing the unique
+    filename and a URL for previewing the uploaded image.
+
+    Returns:
+        A JSON object with keys ``filename`` and ``url`` on success.  On
+        error, returns a JSON object with an ``error`` key and a 400 status.
+    """
+    file = request.files.get('file')
+    # Validate file presence
+    if not file or file.filename == '':
+        return jsonify({'error': 'No file provided'}), 400
+    filename = secure_filename(file.filename)
+    ext = os.path.splitext(filename)[1].lower()
+    # Validate image extension
+    if ext not in {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'}:
+        return jsonify({'error': 'Unsupported file type'}), 400
+    # Create unique name to avoid collisions
+    unique_name = f"{uuid.uuid4().hex}{ext}"
+    # Read file bytes for base64 encoding
+    file_bytes: bytes | None = None
+    try:
+        file_bytes = file.read()
+    except Exception:
+        file_bytes = None
+    # Reset stream for subsequent save
+    try:
+        file.seek(0)
+    except Exception:
+        try:
+            file.stream.seek(0)
+        except Exception:
+            pass
+    # Insert base64 data into temporary table
+    data_str: str | None = None
+    if file_bytes:
+        try:
+            data_str = base64.b64encode(file_bytes).decode('utf-8')
+        except Exception:
+            data_str = None
+    temp_conn = None
+    if data_str:
+        try:
+            temp_conn = get_db_connection()
+            ensure_room_photos_temp_table(temp_conn)
+            # Ensure per‑session identifier
+            sid = session.get('_upload_temp_id')
+            if not sid:
+                sid = uuid.uuid4().hex
+                session['_upload_temp_id'] = sid
+            temp_conn.execute(
+                "INSERT INTO room_photos_temp (session_id, file_name, image_data) VALUES (?, ?, ?)",
+                (sid, unique_name, data_str),
+            )
+            temp_conn.commit()
+        except Exception:
+            pass
+        finally:
+            if temp_conn:
+                try:
+                    temp_conn.close()
+                except Exception:
+                    pass
+    # Save file to the uploads directory
+    try:
+        file.save(os.path.join(UPLOAD_ROOMS_FOLDER, unique_name))
+    except Exception:
+        # Even if saving fails, we continue with base64 data stored
+        pass
+    # Append filename to session list
+    photos: list[str] = session.get('new_listing_photos', [])
+    photos.append(unique_name)
+    session['new_listing_photos'] = photos
+    # Return filename and preview URL
+    return jsonify({'filename': unique_name, 'url': url_for('uploaded_room_image', filename=unique_name)})
+
+
+@app.route('/rooms/new/delete_photo', methods=['POST'])
+@login_required
+@roles_required('owner')
+def delete_new_listing_photo():
+    """Remove a photo that was previously uploaded during the wizard.
+
+    Expects form data with a ``filename`` parameter.  The specified file
+    will be removed from the session list, deleted from disk (if present),
+    and removed from the temporary photo table for the user’s session.
+
+    Returns:
+        A JSON object with key ``success`` indicating whether the removal
+        operation completed.  If ``filename`` is missing, returns a 400.
+    """
+    filename = request.form.get('filename', '')
+    if not filename:
+        return jsonify({'error': 'No filename provided'}), 400
+    # Remove from session list
+    photos: list[str] = session.get('new_listing_photos', [])
+    if filename in photos:
+        photos.remove(filename)
+        session['new_listing_photos'] = photos
+    # Remove from temporary table
+    try:
+        sid = session.get('_upload_temp_id')
+        if sid:
+            conn = get_db_connection()
+            conn.execute(
+                "DELETE FROM room_photos_temp WHERE session_id = ? AND file_name = ?",
+                (sid, filename),
+            )
+            conn.commit()
+            conn.close()
+    except Exception:
+        pass
+    # Remove file from disk
+    try:
+        os.remove(os.path.join(UPLOAD_ROOMS_FOLDER, filename))
+    except Exception:
+        pass
+    return jsonify({'success': True})
 
 
 # -----------------------------------------------------------------------------

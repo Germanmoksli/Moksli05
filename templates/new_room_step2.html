@@ -48,15 +48,16 @@
       <div class="row g-2 justify-content-center" style="max-width: 700px; margin: 0 auto;">
         <!-- Поле «Страна» убрали из интерфейса. Оно будет заполняться автоматически на основе выбранного города. -->
         <input type="hidden" id="country" name="country" value="{{ country }}">
-        <div class="mb-3 col-12 col-md-6">
+        <!-- Изменяем ширину колонок: три поля (город, улица, номер дома) теперь располагаются в одной строке на средних и больших экранах. На узких экранах они по‑прежнему занимают всю ширину. -->
+        <div class="mb-3 col-12 col-md-4">
           <label for="city" class="form-label">Город</label>
           <input type="text" class="form-control" id="city" name="city" value="{{ city }}" required>
         </div>
-        <div class="mb-3 col-12 col-md-6">
+        <div class="mb-3 col-12 col-md-4">
           <label for="street" class="form-label">Улица</label>
           <input type="text" class="form-control" id="street" name="street" value="{{ street }}" required>
         </div>
-        <div class="mb-3 col-12 col-md-6">
+        <div class="mb-3 col-12 col-md-4">
           <label for="house_number" class="form-label">Номер дома</label>
           <input type="text" class="form-control" id="house_number" name="house_number" value="{{ house_number }}" required>
         </div>

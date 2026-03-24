@@ -139,18 +139,51 @@
       const photoInput = document.getElementById('photoInput');
       const photoGrid = document.getElementById('photoGrid');
       const photoOrderInput = document.getElementById('photoOrder');
+      // Массив фото‑объектов. Каждый объект содержит локальный File, URL для предпросмотра,
+      // флаг загрузки и имя файла на сервере (filename), присвоенное при загрузке.
       let photos = [];
-      // Align the client‑side photo limit with the server logic.  The
-      // backend enforces a maximum of 100 images during the add/edit
-      // operations, so restricting the client here prevents users from
-      // selecting more than will ultimately be accepted.  If this number
-      // changes server‑side, update this constant accordingly.
+      // Максимальное количество фотографий, синхронизированное с серверным ограничением.
       const MAX_PHOTOS = 100;
+
+      // Отправляет файл на сервер сразу после выбора пользователем.  После успешной
+      // загрузки флаг `uploaded` будет установлен в true, а свойство `filename` —
+      // заполнено уникальным именем, возвращённым сервером.  Спиннер на
+      // соответствующей карточке скрывается при завершении.
+      function uploadPhoto(photoObj) {
+        const fd = new FormData();
+        fd.append('file', photoObj.file);
+        fetch('{{ url_for('upload_new_listing_photo') }}', {
+          method: 'POST',
+          body: fd
+        })
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+          if (data && data.filename) {
+            photoObj.uploaded = true;
+            photoObj.filename = data.filename;
+            // Если в ответе пришёл URL, можно использовать его для предпросмотра;
+            // однако локальный URL уже отображается, поэтому менять не нужно.
+          } else {
+            console.error('Ошибка загрузки файла', data);
+          }
+          // Перерисуем сетку, чтобы скрыть индикатор загрузки
+          renderGrid();
+        })
+        .catch(function(err) {
+          console.error('Ошибка загрузки файла', err);
+        });
+      }
+
+      // По клику на область загрузки открываем системный диалог выбора файлов.
       uploadArea.addEventListener('click', function() {
         photoInput.click();
       });
+      // Обработчик выбора файлов.  Добавляем выбранные фото в массив и начинаем их
+      // загрузку на сервер, показывая индикаторы.  После добавления очищаем
+      // значение input, чтобы повторный выбор работал корректно.
       photoInput.addEventListener('change', function(event) {
         const selected = Array.from(event.target.files);
+        // Ограничиваем количество выбираемых фотографий на клиенте
         if (photos.length + selected.length > MAX_PHOTOS) {
           selected.splice(MAX_PHOTOS - photos.length);
         }
@@ -159,33 +192,22 @@
             return;
           }
           const url = URL.createObjectURL(file);
-          photos.push({file: file, url: url});
+          const photoObj = { file: file, url: url, uploaded: false, filename: null };
+          photos.push(photoObj);
+          // Начинаем асинхронную загрузку сразу
+          uploadPhoto(photoObj);
         });
         renderGrid();
+        // Сбрасываем input, чтобы можно было выбрать те же файлы снова при
+        // необходимости
         photoInput.value = '';
       });
 
-      // On submission, assemble a FileList containing the selected
-      // photo objects.  Without this, resetting the photoInput value
-      // causes the server to see an empty file list because the
-      // selected files live only in the `photos` array used for
-      // previews.  Using a DataTransfer bridges that gap so that
-      // request.files.getlist('photos') returns the correct set of
-      // uploaded images when the form is posted.
-      const photoForm = document.getElementById('photoForm');
-      photoForm.addEventListener('submit', function(e) {
-        const dt = new DataTransfer();
-        photos.forEach(function(item) {
-          // Only attach File objects (existing photos have file === null)
-          if (item.file) {
-            dt.items.add(item.file);
-          }
-        });
-        // Update the underlying file input with the aggregated FileList
-        photoInput.files = dt.files;
-      });
+      // Генерация сетки превью и элементов управления.  Показывает
+      // индикатор загрузки для ещё не загруженных фото и скрывает его для
+      // уже загруженных.  Также реализует удаление и перетаскивание.
       function renderGrid() {
-        // Hide the large upload area once there are photos
+        // Скрываем большую область, когда есть хотя бы одно фото
         if (photos.length > 0) {
           uploadContainer.classList.add('d-none');
         } else {
@@ -197,9 +219,14 @@
           col.className = 'photo-item position-relative';
           col.setAttribute('draggable', 'true');
           col.dataset.index = index;
-          // Create a grey overlay with a spinner until the image loads
+          // Серый оверлей со спиннером отображается до тех пор, пока фото
+          // не загрузится на сервер. Когда upload завершается, класс hidden
+          // будет добавлен и оверлей исчезнет.
           const overlay = document.createElement('div');
           overlay.className = 'loading-overlay';
+          if (item.uploaded) {
+            overlay.classList.add('hidden');
+          }
           const spinnerDiv = document.createElement('div');
           spinnerDiv.className = 'spinner-border text-primary';
           spinnerDiv.style.width = '2rem';
@@ -210,19 +237,14 @@
           spinnerSpan.textContent = 'Loading...';
           spinnerDiv.appendChild(spinnerSpan);
           overlay.appendChild(spinnerDiv);
-          // Create the image element with loading filter
+          // Создаём элемент изображения для предпросмотра
           const img = document.createElement('img');
           img.src = item.url;
-          img.className = 'photo-img img-fluid rounded loading';
-          img.onload = function() {
-            overlay.classList.add('hidden');
-            img.classList.remove('loading');
-            img.classList.add('loaded');
-          };
-          // Append the overlay and image to the container.  The overlay comes first
-          // so that it appears above the image until loading completes.
-          col.appendChild(overlay);
-          col.appendChild(img);
+          img.className = 'photo-img img-fluid rounded';
+          // Изображение может быстро загрузиться локально; тем не менее
+          // фильтры не применяются, поскольку мы отображаем спиннер поверх
+          // картинки до завершения загрузки на сервер.
+          // Кнопка удаления
           const btnDel = document.createElement('button');
           btnDel.type = 'button';
           btnDel.className = 'btn-close position-absolute top-0 end-0 m-1';
@@ -230,18 +252,30 @@
           btnDel.addEventListener('click', function(e) {
             e.stopPropagation();
             if (confirm('После удаления фото восстановить его будет нельзя. Уверены, что хотите удалить?')) {
-              photos.splice(index, 1);
+              const removed = photos.splice(index, 1)[0];
+              // Если фото уже было загружено на сервер, запросим его удаление
+              if (removed.uploaded && removed.filename) {
+                fetch('{{ url_for('delete_new_listing_photo') }}', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                  },
+                  body: new URLSearchParams({ filename: removed.filename })
+                }).catch(function(err) {
+                  console.error('Ошибка удаления файла', err);
+                });
+              }
               renderGrid();
             }
           });
-          // The image and overlay are already appended above
+          // Значок «Обложка» на первом фото
           if (index === 0) {
             const badge = document.createElement('span');
             badge.className = 'badge bg-white text-dark position-absolute top-0 start-0 m-1';
             badge.textContent = 'Обложка';
             col.appendChild(badge);
           }
-          col.appendChild(btnDel);
+          // События перетаскивания для перестановки фото
           col.addEventListener('dragstart', function(ev) {
             ev.dataTransfer.setData('text/plain', index.toString());
             ev.dataTransfer.setDragImage(img, 50, 50);
@@ -264,8 +298,13 @@
               renderGrid();
             }
           });
+          // Добавляем в DOM: оверлей, картинка, кнопка удаления
+          col.appendChild(overlay);
+          col.appendChild(img);
+          col.appendChild(btnDel);
           photoGrid.appendChild(col);
         });
+        // Кнопка добавления ещё фото появляется, если не достигнут лимит
         if (photos.length > 0 && photos.length < MAX_PHOTOS) {
           const addTile = document.createElement('div');
           addTile.className = 'photo-item d-flex flex-column align-items-center justify-content-center text-center';
@@ -291,13 +330,22 @@
           });
           photoGrid.appendChild(addTile);
         }
-        const order = photos.map((_, idx) => idx).join(',');
+        // Формируем порядок имен файлов и передаём его скрытому полю.  Если фото ещё
+        // не загрузилось, его имя будет пустой строкой; сервер проигнорирует
+        // такие элементы.
+        const order = photos.map(function(item) {
+          return item.filename || '';
+        }).join(',');
         photoOrderInput.value = order;
       }
+
+      // Если есть ранее загруженные фото (например, при возобновлении черновика),
+      // добавляем их в массив как уже загруженные элементы.  Их `file` будет
+      // равен null, загружено — true, filename — известное имя.
       {% if existing_photos %}
         photos = [
           {% for filename in existing_photos %}
-            {file: null, url: '{{ url_for('uploaded_room_image', filename=filename) }}'},
+            { file: null, url: '{{ url_for('uploaded_room_image', filename=filename) }}', uploaded: true, filename: '{{ filename }}' },
           {% endfor %}
         ];
         renderGrid();
