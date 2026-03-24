@@ -4666,11 +4666,15 @@ def edit_room(room_id: int):
                         existing_count = existing_count_row[0] if existing_count_row else 0
                     except Exception:
                         existing_count = 0
-                    max_new = 20 - existing_count
+                    # Разрешите хранить до 100 фотографий для каждой квартиры.  Если
+                    # суммарное количество сохранённых и новых фотографий превышает этот
+                    # предел, лишние файлы будут игнорированы.  Обновите также текст
+                    # уведомления, чтобы пользователь знал о новом лимите.
+                    max_new = 100 - existing_count
                     # Ограничим количество новых фото
                     photos_to_save = photos[:max_new]
                     if len(photos) > max_new:
-                        flash("Количество фотографий ограничено 20. Лишние файлы не были загружены.")
+                        flash("Количество фотографий ограничено 100. Лишние файлы не были загружены.")
                     for file in photos_to_save:
                         if file and file.filename:
                             original = secure_filename(file.filename)
