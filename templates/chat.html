@@ -249,8 +249,8 @@
   left: -1.6rem;
   width: 1.6rem;
   height: 1.5rem;
-  /* Tail cutout matches the chat container background (#f0f2f5). */
-  background-color: #f0f2f5;
+  /* Hide the cutout so it doesn't overlap the avatar. */
+  background-color: transparent;
   border-bottom-right-radius: 0.7rem;
 }
 
@@ -279,8 +279,8 @@
   right: -1.6rem;
   width: 1.6rem;
   height: 1.5rem;
-  /* Tail cutout matches the chat container background (#f0f2f5). */
-  background-color: #f0f2f5;
+  /* Hide the cutout so it doesn't overlap the avatar. */
+  background-color: transparent;
   border-bottom-left-radius: 0.7rem;
 }
 
@@ -298,13 +298,13 @@
   /* Show the pattern behind messages with partial transparency.  The base
      colour is the same grey as the side menu (#f0f2f5), and we apply a
      semi‑transparent overlay to reduce the pattern’s visibility to about
-     50% (i.e. 50% transparent). */
+     35% (i.e. 35% transparent). */
   /* Base colour matches the chat list background. */
   background-color: #f0f2f5;
-  /* Apply a semi‑transparent overlay using the same grey colour with 50% opacity
-     so the pattern is roughly 50% visible. */
+  /* Apply a semi‑transparent overlay using the same grey colour with 65% opacity
+     so the pattern is roughly 35% visible. */
   background-image:
-    linear-gradient(rgba(240,242,245,0.5), rgba(240,242,245,0.5)),
+    linear-gradient(rgba(240,242,245,0.65), rgba(240,242,245,0.65)),
     url("{{ url_for('static', filename='chat-pattern.webp') }}");
   background-repeat: no-repeat, repeat;
   background-size: 100% 100%, 512px 512px;
