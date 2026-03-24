@@ -242,16 +242,13 @@
   background-color: #f0f2f5;
   border-bottom-right-radius: 1rem 0.9rem;
 }
+/* Hide the extra cut‑out layer on the incoming tail.  Previously this pseudo
+   element carved a crescent from the tail and sometimes overlapped
+   avatars.  Set its dimensions to zero and remove any background so
+   nothing is drawn. */
 .message-incoming::after {
   content: "";
-  position: absolute;
-  bottom: 0;
-  left: -1.6rem;
-  width: 1.6rem;
-  height: 1.5rem;
-  /* Hide the cutout so it doesn't overlap the avatar. */
-  background-color: transparent;
-  border-bottom-right-radius: 0.7rem;
+  display: none;
 }
 
 /* Outgoing (current user) messages: blue bubble with white text and a smooth tail on the right. */
@@ -272,16 +269,10 @@
   background-color: #119ffe;
   border-bottom-left-radius: 1rem 0.9rem;
 }
+/* Hide the extra cut‑out layer on the outgoing tail as well. */
 .message-outgoing::after {
   content: "";
-  position: absolute;
-  bottom: 0;
-  right: -1.6rem;
-  width: 1.6rem;
-  height: 1.5rem;
-  /* Hide the cutout so it doesn't overlap the avatar. */
-  background-color: transparent;
-  border-bottom-left-radius: 0.7rem;
+  display: none;
 }
 
 /* Ensure chat container, attachment menu and other chat elements share the same border radius */
