@@ -4067,6 +4067,14 @@ def ensure_rooms_additional_columns(conn) -> None:
             ("min_notice_days", "INTEGER"),
             ("booking_method", "TEXT"),
             ("is_published", "BOOLEAN"),
+            # Additional counts for sleeping arrangements.  These columns were
+            # not part of the original schema, so ensure they exist.  They
+            # store the number of beds and sofas specified during the listing
+            # wizard.  Without these columns, counts provided in step 3 of
+            # the wizard were never persisted to the database and therefore
+            # could not be displayed on the listing detail page.
+            ("beds_count", "INTEGER"),
+            ("sofas_count", "INTEGER"),
         ]
         for col, coltype in expected:
             if col not in col_names:
@@ -10301,7 +10309,19 @@ def new_room_step9():
             min_rent_days = None
             max_rent_days = None
             extra_charges = None
-            max_guests = None
+            # Retrieve occupancy counts from the session.  These values were
+            # captured during step 3 of the wizard.  If a value is zero or
+            # missing, store ``None`` so the database column remains NULL.
+            def _normalize_count(val):
+                try:
+                    v = int(val)
+                    return v if v > 0 else None
+                except Exception:
+                    return None
+            num_rooms = _normalize_count(session.get('new_listing_rooms_count'))
+            max_guests = _normalize_count(session.get('new_listing_guests_count'))
+            beds_count = _normalize_count(session.get('new_listing_beds_count'))
+            sofas_count = _normalize_count(session.get('new_listing_sofas_count'))
             allow_children = None
             # Convert yes/no values for pets and smoking policies into booleans or strings
             pets = session.get('new_listing_pets')
@@ -10351,10 +10371,15 @@ def new_room_step9():
                 cur = conn.execute(
                     "INSERT INTO rooms (room_number, listing_url, residential_complex, owner_id, "
                     "housing_type, description, num_rooms, floor, floors_total, area_total, area_kitchen, condition, kitchen_studio, "
-                    "discount, deposit, min_rent_days, max_rent_days, extra_charges, max_guests, allow_children, allow_pets, smoking_policy, parties_policy, "
+                    "discount, deposit, min_rent_days, max_rent_days, extra_charges, beds_count, sofas_count, max_guests, allow_children, allow_pets, smoking_policy, parties_policy, "
                     "checkin_time, checkout_time, amenities, features, owner_name, owner_phone, owner_messenger, owner_email, "
                     "country, city, street, house_number, latitude, longitude, price_per_night, unavailable_dates, min_notice_days, booking_method, is_published) "
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    # The VALUES clause must include one placeholder for each column in the
+                    # INSERT statement above.  There are 44 columns, so provide 44
+                    # question‑mark placeholders separated by commas.  Without the
+                    # correct number of placeholders the SQLite/PSQL driver will
+                    # raise a binding error and the listing will not be created.
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     (
                         room_number,
                         None,  # listing_url
@@ -10362,7 +10387,7 @@ def new_room_step9():
                         user_id,
                         housing_type,
                         description,
-                        None,  # num_rooms
+                        num_rooms,
                         floor,
                         floors_total,
                         area_total,
@@ -10374,6 +10399,8 @@ def new_room_step9():
                         min_rent_days,
                         max_rent_days,
                         extra_charges,
+                        beds_count,
+                        sofas_count,
                         max_guests,
                         allow_children,
                         allow_pets,
