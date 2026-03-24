@@ -9924,13 +9924,63 @@ def new_room_step5():
     entered description values pre‑populated.  On POST the submitted
     descriptions are saved into the session and the user is redirected
     to step 6."""
-    # Verify that previous steps have been completed
+    # Verify that previous steps have been completed.  Redirect back to the
+    # appropriate step if data is missing from the session.  A missing
+    # property type, address, amenity selection or photos means the user
+    # attempted to jump ahead in the wizard.
     if not session.get('new_listing_property_type'):
         return redirect(url_for('new_room_step1'))
     if 'new_listing_address' not in session:
         return redirect(url_for('new_room_step2'))
     if 'new_listing_amenities' not in session:
         return redirect(url_for('new_room_step3'))
+    if 'new_listing_photos' not in session:
+        return redirect(url_for('new_room_step4'))
+
+    # Handle form submission on POST.  Save the provided property name
+    # and description into the session, trimming excessive length and
+    # whitespace.  Then proceed to step 6.
+    if request.method == 'POST':
+        # Property name: limit to 40 characters
+        property_name = request.form.get('property_name', '')
+        if property_name:
+            try:
+                trimmed_name = property_name.strip()[:40]
+            except Exception:
+                trimmed_name = property_name[:40]
+            session['new_listing_property_name'] = trimmed_name
+        # Main description: limit to 400 characters
+        main_desc = request.form.get('main_description', '')
+        try:
+            trimmed_desc = main_desc.strip()[:400]
+        except Exception:
+            trimmed_desc = main_desc[:400]
+        session['new_listing_main_description'] = trimmed_desc
+        # Guest notes are no longer used but kept for backward compatibility
+        guest_notes = request.form.get('guest_notes', '')
+        try:
+            session['new_listing_guest_notes'] = guest_notes.strip()
+        except Exception:
+            session['new_listing_guest_notes'] = guest_notes
+        return redirect(url_for('new_room_step6'))
+
+    # On GET render the step 5 template with progress indicator and
+    # previously entered values.  Step 5 is roughly half way through the
+    # wizard, so use a progress value of about 55 percent.
+    progress = 55
+    back_url = url_for('new_room_step4')
+    next_url = url_for('new_room_step6')
+    main_description = session.get('new_listing_main_description', '')
+    property_name_val = session.get('new_listing_property_name', '')
+    return render_template(
+        'new_room_step5.html',
+        progress=progress,
+        back_url=back_url,
+        next_url=next_url,
+        hide_nav=True,
+        main_description=main_description,
+        property_name=property_name_val,
+    )
 
 @app.route('/rooms/new/start', methods=['GET'])
 @login_required
@@ -9952,54 +10002,9 @@ def start_new_listing():
             session.pop(key, None)
     # Also remove any property name draft; some steps store this
     session.pop('new_listing_property_name', None)
+    # Redirect immediately to the first step after clearing the session.  Any
+    # remaining code below is unreachable.
     return redirect(url_for('new_room_step1'))
-    if 'new_listing_photos' not in session:
-        return redirect(url_for('new_room_step4'))
-    if request.method == 'POST':
-        # Save the property name provided on this step.  Limit to 40 characters
-        # and trim whitespace.  If not provided the session value remains unchanged.
-        property_name = request.form.get('property_name', '')
-        if property_name:
-            try:
-                trimmed_name = property_name.strip()[:40]
-            except Exception:
-                trimmed_name = property_name[:40]
-            session['new_listing_property_name'] = trimmed_name
-        # Save the main description.  Trim and enforce a maximum length of
-        # 400 characters to prevent excessively long texts from breaking the UI.
-        main_desc = request.form.get('main_description', '')
-        try:
-            trimmed_desc = main_desc.strip()[:400]
-        except Exception:
-            trimmed_desc = main_desc[:400]
-        session['new_listing_main_description'] = trimmed_desc
-        # Guest notes have been removed; still capture them if present for
-        # backward compatibility but do not rely on them.
-        guest_notes = request.form.get('guest_notes', '')
-        try:
-            session['new_listing_guest_notes'] = guest_notes.strip()
-        except Exception:
-            session['new_listing_guest_notes'] = guest_notes
-        # Proceed to the next step (house rules)
-        return redirect(url_for('new_room_step6'))
-    # On GET set the progress bar.  With nine steps, step 5 is just over
-    # half way through the process – use approximately 55 percent progress.
-    progress = 55
-    back_url = url_for('new_room_step4')
-    next_url = url_for('new_room_step6')
-    # Retrieve any previously saved values from the session to pre‑fill the form
-    main_description = session.get('new_listing_main_description', '')
-    # Retrieve previously saved property name to pre‑fill the field
-    property_name_val = session.get('new_listing_property_name', '')
-    return render_template(
-        'new_room_step5.html',
-        progress=progress,
-        back_url=back_url,
-        next_url=next_url,
-        hide_nav=True,
-        main_description=main_description,
-        property_name=property_name_val,
-    )
 
 @app.route('/rooms/new/step6', methods=['GET', 'POST'])
 @login_required
