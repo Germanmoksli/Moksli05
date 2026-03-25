@@ -188,6 +188,34 @@
         border-radius: 20px !important;
       }
 
+      /* -------------------------------------------------- */
+      /* Скелетон‑загрузчик (placeholder) для каталога комнат.  */
+      /* Эти стили создают серые блоки с переливающейся полосой,  */
+      /* имитирующие контур карточек и текстов во время загрузки. */
+      .skeleton {
+        position: relative;
+        background-color: #e2e2e2 !important;
+        overflow: hidden;
+      }
+      .skeleton::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -150px;
+        width: 150px;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+        animation: skeleton-loading 1.5s infinite;
+      }
+      @keyframes skeleton-loading {
+        0% {
+          transform: translateX(-100%);
+        }
+        100% {
+          transform: translateX(100%);
+        }
+      }
+
       /* Название карточки: показываем максимум две строки с многоточием,
          уменьшенный размер шрифта и увеличенная жирность.  Используем
          техникy -webkit-line-clamp для обрезания текста с многоточием. */
@@ -450,7 +478,23 @@
       #}
       <!-- На мобильных устройствах выводим квартиры в два столбика (row-cols-2).
            На небольших экранах (sm) сохраняем два столбика, на средних — три, на больших — пять. -->
-      <div class="row row-cols-2 row-cols-sm-2 row-cols-md-3 row-cols-lg-5 g-4">
+      <!-- Скелетон‑загрузчики (серые карточки), которые показываются до полной загрузки страницы.  -->
+      <div id="listing-skeletons" class="row row-cols-2 row-cols-sm-2 row-cols-md-3 row-cols-lg-5 g-4 mb-4">
+        {% for _ in range(6) %}
+        <div class="col mb-4">
+          <div class="card h-100 border-0" style="box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); background-color: transparent !important;">
+            <div class="skeleton" style="height: 180px; border-radius: 16px;"></div>
+            <div class="card-body" style="padding: 0.75rem !important;">
+              <div class="skeleton" style="height: 14px; width: 70%; margin-bottom: 8px; border-radius: 4px;"></div>
+              <div class="skeleton" style="height: 12px; width: 50%; margin-bottom: 8px; border-radius: 4px;"></div>
+              <div class="skeleton" style="height: 14px; width: 30%; border-radius: 4px;"></div>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      <!-- Контейнер с реальными карточками.  Этот блок скрыт по умолчанию и станет видимым после загрузки -->
+      <div id="listing-content" class="row row-cols-2 row-cols-sm-2 row-cols-md-3 row-cols-lg-5 g-4" style="display: none;">
         {% set condition_map = {'fresh': 'Свежий ремонт, новая мебель', 'good': 'Не свежий, но аккуратный ремонт', 'none': 'Без ремонта'} %}
         {% for room in rooms %}
         <div class="col mb-4">
@@ -746,6 +790,19 @@
         if (navCityInput) {
           // Ограничиваем подсказки только городами по всему миру
           var autocomplete = new google.maps.places.Autocomplete(navCityInput, { types: ['(cities)'] });
+        }
+      });
+    </script>
+
+    <!-- Скрипт для переключения между скелетоном и реальным контентом каталога.  -->
+    <script>
+      // После полной загрузки страницы скрываем скелетоны и показываем карточки квартир.
+      window.addEventListener('load', function() {
+        var skeletons = document.getElementById('listing-skeletons');
+        var content = document.getElementById('listing-content');
+        if (skeletons && content) {
+          skeletons.style.display = 'none';
+          content.style.display = '';
         }
       });
     </script>
