@@ -745,7 +745,14 @@
     `mt-auto` будет прижиматься к низу страницы.  #}
   <body class="bg-light d-flex flex-column min-vh-100">
     <!-- Верхняя навигационная панель. Можно скрыть её, установив hide_nav=True в шаблоне. -->
-    {% if not hide_nav %}
+    {#
+      Render the top navigation bar only when hide_nav is not set and we're
+      not in preview mode.  In preview mode (e.g. when displaying a room
+      preview in an iframe), the navigation bar would otherwise overlay
+      the page and distract from the content.  ``is_preview`` is set in
+      the room_detail template when rendering previews.
+    #}
+    {% if not hide_nav and not is_preview %}
     <!-- Верхняя навигационная панель. Сохраняем белый фон и нижнюю границу,
          но убираем внешнюю нижнюю рамку, чтобы меню совпадало со стилем
          каталога. -->

@@ -10354,461 +10354,390 @@ def new_room_step9():
         # insert photo records and redirect to the user's room list.  Without the
         # publish flag we simply redirect back to the rooms list.
         if request.form.get('publish'):
-            # Gather basic details from the session.  Many fields are optional
-            # and may be missing if the user skipped them.  Convert values to
-            # appropriate types where necessary (e.g. numbers).
-            def _to_int(value):
-                try:
-                    return int(value) if value and str(value).strip() else None
-                except Exception:
-                    return None
-            def _to_float(value):
-                try:
-                    return float(value) if value and str(value).strip() else None
-                except Exception:
-                    return None
-            # Determine the listing name.  Use the provided address if available,
-            # otherwise fall back to a generic placeholder.  The ``room_number``
-            # column on the rooms table has a UNIQUE constraint, meaning two
-            # different objects cannot have the same name.  When hosts create
-            # new listings via the multi‑step wizard it is common to reuse
-            # identical addresses or titles.  On PostgreSQL this results in a
-            # unique constraint violation and the insert fails silently, leaving
-            # the user without a new apartment.  To avoid this scenario we
-            # ensure that the generated room name is unique for the current
-            # database.  If a conflict is detected we append an incremental
-            # suffix (e.g. " (2)", " (3)") until a free name is found.  This
-            # preserves the user‑provided address as the base while still
-            # satisfying the UNIQUE constraint.
-            # Prefer the user-provided property name for the listing's ``room_number``.  If
-            # no name was provided, use a generic placeholder rather than
-            # falling back to the address.  Displaying the country/city as the
-            # title in the catalogue can be confusing for guests, so we avoid
-            # using ``new_listing_address`` here.  This value will later be
-            # de-duplicated if a room with the same name already exists.
-            base_room_number = session.get('new_listing_property_name') or 'Новое объявление'
-            user_id = session.get('user_id')
-            # Check for duplicates and generate a unique room_number
-            # Use a separate connection for the uniqueness check so that the
-            # subsequent insert transaction remains clean.  If the rooms table
-            # does not yet exist or the query fails, we fall back to the base
-            # name without modification.
-            room_number = base_room_number
+            # Publishing can involve complex database operations.  Wrap the
+            # entire block in a try/except so that any unexpected errors
+            # result in a graceful failure rather than an unhandled 500.
             try:
-                dup_conn = get_db_connection()
-                try:
-                    # Ensure extended columns exist to avoid select errors
+                # Helper functions for numeric conversions
+                def _to_int(value):
                     try:
-                        ensure_rooms_additional_columns(dup_conn)
+                        return int(value) if value and str(value).strip() else None
                     except Exception:
-                        pass
-                    # Query for any existing rooms with the same room_number
-                    existing = dup_conn.execute(
-                        "SELECT id FROM rooms WHERE room_number = ?", (room_number,)
-                    ).fetchone()
-                    if existing:
-                        # If a duplicate exists, append numeric suffixes until a unique name is found
-                        suffix = 2
-                        while existing:
-                            candidate = f"{base_room_number} ({suffix})"
-                            res = dup_conn.execute(
-                                "SELECT id FROM rooms WHERE room_number = ?", (candidate,)
-                            ).fetchone()
-                            if not res:
-                                room_number = candidate
-                                break
-                            suffix += 1
-                            existing = res
-                    dup_conn.close()
-                except Exception:
-                    # Ensure we close the connection on any error
+                        return None
+                def _to_float(value):
                     try:
+                        return float(value) if value and str(value).strip() else None
+                    except Exception:
+                        return None
+                # Determine the listing name.  Use the provided address if available,
+                # otherwise fall back to a generic placeholder.  The ``room_number``
+                # column on the rooms table has a UNIQUE constraint, meaning two
+                # different objects cannot have the same name.  When hosts create
+                # new listings via the multi‑step wizard it is common to reuse
+                # identical addresses or titles.  On PostgreSQL this results in a
+                # unique constraint violation and the insert fails silently, leaving
+                # the user without a new apartment.  To avoid this scenario we
+                # ensure that the generated room name is unique for the current
+                # database.  If a conflict is detected we append an incremental
+                # suffix (e.g. " (2)", " (3)") until a free name is found.  This
+                # preserves the user‑provided address as the base while still
+                # satisfying the UNIQUE constraint.
+                base_room_number = session.get('new_listing_property_name') or 'Новое объявление'
+                user_id = session.get('user_id')
+                # Check for duplicates and generate a unique room_number
+                room_number = base_room_number
+                try:
+                    dup_conn = get_db_connection()
+                    try:
+                        # Ensure extended columns exist to avoid select errors
+                        try:
+                            ensure_rooms_additional_columns(dup_conn)
+                        except Exception:
+                            pass
+                        # Query for any existing rooms with the same room_number
+                        existing = dup_conn.execute(
+                            "SELECT id FROM rooms WHERE room_number = ?", (room_number,)
+                        ).fetchone()
+                        if existing:
+                            # If a duplicate exists, append numeric suffixes until a unique name is found
+                            suffix = 2
+                            while existing:
+                                candidate = f"{base_room_number} ({suffix})"
+                                res = dup_conn.execute(
+                                    "SELECT id FROM rooms WHERE room_number = ?", (candidate,)
+                                ).fetchone()
+                                if not res:
+                                    room_number = candidate
+                                    break
+                                suffix += 1
+                                existing = res
                         dup_conn.close()
                     except Exception:
-                        pass
-            except Exception:
-                # If we cannot connect to the database (unlikely), leave room_number unchanged
-                room_number = base_room_number
-            housing_type = session.get('new_listing_property_type')
-            description = session.get('new_listing_main_description') or ''
-            # Numeric and optional fields
-            floor = _to_int(session.get('new_listing_floor'))
-            floors_total = None  # not collected in the wizard
-            area_total = _to_float(session.get('new_listing_total_area'))
-            # Kitchen area is no longer collected in the wizard; set to None
-            area_kitchen = None
-            condition = session.get('new_listing_renovation') or None
-            kitchen_studio = None
-            # Compile discounts into a comma-separated string
-            discounts_list = session.get('new_listing_discounts', [])
-            try:
-                discount = ','.join([str(x) for x in discounts_list]) if discounts_list else None
-            except Exception:
-                discount = None
-            deposit = None
-            min_rent_days = None
-            max_rent_days = None
-            extra_charges = None
-            # Retrieve occupancy counts from the session.  These values were
-            # captured during step 3 of the wizard.  If a value is zero or
-            # missing, store ``None`` so the database column remains NULL.
-            def _normalize_count(val):
-                try:
-                    v = int(val)
-                    return v if v > 0 else None
+                        try:
+                            dup_conn.close()
+                        except Exception:
+                            pass
                 except Exception:
-                    return None
-            num_rooms = _normalize_count(session.get('new_listing_rooms_count'))
-            max_guests = _normalize_count(session.get('new_listing_guests_count'))
-            beds_count = _normalize_count(session.get('new_listing_beds_count'))
-            sofas_count = _normalize_count(session.get('new_listing_sofas_count'))
-            allow_children = None
-            # Convert yes/no values for pets and smoking policies into booleans or strings
-            pets = session.get('new_listing_pets')
-            allow_pets = True if pets == 'yes' else False if pets == 'no' else None
-            smoking = session.get('new_listing_smoking')
-            smoking_policy = smoking if smoking else None
-            parties_policy = None
-            checkin_time = session.get('new_listing_check_in_time') or None
-            checkout_time = session.get('new_listing_check_out_time') or None
-            # Amenities are stored as a list; join into a comma-separated string
-            amenities_list = session.get('new_listing_amenities')
-            try:
-                amenities = ','.join([str(x) for x in amenities_list]) if amenities_list else None
-            except Exception:
-                amenities = None
-            features = None
-            owner_name = None
-            owner_phone = None
-            owner_messenger = None
-            owner_email = None
-            country = session.get('new_listing_country') or None
-            city = session.get('new_listing_city') or None
-            street = session.get('new_listing_street') or None
-            house_number = session.get('new_listing_house_number') or None
-            latitude = None
-            longitude = None
-            price_per_night = _to_float(session.get('new_listing_base_price'))
-            unavailable_dates = None
-            min_notice_days = None
-            booking_method = None
-            # Always set is_published to True when publishing a new listing
-            is_published = True
-            # Connect to the database and ensure required columns exist
-            conn = get_db_connection()
-            try:
-                ensure_rooms_additional_columns(conn)
-            except Exception:
-                pass
-            # Ensure the image_data column exists on room_photos using the generic helper.
-            # This call attempts to add the column and silently ignores errors if it
-            # already exists or cannot be added (e.g. unsupported dialect).
-            try:
-                ensure_column_exists(conn, 'room_photos', 'image_data', 'TEXT')
-            except Exception:
-                pass
-            try:
-                cur = conn.execute(
-                    "INSERT INTO rooms (room_number, listing_url, residential_complex, owner_id, "
-                    "housing_type, description, num_rooms, floor, floors_total, area_total, area_kitchen, condition, kitchen_studio, "
-                    "discount, deposit, min_rent_days, max_rent_days, extra_charges, beds_count, sofas_count, max_guests, allow_children, allow_pets, smoking_policy, parties_policy, "
-                    "checkin_time, checkout_time, amenities, features, owner_name, owner_phone, owner_messenger, owner_email, "
-                    "country, city, street, house_number, latitude, longitude, price_per_night, unavailable_dates, min_notice_days, booking_method, is_published) "
-                    # The VALUES clause must include one placeholder for each column in the
-                    # INSERT statement above.  There are 44 columns, so provide 44
-                    # question‑mark placeholders separated by commas.  Without the
-                    # correct number of placeholders the SQLite/PSQL driver will
-                    # raise a binding error and the listing will not be created.
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    (
-                        room_number,
-                        None,  # listing_url
-                        None,  # residential_complex
-                        user_id,
-                        housing_type,
-                        description,
-                        num_rooms,
-                        floor,
-                        floors_total,
-                        area_total,
-                        area_kitchen,
-                        condition,
-                        kitchen_studio,
-                        discount,
-                        deposit,
-                        min_rent_days,
-                        max_rent_days,
-                        extra_charges,
-                        beds_count,
-                        sofas_count,
-                        max_guests,
-                        allow_children,
-                        allow_pets,
-                        smoking_policy,
-                        parties_policy,
-                        checkin_time,
-                        checkout_time,
-                        amenities,
-                        features,
-                        owner_name,
-                        owner_phone,
-                        owner_messenger,
-                        owner_email,
-                        country,
-                        city,
-                        street,
-                        house_number,
-                        latitude,
-                        longitude,
-                        price_per_night,
-                        unavailable_dates,
-                        min_notice_days,
-                        booking_method,
-                        is_published,
-                    ),
-                )
-                # Determine the id of the newly inserted room.  Depending on the
-                # database adapter in use, ``cur.lastrowid`` may be available
-                # (e.g. sqlite3) or the DB may require a RETURNING clause (e.g.
-                # psycopg2).  Attempt several methods to obtain the id and, as
-                # a final fallback, query the rooms table for the inserted
-                # record based on the unique room_number and owner_id.  Without
-                # this fallback the photos loop below is skipped when running
-                # against PostgreSQL because ``cur.lastrowid`` is always
-                # ``None``.
-                new_room_id = None
-                # 1) Try attribute lastrowid (works with sqlite3)
+                    # If we cannot connect to the database (unlikely), leave room_number unchanged
+                    room_number = base_room_number
+                housing_type = session.get('new_listing_property_type')
+                description = session.get('new_listing_main_description') or ''
+                # Numeric and optional fields
+                floor = _to_int(session.get('new_listing_floor'))
+                floors_total = None  # not collected in the wizard
+                area_total = _to_float(session.get('new_listing_total_area'))
+                # Kitchen area is no longer collected in the wizard; set to None
+                area_kitchen = None
+                condition = session.get('new_listing_renovation') or None
+                kitchen_studio = None
+                # Compile discounts into a comma-separated string
+                discounts_list = session.get('new_listing_discounts', [])
                 try:
-                    new_room_id = getattr(cur, 'lastrowid', None)
+                    discount = ','.join([str(x) for x in discounts_list]) if discounts_list else None
                 except Exception:
+                    discount = None
+                deposit = None
+                min_rent_days = None
+                max_rent_days = None
+                extra_charges = None
+                # Retrieve occupancy counts from the session.  These values were
+                # captured during step 3 of the wizard.  If a value is zero or
+                # missing, store ``None`` so the database column remains NULL.
+                def _normalize_count(val):
+                    try:
+                        v = int(val)
+                        return v if v > 0 else None
+                    except Exception:
+                        return None
+                num_rooms = _normalize_count(session.get('new_listing_rooms_count'))
+                max_guests = _normalize_count(session.get('new_listing_guests_count'))
+                beds_count = _normalize_count(session.get('new_listing_beds_count'))
+                sofas_count = _normalize_count(session.get('new_listing_sofas_count'))
+                allow_children = None
+                # Convert yes/no values for pets and smoking policies into booleans or strings
+                pets = session.get('new_listing_pets')
+                allow_pets = True if pets == 'yes' else False if pets == 'no' else None
+                smoking = session.get('new_listing_smoking')
+                smoking_policy = smoking if smoking else None
+                parties_policy = None
+                checkin_time = session.get('new_listing_check_in_time') or None
+                checkout_time = session.get('new_listing_check_out_time') or None
+                # Amenities are stored as a list; join into a comma-separated string
+                amenities_list = session.get('new_listing_amenities')
+                try:
+                    amenities = ','.join([str(x) for x in amenities_list]) if amenities_list else None
+                except Exception:
+                    amenities = None
+                features = None
+                owner_name = None
+                owner_phone = None
+                owner_messenger = None
+                owner_email = None
+                country = session.get('new_listing_country') or None
+                city = session.get('new_listing_city') or None
+                street = session.get('new_listing_street') or None
+                house_number = session.get('new_listing_house_number') or None
+                latitude = None
+                longitude = None
+                price_per_night = _to_float(session.get('new_listing_base_price'))
+                unavailable_dates = None
+                min_notice_days = None
+                booking_method = None
+                # Always set is_published to True when publishing a new listing
+                is_published = True
+                # Connect to the database and ensure required columns exist
+                conn = get_db_connection()
+                try:
+                    ensure_rooms_additional_columns(conn)
+                except Exception:
+                    pass
+                # Ensure the image_data column exists on room_photos using the generic helper.
+                try:
+                    ensure_column_exists(conn, 'room_photos', 'image_data', 'TEXT')
+                except Exception:
+                    pass
+                try:
+                    cur = conn.execute(
+                        "INSERT INTO rooms (room_number, listing_url, residential_complex, owner_id, "
+                        "housing_type, description, num_rooms, floor, floors_total, area_total, area_kitchen, condition, kitchen_studio, "
+                        "discount, deposit, min_rent_days, max_rent_days, extra_charges, beds_count, sofas_count, max_guests, allow_children, allow_pets, smoking_policy, parties_policy, "
+                        "checkin_time, checkout_time, amenities, features, owner_name, owner_phone, owner_messenger, owner_email, "
+                        "country, city, street, house_number, latitude, longitude, price_per_night, unavailable_dates, min_notice_days, booking_method, is_published) "
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                        (
+                            room_number,
+                            None,
+                            None,
+                            user_id,
+                            housing_type,
+                            description,
+                            num_rooms,
+                            floor,
+                            floors_total,
+                            area_total,
+                            area_kitchen,
+                            condition,
+                            kitchen_studio,
+                            discount,
+                            deposit,
+                            min_rent_days,
+                            max_rent_days,
+                            extra_charges,
+                            beds_count,
+                            sofas_count,
+                            max_guests,
+                            allow_children,
+                            allow_pets,
+                            smoking_policy,
+                            parties_policy,
+                            checkin_time,
+                            checkout_time,
+                            amenities,
+                            features,
+                            owner_name,
+                            owner_phone,
+                            owner_messenger,
+                            owner_email,
+                            country,
+                            city,
+                            street,
+                            house_number,
+                            latitude,
+                            longitude,
+                            price_per_night,
+                            unavailable_dates,
+                            min_notice_days,
+                            booking_method,
+                            is_published,
+                        ),
+                    )
+                    # Attempt to determine the id of the newly inserted room
                     new_room_id = None
-                # 2) If supported, attempt to fetch a RETURNING id value
-                if not new_room_id:
                     try:
-                        new_id_row = cur.fetchone()
+                        new_room_id = getattr(cur, 'lastrowid', None)
                     except Exception:
-                        new_id_row = None
-                    if new_id_row:
+                        new_room_id = None
+                    if not new_room_id:
                         try:
-                            # dict-like row
-                            new_room_id = new_id_row.get('id')  # type: ignore[attr-defined]
+                            new_id_row = cur.fetchone()
                         except Exception:
+                            new_id_row = None
+                        if new_id_row:
                             try:
-                                # tuple-like row
-                                new_room_id = new_id_row[0]
-                            except Exception:
-                                new_room_id = None
-                # 3) Fallback: query for the most recently inserted row matching
-                # the generated room_number and owner_id.  Since room_number has
-                # a unique constraint, this lookup reliably returns the new id.
-                if not new_room_id:
-                    try:
-                        fallback_row = conn.execute(
-                            "SELECT id FROM rooms WHERE room_number = ? AND owner_id = ? ORDER BY id DESC LIMIT 1",
-                            (room_number, user_id),
-                        ).fetchone()
-                    except Exception:
-                        fallback_row = None
-                    if fallback_row:
-                        try:
-                            # dict-like row
-                            new_room_id = fallback_row.get('id')  # type: ignore[attr-defined]
-                        except Exception:
-                            try:
-                                new_room_id = fallback_row[0]
-                            except Exception:
-                                new_room_id = None
-                # Insert photos for the new room if available.  Retrieve any
-                # base64‑encoded image data stored in the session from the
-                # upload step.  ``photo_data_map`` is a mapping from
-                # filename to a base64 string (without the data URI prefix).  If a
-                # mapping entry exists for the current filename, it will be
-                # inserted into the ``image_data`` column; otherwise, NULL is
-                # inserted.  If the ``image_data`` column does not exist,
-                # insertion falls back to including only room_id and file_name.
-                photo_files = session.get('new_listing_photos', [])
-                # Retrieve the mapping of filenames to base64 data from the session.
-                # Because Flask's default session is cookie‑based, large base64
-                # strings may be truncated or omitted.  Use a dict if available.
-                photo_data_map: typing.Dict[str, str] = {}
-                try:
-                    maybe_map = session.get('new_listing_photo_data', {})
-                    if isinstance(maybe_map, dict):
-                        photo_data_map = maybe_map
-                except Exception:
-                    photo_data_map = {}
-                # Retrieve any temporary photo data stored in the room_photos_temp table.
-                temp_map: typing.Dict[str, str] = {}
-                sid_local = session.get('_upload_temp_id')
-                if sid_local:
-                    try:
-                        # Use a separate connection to avoid interfering with the current transaction
-                        temp_conn2 = get_db_connection()
-                        ensure_room_photos_temp_table(temp_conn2)
-                        rows = temp_conn2.execute(
-                            "SELECT file_name, image_data FROM room_photos_temp WHERE session_id = ?",
-                            (sid_local,),
-                        ).fetchall()
-                        for row in rows:
-                            try:
-                                # Each row may be a dict (RealDictRow) or tuple
-                                fname_key = row['file_name'] if isinstance(row, dict) or hasattr(row, 'keys') else row[0]
+                                new_room_id = new_id_row.get('id')
                             except Exception:
                                 try:
-                                    fname_key = row[0]
+                                    new_room_id = new_id_row[0]
+                                except Exception:
+                                    new_room_id = None
+                    if not new_room_id:
+                        try:
+                            fallback_row = conn.execute(
+                                "SELECT id FROM rooms WHERE room_number = ? AND owner_id = ? ORDER BY id DESC LIMIT 1",
+                                (room_number, user_id),
+                            ).fetchone()
+                        except Exception:
+                            fallback_row = None
+                        if fallback_row:
+                            try:
+                                new_room_id = fallback_row.get('id')
+                            except Exception:
+                                try:
+                                    new_room_id = fallback_row[0]
+                                except Exception:
+                                    new_room_id = None
+                    # Insert photos for the new room if available
+                    photo_files = session.get('new_listing_photos', [])
+                    photo_data_map: typing.Dict[str, str] = {}
+                    try:
+                        maybe_map = session.get('new_listing_photo_data', {})
+                        if isinstance(maybe_map, dict):
+                            photo_data_map = maybe_map
+                    except Exception:
+                        photo_data_map = {}
+                    temp_map: typing.Dict[str, str] = {}
+                    sid_local = session.get('_upload_temp_id')
+                    if sid_local:
+                        try:
+                            temp_conn2 = get_db_connection()
+                            ensure_room_photos_temp_table(temp_conn2)
+                            rows = temp_conn2.execute(
+                                "SELECT file_name, image_data FROM room_photos_temp WHERE session_id = ?",
+                                (sid_local,),
+                            ).fetchall()
+                            for row in rows:
+                                try:
+                                    fname_key = row['file_name'] if hasattr(row, 'keys') else row[0]
                                 except Exception:
                                     fname_key = None
-                            try:
-                                img_val = row['image_data'] if isinstance(row, dict) or hasattr(row, 'keys') else row[1]
-                            except Exception:
                                 try:
-                                    img_val = row[1]
+                                    img_val = row['image_data'] if hasattr(row, 'keys') else row[1]
                                 except Exception:
                                     img_val = None
-                            if fname_key and img_val:
-                                temp_map[str(fname_key)] = str(img_val)
-                        # Close the temporary connection
-                        try:
-                            temp_conn2.close()
-                        except Exception:
-                            pass
-                    except Exception:
-                        temp_map = {}
-                # If there are no filenames persisted in the session (e.g. due to
-                # large cookies) but we do have temporary photo data in the
-                # room_photos_temp table, fall back to using the keys of this
-                # temporary map as the filenames.  Without this fallback the
-                # subsequent loop would not process any photos, resulting in
-                # listings without images until the owner edits the listing and
-                # re-uploads the photos.
-                if not photo_files and temp_map:
-                    try:
-                        photo_files = list(temp_map.keys())
-                    except Exception:
-                        photo_files = []
-                if new_room_id and photo_files:
-                    for fname in photo_files:
-                        # Persist each uploaded photo to the room_photos table.  This logic
-                        # mirrors the behaviour of the edit_room() route: it tries to load
-                        # the raw bytes of the image from disk if available, otherwise decodes
-                        # base64 data from the temporary table or legacy session map.  It then
-                        # applies the watermark, encodes the result to base64 for storage in
-                        # the database, and attempts to save the watermarked bytes back to
-                        # the uploads folder.  If the filesystem is read-only, saving the file
-                        # is silently ignored.  Finally, the photo record is inserted into the
-                        # ``room_photos`` table, including the image_data when available, with a
-                        # fallback to omit the column on older schemas.
-                        # Determine the raw image bytes.  Prefer reading the file from disk.
-                        img_bytes: typing.Optional[bytes] = None
-                        file_path = os.path.join(UPLOAD_ROOMS_FOLDER, fname)
-                        try:
-                            with open(file_path, 'rb') as f:
-                                data = f.read()
-                            if data:
-                                img_bytes = data
-                        except Exception:
-                            img_bytes = None
-                        # If no file on disk, decode from temp_map or session map
-                        if not img_bytes:
-                            b64_val: typing.Optional[str] = None
+                                if fname_key and img_val:
+                                    temp_map[str(fname_key)] = str(img_val)
                             try:
-                                b64_val = temp_map.get(fname)  # type: ignore[assignment]
-                            except Exception:
-                                b64_val = None
-                            if not b64_val:
-                                try:
-                                    b64_val = photo_data_map.get(fname)  # type: ignore[assignment]
-                                except Exception:
-                                    b64_val = None
-                            if b64_val:
-                                try:
-                                    img_bytes = base64.b64decode(b64_val)
-                                except Exception:
-                                    img_bytes = None
-                        # Apply watermark if we have image bytes
-                        watermarked_bytes: typing.Optional[bytes] = None
-                        if img_bytes:
-                            try:
-                                watermarked_bytes = apply_watermark_to_image_data(img_bytes)
-                            except Exception:
-                                watermarked_bytes = img_bytes
-                        # Encode to base64 for database storage
-                        img_data_value: typing.Optional[str] = None
-                        if watermarked_bytes:
-                            try:
-                                img_data_value = base64.b64encode(watermarked_bytes).decode('utf-8')
-                            except Exception:
-                                img_data_value = None
-                        # Attempt to save the (watermarked) file back to disk.  Use
-                        # os.makedirs to ensure the directory exists.  Ignore any errors
-                        # (e.g. on read-only filesystems).
-                        try:
-                            os.makedirs(UPLOAD_ROOMS_FOLDER, exist_ok=True)
-                        except Exception:
-                            pass
-                        try:
-                            if watermarked_bytes:
-                                with open(os.path.join(UPLOAD_ROOMS_FOLDER, fname), 'wb') as out_f:
-                                    out_f.write(watermarked_bytes)
-                        except Exception:
-                            pass
-                        # Insert the photo record into the database.  Prefer including
-                        # image_data when available.  If insertion fails due to a missing
-                        # column, fall back to inserting only room_id and file_name.
-                        try:
-                            conn.execute(
-                                "INSERT INTO room_photos (room_id, file_name, image_data) VALUES (?, ?, ?)",
-                                (new_room_id, fname, img_data_value),
-                            )
-                        except Exception:
-                            try:
-                                conn.execute(
-                                    "INSERT INTO room_photos (room_id, file_name) VALUES (?, ?)",
-                                    (new_room_id, fname),
-                                )
+                                temp_conn2.close()
                             except Exception:
                                 pass
-                # After inserting all photos, attempt to remove temporary records for this session.
-                if sid_local:
+                        except Exception:
+                            temp_map = {}
+                    if not photo_files and temp_map:
+                        try:
+                            photo_files = list(temp_map.keys())
+                        except Exception:
+                            photo_files = []
+                    if new_room_id and photo_files:
+                        for fname in photo_files:
+                            img_bytes: typing.Optional[bytes] = None
+                            file_path = os.path.join(UPLOAD_ROOMS_FOLDER, fname)
+                            try:
+                                with open(file_path, 'rb') as f:
+                                    data = f.read()
+                                if data:
+                                    img_bytes = data
+                            except Exception:
+                                img_bytes = None
+                            if not img_bytes:
+                                b64_val: typing.Optional[str] = None
+                                try:
+                                    b64_val = temp_map.get(fname)
+                                except Exception:
+                                    b64_val = None
+                                if not b64_val:
+                                    try:
+                                        b64_val = photo_data_map.get(fname)
+                                    except Exception:
+                                        b64_val = None
+                                if b64_val:
+                                    try:
+                                        img_bytes = base64.b64decode(b64_val)
+                                    except Exception:
+                                        img_bytes = None
+                            watermarked_bytes: typing.Optional[bytes] = None
+                            if img_bytes:
+                                try:
+                                    watermarked_bytes = apply_watermark_to_image_data(img_bytes)
+                                except Exception:
+                                    watermarked_bytes = img_bytes
+                            img_data_value: typing.Optional[str] = None
+                            if watermarked_bytes:
+                                try:
+                                    img_data_value = base64.b64encode(watermarked_bytes).decode('utf-8')
+                                except Exception:
+                                    img_data_value = None
+                            try:
+                                os.makedirs(UPLOAD_ROOMS_FOLDER, exist_ok=True)
+                            except Exception:
+                                pass
+                            try:
+                                if watermarked_bytes:
+                                    with open(os.path.join(UPLOAD_ROOMS_FOLDER, fname), 'wb') as out_f:
+                                        out_f.write(watermarked_bytes)
+                            except Exception:
+                                pass
+                            try:
+                                conn.execute(
+                                    "INSERT INTO room_photos (room_id, file_name, image_data) VALUES (?, ?, ?)",
+                                    (new_room_id, fname, img_data_value),
+                                )
+                            except Exception:
+                                try:
+                                    conn.execute(
+                                        "INSERT INTO room_photos (room_id, file_name) VALUES (?, ?)",
+                                        (new_room_id, fname),
+                                    )
+                                except Exception:
+                                    pass
+                    if sid_local:
+                        try:
+                            conn.execute(
+                                "DELETE FROM room_photos_temp WHERE session_id = ?",
+                                (sid_local,),
+                            )
+                        except Exception:
+                            pass
                     try:
-                        # Use the same connection (conn) since we are inside the publish transaction
-                        conn.execute(
-                            "DELETE FROM room_photos_temp WHERE session_id = ?",
-                            (sid_local,),
-                        )
+                        conn.commit()
                     except Exception:
                         pass
-                # Commit the changes made during publish
+                except Exception:
+                    try:
+                        conn.rollback()
+                    except Exception:
+                        pass
+                finally:
+                    conn.close()
+                # Clear wizard-related session variables so a new listing can be started cleanly
+                for key in [
+                    'new_listing_property_type', 'new_listing_address',
+                    'new_listing_country', 'new_listing_city', 'new_listing_street',
+                    'new_listing_house_number', 'new_listing_amenities',
+                    'new_listing_photos', 'new_listing_main_description',
+                    'new_listing_guest_notes', 'new_listing_check_in_time',
+                    'new_listing_check_out_time', 'new_listing_smoking',
+                    'new_listing_pets', 'new_listing_floor', 'new_listing_elevator',
+                    'new_listing_total_area', 'new_listing_renovation',
+                    'new_listing_bathroom',
+                    'new_listing_base_price', 'new_listing_weekend_markup',
+                    'new_listing_discounts',
+                    'new_listing_photo_data',
+                    '_upload_temp_id'
+                ]:
+                    session.pop(key, None)
+                # After publishing, redirect to the rooms list where the new listing will appear
+                return redirect(url_for('list_rooms'))
+            except Exception as exc:
+                # An unexpected error occurred during publication.  Log the error and
+                # notify the user via flash message.  Do not re‑raise to avoid
+                # an unhandled 500.  Instead redirect back to step 9 so the
+                # owner can try again or adjust the data.
                 try:
-                    conn.commit()
+                    print('Error during listing publish:', exc)
                 except Exception:
                     pass
-            except Exception:
-                try:
-                    conn.rollback()
-                except Exception:
-                    pass
-            finally:
-                conn.close()
-            # Clear wizard-related session variables so a new listing can be started cleanly
-            for key in [
-                'new_listing_property_type', 'new_listing_address',
-                'new_listing_country', 'new_listing_city', 'new_listing_street',
-                'new_listing_house_number', 'new_listing_amenities',
-                'new_listing_photos', 'new_listing_main_description',
-                'new_listing_guest_notes', 'new_listing_check_in_time',
-                'new_listing_check_out_time', 'new_listing_smoking',
-                'new_listing_pets', 'new_listing_floor', 'new_listing_elevator',
-                'new_listing_total_area', 'new_listing_renovation',
-                'new_listing_bathroom',
-                'new_listing_base_price', 'new_listing_weekend_markup',
-                'new_listing_discounts',
-                'new_listing_photo_data',    # clear any leftover base64 mapping
-                '_upload_temp_id'            # clear the session identifier for temp photos
-            ]:
-                session.pop(key, None)
-            # After publishing, redirect to the rooms list where the new listing will appear
-            return redirect(url_for('list_rooms'))
+                flash('Не удалось опубликовать объявление. Пожалуйста, попробуйте ещё раз.', 'danger')
+                return redirect(url_for('new_room_step9'))
         # If not publishing, simply redirect to the rooms list
         return redirect(url_for('list_rooms'))
     # On GET, final step progress is 100 percent
@@ -10929,14 +10858,62 @@ def room_preview():
         # Rating and review count for preview
         room['rating'] = None
         room['review_count'] = 0
-        # Photos: convert saved filenames into accessible URLs
+        # Photos: convert saved filenames into accessible URLs.
+        # Normally photos uploaded during the wizard are stored on disk in
+        # ``UPLOAD_ROOMS_FOLDER`` and their names recorded in ``new_listing_photos``.
+        # Construct a list of URLs for the preview.  If the list is empty
+        # (e.g. due to cookie truncation or missing files), fall back to any
+        # base64‑encoded images stored in the temporary photo table.
         filenames = session.get('new_listing_photos') or []
-        photos = []
+        photos: list[str] = []
         for fname in filenames:
             try:
                 photos.append(url_for('uploaded_room_image', filename=fname))
             except Exception:
+                # Skip invalid filenames silently
                 continue
+        # Fallback: if no photos resolved, attempt to use temporary
+        # base64 data from the room_photos_temp table.  This covers
+        # scenarios where the session cookie truncated the photo names or
+        # the files were deleted from disk before publishing.  Each
+        # temporary entry contains the raw image data which we convert
+        # into a data URI for the preview.  If no session identifier is
+        # present or the lookup fails, the list remains empty and the
+        # gallery is hidden via conditional logic in the template.
+        if not photos:
+            sid_local = session.get('_upload_temp_id')
+            if sid_local:
+                try:
+                    temp_conn = get_db_connection()
+                    ensure_room_photos_temp_table(temp_conn)
+                    # Fetch file names and base64 image data for this session
+                    rows = temp_conn.execute(
+                        "SELECT file_name, image_data FROM room_photos_temp WHERE session_id = ?",
+                        (sid_local,),
+                    ).fetchall()
+                    for row in rows:
+                        try:
+                            # row may be a dict or tuple; extract accordingly
+                            fname_key = row['file_name'] if hasattr(row, 'keys') else row[0]
+                        except Exception:
+                            fname_key = None
+                        try:
+                            img_val = row['image_data'] if hasattr(row, 'keys') else row[1]
+                        except Exception:
+                            img_val = None
+                        if img_val:
+                            # Prepend MIME type; assume JPEG for preview.  The
+                            # front‑end treats data URIs the same as remote
+                            # files.  Do not store these in the session; they
+                            # exist only for preview.
+                            photos.append(f"data:image/jpeg;base64,{img_val}")
+                    try:
+                        temp_conn.close()
+                    except Exception:
+                        pass
+                except Exception:
+                    # Ignore errors fetching temporary photos
+                    pass
         # Booking statistics for preview
         booking_count = 0
         is_favorite = False
@@ -10964,6 +10941,8 @@ def room_preview():
             unavailable_dates_json=unavailable_dates_json,
             encoded_address=encoded_address,
             is_preview=True,
+            # Hide the global navigation bar in preview mode by setting hide_nav=True.
+            hide_nav=True,
             booked_dates=[],  # no booked dates in preview
         )
     except Exception as e:
