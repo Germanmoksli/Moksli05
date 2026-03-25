@@ -9780,55 +9780,41 @@ def upload_new_listing_photo():
         return jsonify({'error': 'Unsupported file type'}), 400
     # Create unique name to avoid collisions
     unique_name = f"{uuid.uuid4().hex}{ext}"
-    # Read file bytes for base64 encoding
-    file_bytes: bytes | None = None
+    # We deliberately avoid reading the entire file into memory or storing a
+    # base64 representation at this stage.  Base64 encoding every uploaded
+    # photo can quickly exhaust limited memory.  Instead we simply save the
+    # file to disk and record the filename in a temporary table for
+    # potential cleanup.  If the file cannot be read into memory, it is
+    # still persisted on disk via file.save().
+    # Create the temporary table if needed and insert an entry for this
+    # upload.  We store image_data as NULL to minimise memory usage.
     try:
-        file_bytes = file.read()
+        temp_conn = get_db_connection()
+        ensure_room_photos_temp_table(temp_conn)
+        sid = session.get('_upload_temp_id')
+        if not sid:
+            sid = uuid.uuid4().hex
+            session['_upload_temp_id'] = sid
+        temp_conn.execute(
+            "INSERT INTO room_photos_temp (session_id, file_name, image_data) VALUES (?, ?, ?)",
+            (sid, unique_name, None),
+        )
+        temp_conn.commit()
     except Exception:
-        file_bytes = None
-    # Reset stream for subsequent save
-    try:
-        file.seek(0)
-    except Exception:
+        # Ignore failures; the photo can still be saved on disk and added
+        # to the session list.  Missing temp records will simply not be
+        # cleaned up later.
+        pass
+    finally:
         try:
-            file.stream.seek(0)
+            temp_conn.close()
         except Exception:
             pass
-    # Insert base64 data into temporary table
-    data_str: str | None = None
-    if file_bytes:
-        try:
-            data_str = base64.b64encode(file_bytes).decode('utf-8')
-        except Exception:
-            data_str = None
-    temp_conn = None
-    if data_str:
-        try:
-            temp_conn = get_db_connection()
-            ensure_room_photos_temp_table(temp_conn)
-            # Ensure per‑session identifier
-            sid = session.get('_upload_temp_id')
-            if not sid:
-                sid = uuid.uuid4().hex
-                session['_upload_temp_id'] = sid
-            temp_conn.execute(
-                "INSERT INTO room_photos_temp (session_id, file_name, image_data) VALUES (?, ?, ?)",
-                (sid, unique_name, data_str),
-            )
-            temp_conn.commit()
-        except Exception:
-            pass
-        finally:
-            if temp_conn:
-                try:
-                    temp_conn.close()
-                except Exception:
-                    pass
     # Save file to the uploads directory
     try:
         file.save(os.path.join(UPLOAD_ROOMS_FOLDER, unique_name))
     except Exception:
-        # Even if saving fails, we continue with base64 data stored
+        # Even if saving fails, we still add the filename to the session list
         pass
     # Append filename to session list
     photos: list[str] = session.get('new_listing_photos', [])
@@ -10628,9 +10614,20 @@ def new_room_step9():
                         except Exception:
                             photo_files = []
                     if new_room_id and photo_files:
-                        for fname in photo_files:
+                        # Iterate over photo files with index so we can decide how many
+                        # images to embed in the database as base64.  Storing a
+                        # base64 representation of every uploaded photo can quickly
+                        # consume memory during publishing (100 photos * megabytes
+                        # each will exceed a 512 MB deployment).  Instead we only
+                        # include image_data for the first uploaded photo.  All
+                        # subsequent photos will have a NULL image_data value and
+                        # will be served from disk via the uploaded_room_image route.
+                        for idx, fname in enumerate(photo_files):
                             img_bytes: typing.Optional[bytes] = None
                             file_path = os.path.join(UPLOAD_ROOMS_FOLDER, fname)
+                            # Attempt to read the photo from the uploads folder.  If
+                            # it fails (e.g. file is missing), fall back to any
+                            # base64 data stored in temp_map or photo_data_map.
                             try:
                                 with open(file_path, 'rb') as f:
                                     data = f.read()
@@ -10654,18 +10651,26 @@ def new_room_step9():
                                         img_bytes = base64.b64decode(b64_val)
                                     except Exception:
                                         img_bytes = None
+                            # Apply watermark (currently a no‑op) to the image bytes.
                             watermarked_bytes: typing.Optional[bytes] = None
                             if img_bytes:
                                 try:
                                     watermarked_bytes = apply_watermark_to_image_data(img_bytes)
                                 except Exception:
                                     watermarked_bytes = img_bytes
+                            # Only compute base64 string for the first photo.  For
+                            # subsequent photos, leave image_data as None to avoid
+                            # converting large blobs into memory‑heavy strings.
                             img_data_value: typing.Optional[str] = None
-                            if watermarked_bytes:
+                            if watermarked_bytes and idx == 0:
                                 try:
                                     img_data_value = base64.b64encode(watermarked_bytes).decode('utf-8')
                                 except Exception:
                                     img_data_value = None
+                            # Ensure the uploads directory exists and write the
+                            # watermarked bytes back to disk.  Even if no
+                            # image_data is stored in the database, the file on
+                            # disk will be used to serve photos later.
                             try:
                                 os.makedirs(UPLOAD_ROOMS_FOLDER, exist_ok=True)
                             except Exception:
@@ -10676,6 +10681,8 @@ def new_room_step9():
                                         out_f.write(watermarked_bytes)
                             except Exception:
                                 pass
+                            # Insert the photo record.  When img_data_value is None,
+                            # the column will be set to NULL via the fallback branch.
                             try:
                                 conn.execute(
                                     "INSERT INTO room_photos (room_id, file_name, image_data) VALUES (?, ?, ?)",
@@ -10872,47 +10879,37 @@ def room_preview():
             except Exception:
                 # Skip invalid filenames silently
                 continue
-        # Fallback: if no photos resolved, attempt to use temporary
-        # base64 data from the room_photos_temp table.  This covers
-        # scenarios where the session cookie truncated the photo names or
-        # the files were deleted from disk before publishing.  Each
-        # temporary entry contains the raw image data which we convert
-        # into a data URI for the preview.  If no session identifier is
-        # present or the lookup fails, the list remains empty and the
-        # gallery is hidden via conditional logic in the template.
+        # Fallback: if no photos resolved, attempt to derive filenames from the
+        # temporary photo table without loading image data into memory.  This
+        # avoids converting large binary blobs to base64, which can quickly
+        # exhaust memory on constrained deployments.  If filenames are found,
+        # construct their URLs using the uploaded_room_image route.
         if not photos:
             sid_local = session.get('_upload_temp_id')
             if sid_local:
                 try:
                     temp_conn = get_db_connection()
                     ensure_room_photos_temp_table(temp_conn)
-                    # Fetch file names and base64 image data for this session
+                    # Fetch only the file_name column for this session
                     rows = temp_conn.execute(
-                        "SELECT file_name, image_data FROM room_photos_temp WHERE session_id = ?",
+                        "SELECT file_name FROM room_photos_temp WHERE session_id = ?",
                         (sid_local,),
                     ).fetchall()
                     for row in rows:
                         try:
-                            # row may be a dict or tuple; extract accordingly
                             fname_key = row['file_name'] if hasattr(row, 'keys') else row[0]
                         except Exception:
                             fname_key = None
-                        try:
-                            img_val = row['image_data'] if hasattr(row, 'keys') else row[1]
-                        except Exception:
-                            img_val = None
-                        if img_val:
-                            # Prepend MIME type; assume JPEG for preview.  The
-                            # front‑end treats data URIs the same as remote
-                            # files.  Do not store these in the session; they
-                            # exist only for preview.
-                            photos.append(f"data:image/jpeg;base64,{img_val}")
+                        if fname_key:
+                            try:
+                                photos.append(url_for('uploaded_room_image', filename=fname_key))
+                            except Exception:
+                                continue
                     try:
                         temp_conn.close()
                     except Exception:
                         pass
                 except Exception:
-                    # Ignore errors fetching temporary photos
                     pass
         # Booking statistics for preview
         booking_count = 0
