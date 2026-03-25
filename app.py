@@ -8720,6 +8720,19 @@ def public_listings():
         except Exception:
             room['price_total_formatted'] = None
 
+    # Randomize the order of rooms so the catalogue appears in a different
+    # sequence each time it is viewed.  We shuffle the list in place only if
+    # there are multiple entries.  The ``random`` module is imported at the
+    # top of this file.  Without shuffling, the apartments would always
+    # appear in the same order which can make the catalogue look stale.
+    try:
+        if len(rooms) > 1:
+            random.shuffle(rooms)
+    except Exception:
+        # If shuffling fails for any reason (e.g. ``rooms`` is not a list),
+        # simply ignore and continue with the original order.
+        pass
+
     # If the user is logged in, gather their favorite rooms
     favorite_ids = set()
     if session.get('user_id'):
