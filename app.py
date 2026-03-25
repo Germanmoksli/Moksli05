@@ -10212,9 +10212,13 @@ def new_room_step7():
         session['new_listing_floor'] = request.form.get('floor', '').strip()
         session['new_listing_elevator'] = request.form.get('elevator', '').strip()
         session['new_listing_total_area'] = request.form.get('total_area', '').strip()
-        session['new_listing_living_area'] = request.form.get('living_area', '').strip()
-        session['new_listing_kitchen_area'] = request.form.get('kitchen_area', '').strip()
+        # Remove outdated living and kitchen area fields if present.  These
+        # fields were previously part of the wizard but have been removed.
+        session.pop('new_listing_living_area', None)
+        session.pop('new_listing_kitchen_area', None)
         session['new_listing_renovation'] = request.form.get('renovation', '').strip()
+        # Store bathroom type (combined or separate)
+        session['new_listing_bathroom'] = request.form.get('bathroom', '').strip()
         # Proceed to pricing step
         return redirect(url_for('new_room_step8'))
     # On GET set progress for step 7 (roughly three‑quarters through)
@@ -10230,8 +10234,8 @@ def new_room_step7():
         floor=session.get('new_listing_floor', ''),
         elevator=session.get('new_listing_elevator', ''),
         total_area=session.get('new_listing_total_area', ''),
-        living_area=session.get('new_listing_living_area', ''),
-        kitchen_area=session.get('new_listing_kitchen_area', ''),
+        # Bathroom field for preselection
+        bathroom=session.get('new_listing_bathroom', ''),
         renovation=session.get('new_listing_renovation', ''),
     )
 
@@ -10431,7 +10435,8 @@ def new_room_step9():
             floor = _to_int(session.get('new_listing_floor'))
             floors_total = None  # not collected in the wizard
             area_total = _to_float(session.get('new_listing_total_area'))
-            area_kitchen = _to_float(session.get('new_listing_kitchen_area'))
+            # Kitchen area is no longer collected in the wizard; set to None
+            area_kitchen = None
             condition = session.get('new_listing_renovation') or None
             kitchen_studio = None
             # Compile discounts into a comma-separated string
@@ -10794,8 +10799,8 @@ def new_room_step9():
                 'new_listing_guest_notes', 'new_listing_check_in_time',
                 'new_listing_check_out_time', 'new_listing_smoking',
                 'new_listing_pets', 'new_listing_floor', 'new_listing_elevator',
-                'new_listing_total_area', 'new_listing_living_area',
-                'new_listing_kitchen_area', 'new_listing_renovation',
+                'new_listing_total_area', 'new_listing_renovation',
+                'new_listing_bathroom',
                 'new_listing_base_price', 'new_listing_weekend_markup',
                 'new_listing_discounts',
                 'new_listing_photo_data',    # clear any leftover base64 mapping
@@ -10886,8 +10891,9 @@ def room_preview():
         room['floor'] = _to_int(session.get('new_listing_floor'))
         room['floors_total'] = None
         room['area_total'] = _to_float(session.get('new_listing_total_area'))
-        room['area_kitchen'] = _to_float(session.get('new_listing_kitchen_area'))
-        room['living_area'] = _to_float(session.get('new_listing_living_area'))
+        # Area of kitchen and living area are no longer collected in the wizard; set to None
+        room['area_kitchen'] = None
+        room['living_area'] = None
         room['condition'] = session.get('new_listing_renovation') or None
         # Elevator: convert yes/no string to boolean
         elev = session.get('new_listing_elevator')

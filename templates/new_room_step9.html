@@ -147,16 +147,32 @@
 
 <!-- Модальное окно предпросмотра -->
 <div class="modal fade" id="previewModal" tabindex="-1" aria-labelledby="previewModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="previewModalLabel">Предпросмотр объявления</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+  <!-- Use fullscreen dialog to ensure the preview takes up the full width of the viewport -->
+  <div class="modal-dialog modal-dialog-centered modal-fullscreen">
+    <div class="modal-content h-100">
+      <!-- Заголовок модального окна содержит название и переключатели видов (ноутбук/телефон) -->
+      <div class="modal-header justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-2">
+          <h5 class="modal-title mb-0" id="previewModalLabel">Предпросмотр объявления</h5>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <!-- Кнопка для просмотра как на ноутбуке -->
+          <button type="button" class="btn btn-light p-2" id="desktopViewButton" title="Просмотр на ноутбуке">
+            <i class="bi bi-laptop fs-4"></i>
+          </button>
+          <!-- Кнопка для просмотра как на телефоне -->
+          <button type="button" class="btn btn-light p-2" id="mobileViewButton" title="Просмотр на телефоне">
+            <i class="bi bi-phone fs-4"></i>
+          </button>
+          <!-- Кнопка закрытия модального окна -->
+          <button type="button" class="btn-close ms-2" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+        </div>
       </div>
-      <div class="modal-body p-0" style="height: calc(100vh - 10rem);">
+      <div class="modal-body p-0 d-flex justify-content-center" style="height: calc(100vh - 10rem);">
         <!-- Полноценный предпросмотр объявления.  Используем iframe для
              загрузки страницы предварительного просмотра.  Высота окна
-             устанавливается динамически через inline-стиль. -->
+             устанавливается динамически через inline-стиль.  В режиме телефона
+             iframe будет уменьшаться по ширине, но оставаться по центру. -->
         <iframe src="{{ url_for('room_preview') }}" style="width: 100%; height: 100%; border: none;" title="Предпросмотр объявления"></iframe>
       </div>
       <div class="modal-footer">
@@ -173,4 +189,33 @@
     </div>
   </div>
 </div>
+
+<!-- Скрипт для переключения между режимами просмотра -->
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const desktopBtn = document.getElementById('desktopViewButton');
+    const mobileBtn = document.getElementById('mobileViewButton');
+    const iframe = document.querySelector('#previewModal iframe');
+    if (desktopBtn && iframe) {
+      desktopBtn.addEventListener('click', function() {
+        // В режиме ноутбука iframe занимает всю ширину родителя
+        iframe.style.width = '100%';
+        iframe.style.height = '100%';
+        iframe.style.maxWidth = '';
+        iframe.style.margin = '0';
+        iframe.style.display = 'block';
+      });
+    }
+    if (mobileBtn && iframe) {
+      mobileBtn.addEventListener('click', function() {
+        // В режиме телефона iframe ограничен по ширине и центрируется
+        iframe.style.width = '375px';
+        iframe.style.height = '100%';
+        iframe.style.maxWidth = '100%';
+        iframe.style.margin = '0 auto';
+        iframe.style.display = 'block';
+      });
+    }
+  });
+</script>
 {% endblock %}

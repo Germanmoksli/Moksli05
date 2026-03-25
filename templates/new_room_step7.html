@@ -69,20 +69,23 @@
           </div>
         </div>
       </div>
-      <!-- Строка для площадей -->
+      <!-- Строка для площади: оставляем только общую площадь жилья -->
       <div class="mb-3">
-        <div class="row g-2 justify-content-end">
-          <div class="col-12 col-md-4">
-            <label for="total_area" class="form-label fw-bold">Общая площадь (м²)</label>
-            <input type="number" class="form-control" id="total_area" name="total_area" min="0" step="0.1" value="{{ total_area }}" required>
+        <label for="total_area" class="form-label fw-bold">Общая площадь (м²)</label>
+        <input type="number" class="form-control" id="total_area" name="total_area" min="0" step="0.1" value="{{ total_area }}" required>
+      </div>
+
+      <!-- Поле выбора типа санузла -->
+      <div class="mb-3">
+        <label class="form-label fw-bold">Санузел</label>
+        <div class="d-flex align-items-center gap-3 flex-wrap">
+          <div class="form-check form-check-inline mb-0">
+            <input class="form-check-input" type="radio" id="bathroom_combined" name="bathroom" value="combined" {% if bathroom == 'combined' %}checked{% endif %} required>
+            <label class="form-check-label" for="bathroom_combined">Совмещённый</label>
           </div>
-          <div class="col-12 col-md-4">
-            <label for="living_area" class="form-label fw-bold">Жилая площадь (м²)</label>
-            <input type="number" class="form-control" id="living_area" name="living_area" min="0" step="0.1" value="{{ living_area }}" required>
-          </div>
-          <div class="col-12 col-md-4">
-            <label for="kitchen_area" class="form-label fw-bold">Площадь кухни (м²)</label>
-            <input type="number" class="form-control" id="kitchen_area" name="kitchen_area" min="0" step="0.1" value="{{ kitchen_area }}" required>
+          <div class="form-check form-check-inline mb-0">
+            <input class="form-check-input" type="radio" id="bathroom_separate" name="bathroom" value="separate" {% if bathroom == 'separate' %}checked{% endif %}>
+            <label class="form-check-label" for="bathroom_separate">Раздельный</label>
           </div>
         </div>
       </div>
