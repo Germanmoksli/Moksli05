@@ -69,11 +69,26 @@
               <!-- Кнопки «Избранное» и «Поделиться» перенесены над галереей -->
               <!-- Большая фотография слева -->
               <img id="imgBig" class="gallery-img big" src="{{ photos[0] if photos else '' }}" data-index="0" onclick="openGalleryModal(this.dataset.index)">
-              <!-- Четыре маленьких фотографии справа.  Изначально источники задаются в скрипте -->
-              <img id="imgSmall1" class="gallery-img small1" src="" data-index="" onclick="openGalleryModal(this.dataset.index)">
-              <img id="imgSmall2" class="gallery-img small2" src="" data-index="" onclick="openGalleryModal(this.dataset.index)">
-              <img id="imgSmall3" class="gallery-img small3" src="" data-index="" onclick="openGalleryModal(this.dataset.index)">
-              <img id="imgSmall4" class="gallery-img small4" src="" data-index="" onclick="openGalleryModal(this.dataset.index)">
+              <!-- Четыре маленьких фотографии справа.  Изначально присваиваем реальные источники,
+                   чтобы изображения появлялись сразу после загрузки страницы.  Порядок: вторая,
+                   третья, четвёртая и пятая фотографии из списка.  Если фотографий меньше,
+                   устанавливаем пустую строку.  data-index указывает индекс фотографии в общем списке. -->
+              <img id="imgSmall1" class="gallery-img small1"
+                   src="{{ photos[1] if photos|length > 1 else '' }}"
+                   data-index="{{ 1 if photos|length > 1 else 0 }}"
+                   onclick="openGalleryModal(this.dataset.index)">
+              <img id="imgSmall2" class="gallery-img small2"
+                   src="{{ photos[2] if photos|length > 2 else '' }}"
+                   data-index="{{ 2 if photos|length > 2 else (1 if photos|length > 1 else 0) }}"
+                   onclick="openGalleryModal(this.dataset.index)">
+              <img id="imgSmall3" class="gallery-img small3"
+                   src="{{ photos[3] if photos|length > 3 else '' }}"
+                   data-index="{{ 3 if photos|length > 3 else (2 if photos|length > 2 else (1 if photos|length > 1 else 0)) }}"
+                   onclick="openGalleryModal(this.dataset.index)">
+              <img id="imgSmall4" class="gallery-img small4"
+                   src="{{ photos[4] if photos|length > 4 else '' }}"
+                   data-index="{{ 4 if photos|length > 4 else (3 if photos|length > 3 else (2 if photos|length > 2 else (1 if photos|length > 1 else 0))) }}"
+                   onclick="openGalleryModal(this.dataset.index)">
               <!-- Кнопка для открытия модальной галереи: отображаем иконку в виде четырёх
                    квадратиков и подпись «Показать все фотографии».  Кнопка больше не круглая,
                    чтобы вместить текст. -->
