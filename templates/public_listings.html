@@ -1,6 +1,15 @@
-{# Use a light background for the catalog page #}
+ 
+{# Catalog page extends the base layout.  The base template provides
+   the HTML skeleton, including the navbar, head tags and overall
+   structure.  We override the title and content blocks here. #}
 
-{% include 'navbar.html' %}
+{% extends 'base.html' %}
+
+{% block title %}
+Каталог
+{% endblock %}
+
+{% block content %}
 
 <style>
   .skeleton {
@@ -96,3 +105,5 @@
     }, 300);
   });
 </script>
+
+{% endblock %}
