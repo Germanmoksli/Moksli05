@@ -1,8 +1,3 @@
- 
-{# Catalog page extends the base layout.  The base template provides
-   the HTML skeleton, including the navbar, head tags and overall
-   structure.  We override the title and content blocks here. #}
-
 {% extends 'base.html' %}
 
 {% block title %}
@@ -42,11 +37,11 @@
     </div>
 
     <!-- Real listings -->
-    <div id="listing-content" class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 row-cols-xl-4 g-3 d-none">
+    <div id="listing-content" class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 row-cols-xl-4 g-3 align-items-stretch d-none">
       {% for room in rooms %}
       <div class="col">
-        <a href="{{ url_for('view_room_public', room_id=room['id']) }}" class="text-decoration-none text-dark">
-          <div class="card h-100 position-relative">
+        <a href="{{ url_for('view_room_public', room_id=room['id']) }}" class="text-decoration-none text-dark h-100 d-block">
+          <div class="card h-100 position-relative d-flex flex-column">
             {% if room.get('discount') %}
               <span class="badge bg-warning text-dark position-absolute top-0 start-0 m-2">Скидка</span>
             {% elif room.get('rating') and room['rating']|float >= 4.5 %}
@@ -56,7 +51,7 @@
             {% endif %}
 
             {% if room.photo_src %}
-              <img src="{{ room.photo_src }}" class="card-img-top" alt="Фото">
+              <img src="{{ room.photo_src }}" class="card-img-top" alt="Фото" style="height: 200px; object-fit: cover;">
             {% else %}
               <div style="width:100%; height:200px; background-color:#f0f0f0; display:flex; align-items:center; justify-content:center;">
                 Нет фото
