@@ -1,892 +1,200 @@
-<!doctype html>
-<html lang="ru">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Каталог квартир</title>
-    <!-- Подключаем тему Bootswatch для приятного внешнего вида -->
-    <link href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.2/dist/lux/bootstrap.min.css" rel="stylesheet">
-    <!-- Иконки Bootstrap Icons для пунктов выпадающего меню -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
-    <!-- Стили для Litepicker (календарь выбора диапазона дат) -->
-    <!-- <link href="https://cdnjs.cloudflare.com/ajax/libs/litepicker/2.0.12/css/litepicker.min.css" rel="stylesheet"> (disabled) -->
-    <!-- Подключаем шрифт Montserrat (Regular 400) для каталога -->
-    <!-- Подключаем Montserrat сразу с несколькими толщинами (400, 600, 700, 800, 900),
-         чтобы использовать более «жирные» варианты для цены и заголовков. -->
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-    <!-- Стили для карточек с изображениями -->
-    <style>
-      /*
-       * Контейнер для изображения. Позиционируем его относительно, чтобы
-       * вложенная картинка могла растягиваться на всю площадь при
-       * абсолютном позиционировании. Также добавляем скругление для
-       * верхних углов, чтобы фотография выглядела цельно с карточкой.
-       */
-      .image-container {
-        position: relative;
-        overflow: hidden;
-        /* Скругляем углы контейнера изображения. Радиус совпадает с
-           радиусом самой карточки (20px), чтобы картинка выглядела
-           встроенной и в верхних, и в нижних углах. */
-        border-top-left-radius: 20px !important;
-        border-top-right-radius: 20px !important;
-        border-bottom-left-radius: 20px !important;
-        border-bottom-right-radius: 20px !important;
-      }
-      /* Фирменный цвет приложения и глобальные радиусы. Эти переопределения
-         повторяют настройки из шаблона base.html, чтобы каталог для гостей
-         выглядел в едином стиле. */
-      :root {
-        --bs-primary: #010b4e;
-        --bs-primary-rgb: 1, 11, 78;
-      }
-      /* Скругление углов для кнопок, полей ввода и выпадающих меню */
-      .btn {
-        border-radius: 20px !important;
-        background-color: var(--bs-primary) !important;
-        border-color: var(--bs-primary) !important;
-        color: #fff !important;
-      }
-      .btn:hover,
-      .btn:focus,
-      .btn:active {
-        background-color: var(--bs-primary) !important;
-        border-color: var(--bs-primary) !important;
-        color: #fff !important;
-      }
-      .btn-outline-secondary,
-      .btn-outline-primary,
-      .btn-outline-success,
-      .btn-outline-danger,
-      .btn-outline-info,
-      .btn-outline-warning {
-        color: var(--bs-primary) !important;
-        border-color: var(--bs-primary) !important;
-        background-color: transparent !important;
-      }
-      .btn-outline-secondary:hover,
-      .btn-outline-primary:hover,
-      .btn-outline-success:hover,
-      .btn-outline-danger:hover,
-      .btn-outline-info:hover,
-      .btn-outline-warning:hover,
-      .btn-outline-secondary:focus,
-      .btn-outline-primary:focus,
-      .btn-outline-success:focus,
-      .btn-outline-danger:focus,
-      .btn-outline-info:focus,
-      .btn-outline-warning:focus {
-        color: #fff !important;
-        background-color: var(--bs-primary) !important;
-        border-color: var(--bs-primary) !important;
-      }
-      .form-control,
-      .form-select {
-        border-radius: 20px !important;
-        /* Добавляем более заметную тень, чтобы поля фильтра были "приподняты" над фоном.  */
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
-      }
-      .dropdown-menu {
-        border-radius: 20px !important;
-      }
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="content-type" content="text/html; charset=utf-8"/>
+	<title></title>
+	<meta name="generator" content="LibreOffice 25.2.3.2 (Linux)"/>
+	<meta name="created" content="2026-03-25T22:14:34.919717400"/>
+	<meta name="changed" content="2026-03-25T22:16:20.709844442"/>
+	<style type="text/css">
+		@page { size: 8.27in 11.69in; margin: 0.79in }
+		p { margin-bottom: 0.1in; line-height: 115%; background: transparent }
+	</style>
+</head>
+<body lang="en-US" link="#000080" vlink="#800000" dir="ltr"><p style="line-height: 100%; margin-bottom: 0in">
+{# Use a light background for the catalog page #}</p>
+<p style="line-height: 100%; margin-bottom: 0in">{% include
+'navbar.html' %}</p>
+<p style="line-height: 100%; margin-bottom: 0in"><br/>
 
-      /* Стили для выпадающего списка "Кто" (гости). Сохранены скруглённые
-         углы и добавлена мягкая тень. У кнопок плюс/минус круглая форма. */
-      #nav_guests_wrapper .dropdown-menu {
-        /* Сохраняем тень и задаём минимальную ширину для более просторного отображения */
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
-        min-width: 320px !important;
-      }
-      #nav_guests_wrapper .guest-count {
-        width: 20px;
-        text-align: center;
-      }
-      /* Стили для кнопок добавления/убавления гостей. Кнопки круглые (32px) с
-         синей обводкой и белым фоном. При наведении они заполняются
-         фирменным цветом и текст становится белым. Кнопка уменьшения
-         блокируется и становится серой при значении 0. */
-      #nav_guests_wrapper .nav-guests-increment,
-      #nav_guests_wrapper .nav-guests-decrement {
-        /* Кнопки плюс и минус остаются круглого размера 32x32px */
-        width: 32px !important;
-        height: 32px !important;
-        border-radius: 50% !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        border: 1px solid var(--bs-primary) !important;
-        background-color: #ffffff !important;
-        color: var(--bs-primary) !important;
-        cursor: pointer;
-        padding: 0;
-        /* Увеличиваем размер и жирность текста символов “+” и “–” */
-        font-size: 1.25rem !important;
-        font-weight: 700 !important;
-      }
-      #nav_guests_wrapper .nav-guests-increment:hover,
-      #nav_guests_wrapper .nav-guests-increment:focus,
-      #nav_guests_wrapper .nav-guests-increment:active,
-      #nav_guests_wrapper .nav-guests-decrement:not(:disabled):hover,
-      #nav_guests_wrapper .nav-guests-decrement:not(:disabled):focus,
-      #nav_guests_wrapper .nav-guests-decrement:not(:disabled):active {
-        background-color: var(--bs-primary) !important;
-        color: #ffffff !important;
-      }
-      #nav_guests_wrapper .nav-guests-decrement:disabled {
-        background-color: #e2e6ea !important;
-        border-color: #e2e6ea !important;
-        color: #6c757d !important;
-        cursor: default !important;
-      }
-      /* Скругляем кнопку "Применить" */
-      #nav_guests_wrapper .apply-guests {
-        border-radius: 20px !important;
-      }
+</p>
+<p style="line-height: 100%; margin-bottom: 0in">&lt;style&gt;</p>
+<p style="line-height: 100%; margin-bottom: 0in">.skeleton {</p>
+<p style="line-height: 100%; margin-bottom: 0in">  background-color:
+#e0e0e0;</p>
+<p style="line-height: 100%; margin-bottom: 0in">  border-radius:
+4px;</p>
+<p style="line-height: 100%; margin-bottom: 0in">  background:
+linear-gradient(90deg, #e0e0e0 0px, #f0f0f0 40px, #e0e0e0 80px) 0 0 /
+200px 100% repeat-x;</p>
+<p style="line-height: 100%; margin-bottom: 0in">  animation:
+skeleton-loading 1.2s infinite;</p>
+<p style="line-height: 100%; margin-bottom: 0in">}</p>
+<p style="line-height: 100%; margin-bottom: 0in">@keyframes
+skeleton-loading {</p>
+<p style="line-height: 100%; margin-bottom: 0in">  0% {</p>
+<p style="line-height: 100%; margin-bottom: 0in">   
+background-position: -200px 0;</p>
+<p style="line-height: 100%; margin-bottom: 0in">  }</p>
+<p style="line-height: 100%; margin-bottom: 0in">  100% {</p>
+<p style="line-height: 100%; margin-bottom: 0in">   
+background-position: calc(200px + 100%) 0;</p>
+<p style="line-height: 100%; margin-bottom: 0in">  }</p>
+<p style="line-height: 100%; margin-bottom: 0in">}</p>
+<p style="line-height: 100%; margin-bottom: 0in">&lt;/style&gt;</p>
+<p style="line-height: 100%; margin-bottom: 0in"><br/>
 
-      /* Стилизация подсказок Google Places Autocomplete, чтобы они
-         соответствовали фирменному стилю сайта. Скругляем углы контейнера,
-         применяем тень и задаём цвета для элементов и наведения. */
-      .pac-container {
-        border-radius: 20px !important;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
-        overflow: hidden !important;
-        padding: 0 !important;
-      }
-      .pac-item {
-        padding: 8px 16px !important;
-        border-bottom: 1px solid rgba(var(--bs-primary-rgb), 0.1) !important;
-        /* Нейтральный серый цвет текста для названий городов */
-        color: #6c757d !important;
-        font-size: 0.9rem !important;
-      }
-      .pac-item:last-child {
-        border-bottom: none !important;
-      }
-      /* Цвет подсказки при наведении и выделении — лёгкий светло‑серый,
-         чтобы не перекрывать фирменный цвет. */
-      .pac-item:hover,
-      .pac-item.pac-item-selected {
-        background-color: #f0f2f5 !important;
-        color: #6c757d !important;
-      }
-      /* Скрываем стандартные иконки Google, чтобы сохранить единый стиль */
-      /* Иконка геометки слева: заменяем стандартную иконку на собственную
-         тёмно‑синюю (цвет логотипа). Для этого скрываем исходный фон и
-         устанавливаем SVG‑иконку через data URI. */
-      .pac-item .pac-icon {
-        display: inline-block !important;
-        width: 16px !important;
-        height: 16px !important;
-        margin-right: 8px !important;
-        background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxNicgaGVpZ2h0PScxNicgZmlsbD0nJTIzMDEwYjRlJyB2aWV3Qm94PScwIDAgMTYgMTYnPjxwYXRoIGQ9J004IDE2czYtNS42ODYgNi0xMEE2IDYgMCAxIDAgMiA2YzAgNC4zMTQgNiAxMCA2IDEwem0wLTEzYTMgMyAwIDEgMSAwIDYgMyAzIDAgMCAxIDAtNnonLz48L3N2Zz4=") !important;
-        background-repeat: no-repeat !important;
-        background-size: contain !important;
-        background-position: center !important;
-      }
-      /* Скругление карточек и внутренних контейнеров */
-      .card {
-        border-radius: 20px !important;
-      }
+</p>
+<p style="line-height: 100%; margin-bottom: 0in">&lt;div
+class=&quot;container mt-4&quot;&gt;</p>
+<p style="line-height: 100%; margin-bottom: 0in">  {% if rooms %}</p>
+<p style="line-height: 100%; margin-bottom: 0in">    &lt;!-- Skeleton
+placeholders --&gt;</p>
+<p style="line-height: 100%; margin-bottom: 0in">    &lt;div
+id=&quot;listing-skeletons&quot; class=&quot;row row-cols-1
+row-cols-sm-2 row-cols-lg-3 row-cols-xl-4 g-3&quot;&gt;</p>
+<p style="line-height: 100%; margin-bottom: 0in">      {% for _ in
+range(6) %}</p>
+<p style="line-height: 100%; margin-bottom: 0in">        &lt;div
+class=&quot;col&quot;&gt;</p>
+<p style="line-height: 100%; margin-bottom: 0in">          &lt;div
+class=&quot;card&quot;&gt;</p>
+<p style="line-height: 100%; margin-bottom: 0in">            &lt;div
+class=&quot;skeleton&quot; style=&quot;width:100%;
+height:200px;&quot;&gt;&lt;/div&gt;</p>
+<p style="line-height: 100%; margin-bottom: 0in">            &lt;div
+class=&quot;card-body&quot;&gt;</p>
+<p style="line-height: 100%; margin-bottom: 0in">              &lt;div
+class=&quot;skeleton&quot; style=&quot;height:20px; width:60%;
+margin-bottom:8px;&quot;&gt;&lt;/div&gt;</p>
+<p style="line-height: 100%; margin-bottom: 0in">              &lt;div
+class=&quot;skeleton&quot; style=&quot;height:14px;
+width:80%;&quot;&gt;&lt;/div&gt;</p>
+<p style="line-height: 100%; margin-bottom: 0in">            &lt;/div&gt;</p>
+<p style="line-height: 100%; margin-bottom: 0in">          &lt;/div&gt;</p>
+<p style="line-height: 100%; margin-bottom: 0in">        &lt;/div&gt;</p>
+<p style="line-height: 100%; margin-bottom: 0in">      {% endfor %}</p>
+<p style="line-height: 100%; margin-bottom: 0in">    &lt;/div&gt;</p>
+<p style="line-height: 100%; margin-bottom: 0in"><br/>
 
-      /* -------------------------------------------------- */
-      /* Скелетон‑загрузчик (placeholder) для каталога комнат.  */
-      /* Эти стили создают серые блоки с переливающейся полосой,  */
-      /* имитирующие контур карточек и текстов во время загрузки. */
-      .skeleton {
-        position: relative;
-        background-color: #e2e2e2 !important;
-        overflow: hidden;
-      }
-      .skeleton::after {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: -150px;
-        width: 150px;
-        height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
-        animation: skeleton-loading 1.5s infinite;
-      }
-      @keyframes skeleton-loading {
-        0% {
-          transform: translateX(-100%);
-        }
-        100% {
-          transform: translateX(100%);
-        }
-      }
+</p>
+<p style="line-height: 100%; margin-bottom: 0in">    &lt;!-- Real
+listings --&gt;</p>
+<p style="line-height: 100%; margin-bottom: 0in">    &lt;div
+id=&quot;listing-content&quot; class=&quot;row row-cols-1
+row-cols-sm-2 row-cols-lg-3 row-cols-xl-4 g-3 d-none&quot;&gt;</p>
+<p style="line-height: 100%; margin-bottom: 0in">      {% for room in
+rooms %}</p>
+<p style="line-height: 100%; margin-bottom: 0in">        &lt;div
+class=&quot;col&quot;&gt;</p>
+<p style="line-height: 100%; margin-bottom: 0in">          &lt;a
+href=&quot;{{ url_for('view_room_public', room_id=room['id']) }}&quot;
+class=&quot;text-decoration-none text-dark&quot;&gt;</p>
+<p style="line-height: 100%; margin-bottom: 0in">            &lt;div
+class=&quot;card h-100 position-relative&quot;&gt;</p>
+<p style="line-height: 100%; margin-bottom: 0in">              {% if
+room.get('discount') %}</p>
+<p style="line-height: 100%; margin-bottom: 0in">               
+&lt;span class=&quot;badge bg-warning text-dark position-absolute
+top-0 start-0 m-2&quot;&gt;Скидка&lt;/span&gt;</p>
+<p style="line-height: 100%; margin-bottom: 0in">              {%
+elif room.get('rating') and room['rating']|float &gt;= 4.5 %}</p>
+<p style="line-height: 100%; margin-bottom: 0in">               
+&lt;span class=&quot;badge bg-success position-absolute top-0 start-0
+m-2&quot;&gt;Топ&lt;/span&gt;</p>
+<p style="line-height: 100%; margin-bottom: 0in">              {%
+else %}</p>
+<p style="line-height: 100%; margin-bottom: 0in">               
+&lt;span class=&quot;badge bg-primary position-absolute top-0 start-0
+m-2&quot;&gt;Свободна сейчас&lt;/span&gt;</p>
+<p style="line-height: 100%; margin-bottom: 0in">              {%
+endif %}</p>
+<p style="line-height: 100%; margin-bottom: 0in">              {% if
+room.photo_src %}</p>
+<p style="line-height: 100%; margin-bottom: 0in">                &lt;img
+src=&quot;{{ room.photo_src }}&quot; class=&quot;card-img-top&quot;
+alt=&quot;Фото&quot;&gt;</p>
+<p style="line-height: 100%; margin-bottom: 0in">              {%
+else %}</p>
+<p style="line-height: 100%; margin-bottom: 0in">                &lt;div
+style=&quot;width:100%; height:200px; background-color:#f0f0f0;
+display:flex; align-items:center; justify-content:center;&quot;&gt;</p>
+<p style="line-height: 100%; margin-bottom: 0in">                 
+Нет фото</p>
+<p style="line-height: 100%; margin-bottom: 0in">               
+&lt;/div&gt;</p>
+<p style="line-height: 100%; margin-bottom: 0in">              {%
+endif %}</p>
+<p style="line-height: 100%; margin-bottom: 0in">              &lt;div
+class=&quot;card-body&quot;&gt;</p>
+<p style="line-height: 100%; margin-bottom: 0in">                &lt;h5
+class=&quot;card-title mb-1&quot;&gt;{{ room.room_number or 'Без
+названия' }}&lt;/h5&gt;</p>
+<p style="line-height: 100%; margin-bottom: 0in">                &lt;p
+class=&quot;card-text mb-1&quot;&gt;</p>
+<p style="line-height: 100%; margin-bottom: 0in">                  {%
+if room.get('country') %}{{ room.country }}{% endif %}</p>
+<p style="line-height: 100%; margin-bottom: 0in">                  {%
+if room.get('country') and room.get('city') %}, {% endif %}</p>
+<p style="line-height: 100%; margin-bottom: 0in">                  {%
+if room.get('city') %}{{ room.city }}{% endif %}</p>
+<p style="line-height: 100%; margin-bottom: 0in">                &lt;/p&gt;</p>
+<p style="line-height: 100%; margin-bottom: 0in">                &lt;p
+class=&quot;card-text mb-1&quot;&gt;</p>
+<p style="line-height: 100%; margin-bottom: 0in">                  {%
+set nr = room.get('num_rooms') %}</p>
+<p style="line-height: 100%; margin-bottom: 0in">                  {%
+set mg = room.get('max_guests') %}</p>
+<p style="line-height: 100%; margin-bottom: 0in">                  {{
+nr if nr else '?' }} ком. • {{ mg if mg else '?' }} гостя</p>
+<p style="line-height: 100%; margin-bottom: 0in">                &lt;/p&gt;</p>
+<p style="line-height: 100%; margin-bottom: 0in">                {%
+if room.get('price_per_night') %}</p>
+<p style="line-height: 100%; margin-bottom: 0in">                  &lt;p
+class=&quot;card-text fw-bold mb-0&quot;&gt;</p>
+<p style="line-height: 100%; margin-bottom: 0in">                   
+{% if room.get('price_per_night_formatted') %}</p>
+<p style="line-height: 100%; margin-bottom: 0in">                    
+ {{ room.price_per_night_formatted }} ₸ за ночь</p>
+<p style="line-height: 100%; margin-bottom: 0in">                   
+{% else %}</p>
+<p style="line-height: 100%; margin-bottom: 0in">                    
+ {{ room.price_per_night|int }} ₸ за ночь</p>
+<p style="line-height: 100%; margin-bottom: 0in">                   
+{% endif %}</p>
+<p style="line-height: 100%; margin-bottom: 0in">                 
+&lt;/p&gt;</p>
+<p style="line-height: 100%; margin-bottom: 0in">                {%
+endif %}</p>
+<p style="line-height: 100%; margin-bottom: 0in">              &lt;/div&gt;</p>
+<p style="line-height: 100%; margin-bottom: 0in">            &lt;/div&gt;</p>
+<p style="line-height: 100%; margin-bottom: 0in">          &lt;/a&gt;</p>
+<p style="line-height: 100%; margin-bottom: 0in">        &lt;/div&gt;</p>
+<p style="line-height: 100%; margin-bottom: 0in">      {% endfor %}</p>
+<p style="line-height: 100%; margin-bottom: 0in">    &lt;/div&gt;</p>
+<p style="line-height: 100%; margin-bottom: 0in">  {% else %}</p>
+<p style="line-height: 100%; margin-bottom: 0in">    &lt;p&gt;Квартиры
+не найдены.&lt;/p&gt;</p>
+<p style="line-height: 100%; margin-bottom: 0in">  {% endif %}</p>
+<p style="line-height: 100%; margin-bottom: 0in">&lt;/div&gt;</p>
+<p style="line-height: 100%; margin-bottom: 0in"><br/>
 
-      /* Название карточки: показываем максимум две строки с многоточием,
-         уменьшенный размер шрифта и увеличенная жирность.  Используем
-         техникy -webkit-line-clamp для обрезания текста с многоточием. */
-      .room-title {
-        /* Размер шрифта для названия квартиры: около 21px (1.3125rem) и обычная ширина Regular 400.
-           Такой размер немного меньше стандартного заголовка h5 Bootstrap, но выглядит
-           визуально компактнее.  Фоновые стили (две строки, обрезка) сохраняются. */
-        /* Устанавливаем размер шрифта около 15px (0.9375rem).  Это меньше, чем предыдущие значения,
-           и позволяет заголовку быть компактнее, сохраняя читаемость. */
-        font-size: 0.9375rem !important;
-        /* Задаём полужирное начертание (600), чтобы название выглядело выразительнее, но не
-           таким тяжёлым как Bold. */
-        font-weight: 600 !important;
-        display: -webkit-box !important;
-        -webkit-line-clamp: 2 !important;
-        -webkit-box-orient: vertical !important;
-        overflow: hidden !important;
-        text-overflow: ellipsis !important;
-        min-height: calc(1.2em * 2) !important;
-      }
-
-      /* Стили для плашки "Свободна сейчас".
-         Белый фон и тёмно‑зелёный текст без обводки.
-         Скруглённые углы и лёгкая тень, чтобы элемент выделялся. */
-      .availability-badge {
-        background-color: #ffffff !important;
-        color: #198754 !important;            /* Bootstrap success dark */
-        border: none !important;
-        border-radius: 20px !important;
-        font-size: 0.75rem !important;
-        font-weight: 600 !important;
-        padding: 0.25rem 0.5rem !important;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
-      }
-
-      /*
-       * Задаём серый фон для страницы каталога и всей области html.
-       * Используем тот же оттенок #f0f2f5, что и навигационная панель
-       * (определённый в profile.css), чтобы фон приложения был единым.
-       */
-      body, html {
-        background-color: #f0f2f5 !important;
-      }
-      /*
-       * Перекрашиваем навигационную панель каталога в серый цвет,
-       * совпадающий с фоном. Так меню и основная часть страницы выглядят
-       * как единое целое.
-       */
-      nav.navbar {
-        /* Закрепляем навигационную панель: при прокрутке меню остаётся вверху. */
-        position: sticky;
-        top: 0;
-        z-index: 1050;
-        background-color: #f0f2f5 !important;
-      }
-
-      /* Убираем белый фон у контейнера списка объявлений, чтобы фон каталога
-         был серым (как у навигации).  Контейнер имеет идентификатор
-         #listings-container. */
-      #listings-container {
-        background-color: transparent !important;
-      }
-
-
-
-      /* Стили для календаря Litepicker в верхнем меню. Добавляем скруглённые
-         углы и тень, чтобы всплывающий календарь визуально соответствовал
-         общему стилю сайта. */
-      .litepicker {
-        border-radius: 20px !important;
-        overflow: hidden !important;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
-      }
-
-      /* Увеличиваем расстояние между двумя отображаемыми месяцами (календарями).
-         Вместо вертикальной линии мы вводим зазор между блоками, чтобы они
-         визуально отделялись друг от друга. */
-      .litepicker .container__months.columns-2 {
-        display: flex !important;
-        flex-wrap: nowrap !important;
-        gap: 2rem;
-        justify-content: center !important;
-      }
-
-      /* Центрируем всплывающий календарь относительно поля ввода и
-         слегка увеличиваем его размер, чтобы он выглядел более заметным. */
-      .litepicker {
-        left: 50% !important;
-        transform: translateX(-50%) !important;
-        font-size: 0.95rem !important;
-        /* Показываем overflow, чтобы навигационные стрелки календаря
-           не обрезались. */
-        overflow: visible !important;
-
-        /* Сплошной белый фон для календаря, чтобы он не просвечивал
-           содержимое страницы. */
-        background-color: #ffffff !important;
-
-        /* Добавляем отступы слева и справа, чтобы содержимое календаря
-           (месяцы и стрелки) не примыкало вплотную к краям белой плашки
-           и располагалось по центру. */
-        padding-left: 1rem !important;
-        padding-right: 1rem !important;
-
-        /* Добавляем минимальную ширину для календаря, чтобы навигационные стрелки
-           всегда находились внутри белого фона. Значение 640px обеспечивает
-           размещение двух месяцев и стрелок без выхода за границы. */
-        min-width: 640px !important;
-      }
-
-      /* Объединяем месяцы календаря в единую белую плашку. Убираем фон и
-         тени у отдельных колонок и переносим их на общий контейнер. */
-      .litepicker .container__months {
-        background-color: #ffffff !important;
-        border-radius: 20px !important;
-        box-shadow: none !important;
-      }
-      .litepicker .container__months .month-item {
-        background-color: transparent !important;
-        box-shadow: none !important;
-      }
-
-      /* Добавляем тень для блока фильтров (город, даты, гости) в верхней навигации
-         на странице каталога. Для этого стилизуем форму, содержащую фильтры.
-         Тень делает блок более заметным и отделяет его от белого фона навигации.
-         Радиус совпадает с остальными элементами интерфейса, цвет фона – белый,
-         чтобы сохранить единый вид. */
-      #nav_filter_form {
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
-        /* Используем серый фон вместо белого, чтобы фильтры гармонировали с
-           основным фоном каталога и не создавали белых полос. */
-        background-color: #f0f2f5 !important;
-        border-radius: 20px !important;
-        padding: 0.5rem 1rem !important;
-      }
-
-      /* Уменьшаем высоту верхней навигационной панели. Стандартная
-         навигация Bootstrap довольно высокая из-за внутренних отступов и
-         увеличенного логотипа. Мы сокращаем вертикальные отступы и
-         уменьшаем высоту логотипа, чтобы меню выглядело более компактным.
-         Эти изменения касаются только каталога и не влияют на другие
-         страницы. */
-      nav.navbar {
-        padding-top: 0.25rem !important;
-        padding-bottom: 0.25rem !important;
-      }
-      nav.navbar .navbar-brand img {
-        height: 60px !important;
-      }
-
-      /* Переопределяем стандартные классы Bootstrap .bg-white и .bg-light,
-         чтобы белый фон заменялся на наш фирменный серый #f0f2f5. Это
-         предотвращает появление белых областей в навигационной панели,
-         контейнерах и на самом body, даже если элементы используют
-         стандартные классы Bootstrap. */
-      .bg-white,
-      .bg-light {
-        background-color: #f0f2f5 !important;
-      }
-
-      /* Делаем фон верхней навигационной панели чуть темнее, чтобы она
-         выделялась на фоне основного содержимого страницы. Цвет выбран
-         светло‑серым, на один тон темнее основного фона сайта. */
-      nav.navbar {
-        background-color: #f0f2f5 !important;
-      }
-
-      /* Применяем шрифт Montserrat ко всей странице каталога */
-      body {
-        font-family: 'Montserrat', sans-serif !important;
-      }
-    
-/* ---------------------------------------------------------------------
-   Стили для модального календаря выбора диапазона дат, совпадающего
-   по дизайну с календарём на странице полной информации об объявлении.
-   Этот календарь будет использоваться в каталоге вместо Litepicker.
---------------------------------------------------------------------- */
-.nav-calendar-modal .modal-dialog {
-  max-width: 1100px;
-  width: 90%;
-}
-.nav-calendar-modal .modal-body {
-  max-height: 70vh;
-  overflow-y: auto;
-}
-#navCalendarModal .modal-header .btn {
-  background: none;
-  border: none;
-  box-shadow: none;
-}
-#navCalendarModal .modal-header .btn:hover {
-  background: none;
-}
-#nav_calendar_content .calendar-title {
-  font-weight: 600;
-  font-size: 1rem;
-  text-align: center;
-}
-#nav_calendar_content .calendar-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 0.25rem;
-}
-#nav_calendar_content .calendar-day,
-#nav_calendar_content .calendar-date {
-  text-align: center;
-  /* Подгоняем отступы и размер шрифта под календарь в карточке квартиры,
-     чтобы календарь поиска выглядел идентично модулю бронирования. */
-  padding: 0.4rem 0;
-  font-size: 0.8rem;
-  font-weight: 700;
-}
-#nav_calendar_content .calendar-date {
-  cursor: pointer;
-  border-radius: 20px;
-}
-#nav_calendar_content .calendar-date.disabled {
-  color: #ced4da;
-  pointer-events: none;
-}
-#nav_calendar_content .calendar-date.selected {
-  background-color: var(--bs-primary);
-  color: #ffffff;
-}
-#nav_calendar_content .calendar-date.in-range {
-  background-color: rgba(var(--bs-primary-rgb), 0.1);
-  color: var(--bs-primary);
-}
-#nav_calendar_content .nav-calendar-month {
-  flex: 1 1 0;
-}
-</style>
-  </head>
-  {#
-    Задаём белый фон всему каталогу, чтобы фон страницы совпадал
-    с фоном карточек и не возникала контрастная горизонтальная линия
-    между контентом и пустым пространством. Вместо стандартного
-    класса bg-light используем bg-white.  #}
-  <body class="bg-white">
-    {% include 'navbar.html' %}
-
-<div id="listings-container" class="container mt-4">
-      <!-- Поисковая форма в стиле Airbnb. Показываем её, если пользователь
-           не авторизован или находится не в режиме гостя (например, владелец/менеджер).
-           Для авторизованных гостей форма отображается в шапке навигации. -->
-{#
-        На странице каталога ранее выводилась поисковая форма (город, дата,
-        количество гостей) непосредственно под навигацией для владельцев и
-        менеджеров, а для авторизованных гостей форма была вынесена в
-        верхнее меню.  Теперь фильтры отображаются только в верхней
-        навигации на странице каталога (см. base.html).  Поэтому эта
-        форма удалена, чтобы не дублировать фильтры в теле страницы.
-      #}
-      {% if rooms %}
-      {#
-        На странице каталога отображаем карточки квартир в несколько колонок.
-        Используем классы row-cols-* для управления количеством карточек в строке
-        при разных ширинах экрана. На больших экранах (≥992px) теперь выводится
-        по пять карточек в ряд (row-cols-lg-5).
-      #}
-      <!-- На мобильных устройствах выводим квартиры в два столбика (row-cols-2).
-           На небольших экранах (sm) сохраняем два столбика, на средних — три, на больших — пять. -->
-      <!-- Скелетон‑загрузчики (серые карточки), которые показываются до полной загрузки страницы.  -->
-      <div id="listing-skeletons" class="row row-cols-2 row-cols-sm-2 row-cols-md-3 row-cols-lg-5 g-4 mb-4">
-        {% for _ in range(6) %}
-        <div class="col mb-4">
-          <div class="card h-100 border-0" style="box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); background-color: transparent !important;">
-            <div class="skeleton" style="height: 180px; border-radius: 16px;"></div>
-            <div class="card-body" style="padding: 0.75rem !important;">
-              <div class="skeleton" style="height: 14px; width: 70%; margin-bottom: 8px; border-radius: 4px;"></div>
-              <div class="skeleton" style="height: 12px; width: 50%; margin-bottom: 8px; border-radius: 4px;"></div>
-              <div class="skeleton" style="height: 14px; width: 30%; border-radius: 4px;"></div>
-            </div>
-          </div>
-        </div>
-        {% endfor %}
-      </div>
-      <!-- Контейнер с реальными карточками.  Этот блок скрыт по умолчанию и станет видимым после загрузки -->
-      <div id="listing-content" class="row row-cols-2 row-cols-sm-2 row-cols-md-3 row-cols-lg-5 g-4" style="display: none;">
-        {% set condition_map = {'fresh': 'Свежий ремонт, новая мебель', 'good': 'Не свежий, но аккуратный ремонт', 'none': 'Без ремонта'} %}
-        {% for room in rooms %}
-        <div class="col mb-4">
-          <!-- Объявление: карта сверху с изображением, бейджем и иконкой избранного; ниже описание и цена -->
-          <div class="card h-100 border-0 position-relative" style="box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); background-color: transparent !important;">
-            <!-- Обёртка для изображения. Высота фиксирована (200px). -->
-            <div class="position-relative" style="height: 180px; border-radius: 16px; overflow: hidden;">
-              {% if room['photo_src'] %}
-              <img src="{{ room['photo_src'] }}" alt="Фото квартиры" class="w-100 h-100" style="object-fit: cover;">
-              {% else %}
-              <div class="d-flex align-items-center justify-content-center bg-light w-100 h-100">
-                <span class="text-muted">Нет фото</span>
-              </div>
-              {% endif %}
-              <!-- Бейджи в левом верхнем углу. Выбираем бейдж в зависимости от наличия скидки, рейтинга или по умолчанию. -->
-              <div class="position-absolute top-0 start-0 m-2">
-                {% if room.get('discount') %}
-                  <span class="badge bg-danger">Скидка</span>
-                {% elif room.get('rating') and room['rating'] >= 4.5 %}
-                  <span class="badge bg-warning text-dark">Топ</span>
-                {% else %}
-                  <span class="badge availability-badge">Свободна сейчас</span>
-                {% endif %}
-              </div>
-              <!-- Иконка избранного в правом верхнем углу. Показываем только для авторизованных пользователей. -->
-              {% if session.get('user_id') %}
-              <a href="{{ url_for('toggle_favorite', room_id=room['id']) }}" class="position-absolute top-0 end-0 m-2 text-decoration-none" style="z-index: 2;">
-                <i class="bi bi-heart{% if room['id'] in favorite_ids %}-fill{% endif %} fs-4{% if room['id'] in favorite_ids %} text-danger{% else %} text-primary{% endif %}"></i>
-              </a>
-              {% endif %}
-            </div>
-            <!-- Ссылку на страницу квартиры помещаем внутри карточки с классом stretched-link. -->
-            <a href="{{ url_for('view_room_public', room_id=room['id']) }}" class="stretched-link"></a>
-            <!-- Тело карточки с описанием. Используем flex-column для равномерного растяжения. -->
-            <div class="card-body d-flex flex-column" style="background-color: transparent !important; padding: 0.75rem !important;">
-              <!-- Геопозиция: добавляем иконку геометки красного цвета слева от страны и города -->
-              <div class="text-muted mb-1 small d-flex align-items-center">
-                <i class="bi bi-geo-alt-fill me-1" style="color: #dc3545;"></i>
-                {% if room.get('country') %}{{ room['country'] }}{% endif %}{% if room.get('country') and room.get('city') %}, {% endif %}{% if room.get('city') %}{{ room['city'] }}{% endif %}
-              </div>
-              <!-- Дополнительная информация: количество комнат и гостей.
-                   Используем простую проверку truthy/falsey: если значение отсутствует
-                   (null, пустая строка, ноль), показываем знак вопроса.  Разделитель
-                   отображается всегда.  Уменьшаем нижний отступ до mb-1, чтобы
-                   расстояние между геопозицией и этой строкой и расстояние до цены
-                   было одинаковым. -->
-              <div class="text-muted mb-1 small d-flex align-items-center">
-                {% set nr = room.get('num_rooms') %}
-                {% set mg = room.get('max_guests') %}
-                <span>{{ nr if nr else '?' }} ком.</span>
-                <span class="mx-1">●</span>
-                <span>{{ mg if mg else '?' }} гостя</span>
-              </div>
-              {# Удаляем отображение иконок удобств (Wi-Fi, кондиционер), чтобы карточка
-                 выглядела лаконично и цена располагалась ближе к дополнительной
-                 информации, как в эталонном дизайне. #}
-              <!-- Цена: отображаем за ночь или за выбранный период.  Форматируем число с пробелами. -->
-              {% if room.get('price_per_night') is not none %}
-                {% if nights and room.get('price_total') %}
-                  <!-- Делаем цену полужирной и слегка уменьшаем её размер.
-                       Устанавливаем font-weight на 600 (примерно эквивалент 550) и
-                       уменьшаем font-size до 1.125rem, чтобы цена не занимала слишком много
-                       пространства, сохраняя при этом заметность.  Используем mt-1 вместо
-                       mt-auto, чтобы убрать автоматическое выравнивание по низу и задать
-                       небольшой отступ сверху. -->
-                  <div class="mt-1" style="font-size: 1.125rem; font-weight: 600 !important;">
-                    {% if room.get('price_total_formatted') %}{{ room['price_total_formatted'] }} ₸{% else %}{{ room['price_total']|int }} ₸{% endif %}
-                    <span class="text-muted" style="font-size: 0.8rem;">за {{ nights }} ночь{% if nights > 1 %}и{% endif %}</span>
-                  </div>
-                {% else %}
-                  <!-- Делаем цену полужирной и слегка уменьшаем её размер.
-                       Устанавливаем font-weight на 600 (примерно эквивалент 550) и
-                       уменьшаем font-size до 1.125rem, чтобы цена не занимала слишком много
-                       пространства, сохраняя при этом заметность.  Используем mt-1 вместо
-                       mt-auto, чтобы убрать автоматическое выравнивание по низу и задать
-                       небольшой отступ сверху. -->
-                  <div class="mt-1" style="font-size: 1.125rem; font-weight: 600 !important;">
-                    {% if room.get('price_per_night_formatted') %}{{ room['price_per_night_formatted'] }} ₸{% else %}{{ room['price_per_night']|int }} ₸{% endif %}
-                    <span class="text-muted" style="font-size: 0.8rem;">за ночь</span>
-                  </div>
-                {% endif %}
-              {% endif %}
-            </div>
-          </div>
-        </div>
-        {% endfor %}
-      </div>
-      {% else %}
-      <p>Квартиры не найдены.</p>
-      {% endif %}
-    </div>
-    <!-- Подключаем Bootstrap Bundle JS для поддержки выпадающего меню -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- Подключаем Litepicker для выбора диапазона дат -->
-    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/litepicker/2.0.12/litepicker.min.js"></script> (disabled) -->
-    
-    <!-- Инициализация Litepicker для полей даты в навигации -->
-    
-    
-<script>
-  document.addEventListener('DOMContentLoaded', function() {
-    var navModalEl = document.getElementById('navCalendarModal');
-    if (!navModalEl) return;
-
-    var navDateInput = document.getElementById('nav_date_range');
-    var navCheckIn = document.getElementById('nav_check_in');
-    var navCheckOut = document.getElementById('nav_check_out');
-    var navCalBody = document.getElementById('nav_calendar_content');
-    var applyBtn = navModalEl.querySelector('.apply-nav-calendar');
-    var months = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
-    var days = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
-    var currentMonth;
-    var currentYear;
-    var startDate = null;
-    var endDate = null;
-    function isSameDate(a, b) {
-      return a && b && a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
-    }
-    function formatDisplay(date) {
-      var d = ('0' + date.getDate()).slice(-2);
-      var m = ('0' + (date.getMonth() + 1)).slice(-2);
-      var y = date.getFullYear();
-      return d + '.' + m + '.' + y;
-    }
-    function formatValue(date) {
-      var d = ('0' + date.getDate()).slice(-2);
-      var m = ('0' + (date.getMonth() + 1)).slice(-2);
-      var y = date.getFullYear();
-      return y + '-' + m + '-' + d;
-    }
-    function updateDisplayFields() {
-      if (startDate && endDate) {
-        if (navCheckIn) navCheckIn.value = formatValue(startDate);
-        if (navCheckOut) navCheckOut.value = formatValue(endDate);
-        if (navDateInput) navDateInput.value = formatDisplay(startDate) + ' - ' + formatDisplay(endDate);
-      } else if (startDate && !endDate) {
-        if (navDateInput) navDateInput.value = formatDisplay(startDate) + ' - ';
-      } else {
-        if (navDateInput) navDateInput.value = '';
-        if (navCheckIn) navCheckIn.value = '';
-        if (navCheckOut) navCheckOut.value = '';
-      }
-    }
-    function onDateClick(date) {
-      if (!startDate || (startDate && endDate)) {
-        startDate = date;
-        endDate = null;
-      } else {
-        if (date < startDate) {
-          startDate = date;
-          endDate = null;
-        } else if (isSameDate(date, startDate)) {
-          startDate = null;
-          endDate = null;
-        } else {
-          endDate = date;
-        }
-      }
-      updateDisplayFields();
-      renderCalendars();
-    }
-    function renderMonthTo(container, month, year) {
-      container.innerHTML = '';
-      var grid = document.createElement('div');
-      grid.className = 'calendar-grid';
-      days.forEach(function(label) {
-        var dayCell = document.createElement('div');
-        dayCell.className = 'calendar-day fw-bold';
-        dayCell.innerText = label;
-        grid.appendChild(dayCell);
-      });
-      var firstDate = new Date(year, month, 1);
-      var startIndex = (firstDate.getDay() + 6) % 7;
-      var lastDate = new Date(year, month + 1, 0).getDate();
-      for (var i = 0; i < startIndex; i++) {
-        var empty = document.createElement('div');
-        empty.className = 'calendar-date disabled';
-        grid.appendChild(empty);
-      }
-      for (var d = 1; d <= lastDate; d++) {
-        (function(day) {
-          var cellDate = new Date(year, month, day);
-          var cell = document.createElement('div');
-          cell.className = 'calendar-date';
-          cell.innerText = day;
-          if (startDate && isSameDate(cellDate, startDate)) {
-            cell.classList.add('selected');
-          }
-          if (startDate && endDate && cellDate > startDate && cellDate < endDate) {
-            cell.classList.add('in-range');
-          }
-          if (startDate && endDate && isSameDate(cellDate, endDate)) {
-            cell.classList.add('selected');
-          }
-          cell.addEventListener('click', function() {
-            onDateClick(cellDate);
-          });
-          grid.appendChild(cell);
-        })(d);
-      }
-      container.appendChild(grid);
-    }
-    function renderCalendars() {
-      if (!navCalBody) return;
-      navCalBody.innerHTML = '';
-      var navRow = document.createElement('div');
-      navRow.className = 'd-flex justify-content-between align-items-center mb-3';
-      var prevBtn = document.createElement('button');
-      prevBtn.type = 'button';
-      prevBtn.className = 'btn btn-light btn-sm rounded-circle d-flex align-items-center justify-content-center';
-      prevBtn.innerHTML = '<i class="bi bi-chevron-left fw-bold"></i>';
-      prevBtn.onclick = function() {
-        if (currentMonth === 0) { currentMonth = 11; currentYear--; } else { currentMonth--; }
-        renderCalendars();
-      };
-      var nextBtn = document.createElement('button');
-      nextBtn.type = 'button';
-      nextBtn.className = 'btn btn-light btn-sm rounded-circle d-flex align-items-center justify-content-center';
-      nextBtn.innerHTML = '<i class="bi bi-chevron-right fw-bold"></i>';
-      nextBtn.onclick = function() {
-        if (currentMonth === 11) { currentMonth = 0; currentYear++; } else { currentMonth++; }
-        renderCalendars();
-      };
-      var titleWrapper = document.createElement('div');
-      titleWrapper.className = 'd-flex flex-column flex-md-row justify-content-center align-items-center flex-grow-1 gap-4';
-      var thisTitle = document.createElement('div');
-      thisTitle.className = 'calendar-title';
-      thisTitle.innerText = months[currentMonth] + ' ' + currentYear;
-      var nextMonth = (currentMonth + 1) % 12;
-      var nextYearVal = currentYear + (currentMonth === 11 ? 1 : 0);
-      var nextTitle = document.createElement('div');
-      nextTitle.className = 'calendar-title';
-      nextTitle.innerText = months[nextMonth] + ' ' + nextYearVal;
-      titleWrapper.appendChild(thisTitle);
-      titleWrapper.appendChild(nextTitle);
-      navRow.appendChild(prevBtn);
-      navRow.appendChild(titleWrapper);
-      navRow.appendChild(nextBtn);
-      navCalBody.appendChild(navRow);
-      var monthsContainer = document.createElement('div');
-      monthsContainer.className = 'd-flex justify-content-center gap-4';
-      var leftMonthEl = document.createElement('div');
-      leftMonthEl.className = 'nav-calendar-month';
-      var rightMonthEl = document.createElement('div');
-      rightMonthEl.className = 'nav-calendar-month';
-      renderMonthTo(leftMonthEl, currentMonth, currentYear);
-      renderMonthTo(rightMonthEl, nextMonth, nextYearVal);
-      monthsContainer.appendChild(leftMonthEl);
-      monthsContainer.appendChild(rightMonthEl);
-      navCalBody.appendChild(monthsContainer);
-    }
-    navModalEl.addEventListener('show.bs.modal', function() {
-      if (navCheckIn && navCheckIn.value) {
-        startDate = new Date(navCheckIn.value + 'T00:00:00');
-      } else {
-        startDate = null;
-      }
-      if (navCheckOut && navCheckOut.value) {
-        endDate = new Date(navCheckOut.value + 'T00:00:00');
-      } else {
-        endDate = null;
-      }
-      var refDate = startDate || new Date();
-      currentMonth = refDate.getMonth();
-      currentYear = refDate.getFullYear();
-      renderCalendars();
-      updateDisplayFields();
-    });
-    if (applyBtn) {
-      applyBtn.addEventListener('click', function() {
-        updateDisplayFields();
-        var modalInstance = bootstrap.Modal.getOrCreateInstance(navModalEl);
-        modalInstance.hide();
-      });
-    }
-  });
-</script>
-<!-- Подключение Google Maps Places API для автодополнения городов -->
-    {#
-      Используем переменную google_maps_api_key, предоставляемую через
-      context_processor.  Если ключ определён, подключаем библиотеку
-      Google Maps Places; иначе пропускаем включение скрипта.  Это
-      позволяет конфигурировать API ключ через переменные окружения и
-      избегать жёстко прописанных строк в шаблоне.
-    #}
-    {% if google_maps_api_key %}
-    <script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&libraries=places"></script>
-    {% endif %}
-    <script>
-      document.addEventListener('DOMContentLoaded', function() {
-        // Инициализируем Google Places Autocomplete для поля ввода города.
-        var navCityInput = document.getElementById('nav_location');
-        if (navCityInput) {
-          // Ограничиваем подсказки только городами по всему миру
-          var autocomplete = new google.maps.places.Autocomplete(navCityInput, { types: ['(cities)'] });
-        }
-      });
-    </script>
-
-    <!-- Скрипт для переключения между скелетоном и реальным контентом каталога.  -->
-    <script>
-      // После полной загрузки страницы скрываем скелетоны и показываем карточки квартир.
-      window.addEventListener('load', function() {
-        var skeletons = document.getElementById('listing-skeletons');
-        var content = document.getElementById('listing-content');
-        if (skeletons && content) {
-          skeletons.style.display = 'none';
-          content.style.display = '';
-        }
-      });
-    </script>
-    <!-- Инициализация всплывающих подсказок Bootstrap (tooltip) -->
-    <script>
-      document.addEventListener('DOMContentLoaded', function () {
-        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-        tooltipTriggerList.forEach(function (tooltipTriggerEl) {
-          new bootstrap.Tooltip(tooltipTriggerEl);
-        });
-      });
-    </script>
-
-    <!-- Скрипт для выбора количества гостей в форме фильтров.  Добавляет выпадающее
-         меню с категориями (взрослые, подростки, дети, животные) и управляет
-         отображением выбранных значений.  Обновляет скрытое поле nav_guests,
-         в котором хранится итоговое количество гостей для отправки формы. -->
-    <script>
-      document.addEventListener('DOMContentLoaded', function() {
-        var wrapper = document.getElementById('nav_guests_wrapper');
-        if (wrapper) {
-          var counts = { adults: 0, teens: 0, children: 0, animals: 0 };
-          var hiddenInput = document.getElementById('nav_guests');
-          var displayInput = document.getElementById('nav_guests_display');
-          if (hiddenInput && hiddenInput.value) {
-            var initial = parseInt(hiddenInput.value);
-            if (!isNaN(initial) && initial > 0) {
-              counts.adults = initial;
-            }
-          }
-          function updateDisplay() {
-            var total = counts.adults + counts.teens + counts.children;
-            var parts = [];
-            if (counts.adults > 0) parts.push(counts.adults + ' взр.');
-            if (counts.teens > 0) parts.push(counts.teens + ' подр.');
-            if (counts.children > 0) parts.push(counts.children + ' дет.');
-            if (counts.animals > 0) parts.push(counts.animals + ' жив.');
-            if (displayInput) {
-              displayInput.value = parts.length > 0 ? parts.join(', ') : '';
-            }
-            if (hiddenInput) {
-              hiddenInput.value = total > 0 ? total : '';
-            }
-            ['adults','teens','children','animals'].forEach(function(key) {
-              var el = document.getElementById('count_' + key);
-              if (el) {
-                el.textContent = counts[key];
-              }
-            });
-            // Блокируем кнопки уменьшения, если соответствующее значение равно нулю
-            wrapper.querySelectorAll('.nav-guests-decrement').forEach(function(btn) {
-              var targetKey = btn.getAttribute('data-target');
-              btn.disabled = counts[targetKey] === 0;
-            });
-          }
-          updateDisplay();
-          wrapper.querySelectorAll('.nav-guests-increment').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-              var target = btn.getAttribute('data-target');
-              counts[target] += 1;
-              updateDisplay();
-            });
-          });
-          wrapper.querySelectorAll('.nav-guests-decrement').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-              var target = btn.getAttribute('data-target');
-              if (counts[target] > 0) {
-                counts[target] -= 1;
-                updateDisplay();
-              }
-            });
-          });
-          var applyBtn = wrapper.querySelector('.apply-guests');
-          if (applyBtn) {
-            applyBtn.addEventListener('click', function() {
-              var dropdownToggle = wrapper.querySelector('.dropdown-toggle');
-              if (dropdownToggle) {
-                var dd = bootstrap.Dropdown.getOrCreateInstance(dropdownToggle);
-                dd.hide();
-              }
-            });
-          }
-        }
-      });
-    </script>
-  </body>
+</p>
+<p style="line-height: 100%; margin-bottom: 0in">&lt;script&gt;</p>
+<p style="line-height: 100%; margin-bottom: 0in">document.addEventListener('DOMContentLoaded',
+function() {</p>
+<p style="line-height: 100%; margin-bottom: 0in"> 
+setTimeout(function() {</p>
+<p style="line-height: 100%; margin-bottom: 0in">    var skeletons =
+document.getElementById('listing-skeletons');</p>
+<p style="line-height: 100%; margin-bottom: 0in">    var content =
+document.getElementById('listing-content');</p>
+<p style="line-height: 100%; margin-bottom: 0in">    if (skeletons)
+skeletons.style.display = 'none';</p>
+<p style="line-height: 100%; margin-bottom: 0in">    if (content)
+content.classList.remove('d-none');</p>
+<p style="line-height: 100%; margin-bottom: 0in">  }, 300);</p>
+<p style="line-height: 100%; margin-bottom: 0in">});</p>
+<p style="line-height: 100%; margin-bottom: 0in">&lt;/script&gt;</p>
+</body>
 </html>
