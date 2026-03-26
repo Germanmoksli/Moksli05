@@ -1,200 +1,98 @@
-<!DOCTYPE html>
-<html>
-<head>
-	<meta http-equiv="content-type" content="text/html; charset=utf-8"/>
-	<title></title>
-	<meta name="generator" content="LibreOffice 25.2.3.2 (Linux)"/>
-	<meta name="created" content="2026-03-25T22:14:34.919717400"/>
-	<meta name="changed" content="2026-03-25T22:16:20.709844442"/>
-	<style type="text/css">
-		@page { size: 8.27in 11.69in; margin: 0.79in }
-		p { margin-bottom: 0.1in; line-height: 115%; background: transparent }
-	</style>
-</head>
-<body lang="en-US" link="#000080" vlink="#800000" dir="ltr"><p style="line-height: 100%; margin-bottom: 0in">
-{# Use a light background for the catalog page #}</p>
-<p style="line-height: 100%; margin-bottom: 0in">{% include
-'navbar.html' %}</p>
-<p style="line-height: 100%; margin-bottom: 0in"><br/>
+{# Use a light background for the catalog page #}
 
-</p>
-<p style="line-height: 100%; margin-bottom: 0in">&lt;style&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in">.skeleton {</p>
-<p style="line-height: 100%; margin-bottom: 0in">  background-color:
-#e0e0e0;</p>
-<p style="line-height: 100%; margin-bottom: 0in">  border-radius:
-4px;</p>
-<p style="line-height: 100%; margin-bottom: 0in">  background:
-linear-gradient(90deg, #e0e0e0 0px, #f0f0f0 40px, #e0e0e0 80px) 0 0 /
-200px 100% repeat-x;</p>
-<p style="line-height: 100%; margin-bottom: 0in">  animation:
-skeleton-loading 1.2s infinite;</p>
-<p style="line-height: 100%; margin-bottom: 0in">}</p>
-<p style="line-height: 100%; margin-bottom: 0in">@keyframes
-skeleton-loading {</p>
-<p style="line-height: 100%; margin-bottom: 0in">  0% {</p>
-<p style="line-height: 100%; margin-bottom: 0in">   
-background-position: -200px 0;</p>
-<p style="line-height: 100%; margin-bottom: 0in">  }</p>
-<p style="line-height: 100%; margin-bottom: 0in">  100% {</p>
-<p style="line-height: 100%; margin-bottom: 0in">   
-background-position: calc(200px + 100%) 0;</p>
-<p style="line-height: 100%; margin-bottom: 0in">  }</p>
-<p style="line-height: 100%; margin-bottom: 0in">}</p>
-<p style="line-height: 100%; margin-bottom: 0in">&lt;/style&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in"><br/>
+{% include 'navbar.html' %}
 
-</p>
-<p style="line-height: 100%; margin-bottom: 0in">&lt;div
-class=&quot;container mt-4&quot;&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in">  {% if rooms %}</p>
-<p style="line-height: 100%; margin-bottom: 0in">    &lt;!-- Skeleton
-placeholders --&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in">    &lt;div
-id=&quot;listing-skeletons&quot; class=&quot;row row-cols-1
-row-cols-sm-2 row-cols-lg-3 row-cols-xl-4 g-3&quot;&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in">      {% for _ in
-range(6) %}</p>
-<p style="line-height: 100%; margin-bottom: 0in">        &lt;div
-class=&quot;col&quot;&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in">          &lt;div
-class=&quot;card&quot;&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in">            &lt;div
-class=&quot;skeleton&quot; style=&quot;width:100%;
-height:200px;&quot;&gt;&lt;/div&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in">            &lt;div
-class=&quot;card-body&quot;&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in">              &lt;div
-class=&quot;skeleton&quot; style=&quot;height:20px; width:60%;
-margin-bottom:8px;&quot;&gt;&lt;/div&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in">              &lt;div
-class=&quot;skeleton&quot; style=&quot;height:14px;
-width:80%;&quot;&gt;&lt;/div&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in">            &lt;/div&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in">          &lt;/div&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in">        &lt;/div&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in">      {% endfor %}</p>
-<p style="line-height: 100%; margin-bottom: 0in">    &lt;/div&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in"><br/>
+<style>
+  .skeleton {
+    background-color: #e0e0e0;
+    border-radius: 4px;
+    background: linear-gradient(90deg, #e0e0e0 0px, #f0f0f0 40px, #e0e0e0 80px) 0 0 / 200px 100% repeat-x;
+    animation: skeleton-loading 1.2s infinite;
+  }
+  @keyframes skeleton-loading {
+    0% { background-position: -200px 0; }
+    100% { background-position: calc(200px + 100%) 0; }
+  }
+</style>
 
-</p>
-<p style="line-height: 100%; margin-bottom: 0in">    &lt;!-- Real
-listings --&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in">    &lt;div
-id=&quot;listing-content&quot; class=&quot;row row-cols-1
-row-cols-sm-2 row-cols-lg-3 row-cols-xl-4 g-3 d-none&quot;&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in">      {% for room in
-rooms %}</p>
-<p style="line-height: 100%; margin-bottom: 0in">        &lt;div
-class=&quot;col&quot;&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in">          &lt;a
-href=&quot;{{ url_for('view_room_public', room_id=room['id']) }}&quot;
-class=&quot;text-decoration-none text-dark&quot;&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in">            &lt;div
-class=&quot;card h-100 position-relative&quot;&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in">              {% if
-room.get('discount') %}</p>
-<p style="line-height: 100%; margin-bottom: 0in">               
-&lt;span class=&quot;badge bg-warning text-dark position-absolute
-top-0 start-0 m-2&quot;&gt;Скидка&lt;/span&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in">              {%
-elif room.get('rating') and room['rating']|float &gt;= 4.5 %}</p>
-<p style="line-height: 100%; margin-bottom: 0in">               
-&lt;span class=&quot;badge bg-success position-absolute top-0 start-0
-m-2&quot;&gt;Топ&lt;/span&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in">              {%
-else %}</p>
-<p style="line-height: 100%; margin-bottom: 0in">               
-&lt;span class=&quot;badge bg-primary position-absolute top-0 start-0
-m-2&quot;&gt;Свободна сейчас&lt;/span&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in">              {%
-endif %}</p>
-<p style="line-height: 100%; margin-bottom: 0in">              {% if
-room.photo_src %}</p>
-<p style="line-height: 100%; margin-bottom: 0in">                &lt;img
-src=&quot;{{ room.photo_src }}&quot; class=&quot;card-img-top&quot;
-alt=&quot;Фото&quot;&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in">              {%
-else %}</p>
-<p style="line-height: 100%; margin-bottom: 0in">                &lt;div
-style=&quot;width:100%; height:200px; background-color:#f0f0f0;
-display:flex; align-items:center; justify-content:center;&quot;&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in">                 
-Нет фото</p>
-<p style="line-height: 100%; margin-bottom: 0in">               
-&lt;/div&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in">              {%
-endif %}</p>
-<p style="line-height: 100%; margin-bottom: 0in">              &lt;div
-class=&quot;card-body&quot;&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in">                &lt;h5
-class=&quot;card-title mb-1&quot;&gt;{{ room.room_number or 'Без
-названия' }}&lt;/h5&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in">                &lt;p
-class=&quot;card-text mb-1&quot;&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in">                  {%
-if room.get('country') %}{{ room.country }}{% endif %}</p>
-<p style="line-height: 100%; margin-bottom: 0in">                  {%
-if room.get('country') and room.get('city') %}, {% endif %}</p>
-<p style="line-height: 100%; margin-bottom: 0in">                  {%
-if room.get('city') %}{{ room.city }}{% endif %}</p>
-<p style="line-height: 100%; margin-bottom: 0in">                &lt;/p&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in">                &lt;p
-class=&quot;card-text mb-1&quot;&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in">                  {%
-set nr = room.get('num_rooms') %}</p>
-<p style="line-height: 100%; margin-bottom: 0in">                  {%
-set mg = room.get('max_guests') %}</p>
-<p style="line-height: 100%; margin-bottom: 0in">                  {{
-nr if nr else '?' }} ком. • {{ mg if mg else '?' }} гостя</p>
-<p style="line-height: 100%; margin-bottom: 0in">                &lt;/p&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in">                {%
-if room.get('price_per_night') %}</p>
-<p style="line-height: 100%; margin-bottom: 0in">                  &lt;p
-class=&quot;card-text fw-bold mb-0&quot;&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in">                   
-{% if room.get('price_per_night_formatted') %}</p>
-<p style="line-height: 100%; margin-bottom: 0in">                    
- {{ room.price_per_night_formatted }} ₸ за ночь</p>
-<p style="line-height: 100%; margin-bottom: 0in">                   
-{% else %}</p>
-<p style="line-height: 100%; margin-bottom: 0in">                    
- {{ room.price_per_night|int }} ₸ за ночь</p>
-<p style="line-height: 100%; margin-bottom: 0in">                   
-{% endif %}</p>
-<p style="line-height: 100%; margin-bottom: 0in">                 
-&lt;/p&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in">                {%
-endif %}</p>
-<p style="line-height: 100%; margin-bottom: 0in">              &lt;/div&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in">            &lt;/div&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in">          &lt;/a&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in">        &lt;/div&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in">      {% endfor %}</p>
-<p style="line-height: 100%; margin-bottom: 0in">    &lt;/div&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in">  {% else %}</p>
-<p style="line-height: 100%; margin-bottom: 0in">    &lt;p&gt;Квартиры
-не найдены.&lt;/p&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in">  {% endif %}</p>
-<p style="line-height: 100%; margin-bottom: 0in">&lt;/div&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in"><br/>
+<div class="container mt-4">
+  {% if rooms %}
+    <!-- Skeleton placeholders -->
+    <div id="listing-skeletons" class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 row-cols-xl-4 g-3">
+      {% for _ in range(6) %}
+      <div class="col">
+        <div class="card">
+          <div class="skeleton" style="width:100%; height:200px;"></div>
+          <div class="card-body">
+            <div class="skeleton" style="height:20px; width:60%; margin-bottom:8px;"></div>
+            <div class="skeleton" style="height:14px; width:80%;"></div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
 
-</p>
-<p style="line-height: 100%; margin-bottom: 0in">&lt;script&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in">document.addEventListener('DOMContentLoaded',
-function() {</p>
-<p style="line-height: 100%; margin-bottom: 0in"> 
-setTimeout(function() {</p>
-<p style="line-height: 100%; margin-bottom: 0in">    var skeletons =
-document.getElementById('listing-skeletons');</p>
-<p style="line-height: 100%; margin-bottom: 0in">    var content =
-document.getElementById('listing-content');</p>
-<p style="line-height: 100%; margin-bottom: 0in">    if (skeletons)
-skeletons.style.display = 'none';</p>
-<p style="line-height: 100%; margin-bottom: 0in">    if (content)
-content.classList.remove('d-none');</p>
-<p style="line-height: 100%; margin-bottom: 0in">  }, 300);</p>
-<p style="line-height: 100%; margin-bottom: 0in">});</p>
-<p style="line-height: 100%; margin-bottom: 0in">&lt;/script&gt;</p>
-</body>
-</html>
+    <!-- Real listings -->
+    <div id="listing-content" class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 row-cols-xl-4 g-3 d-none">
+      {% for room in rooms %}
+      <div class="col">
+        <a href="{{ url_for('view_room_public', room_id=room['id']) }}" class="text-decoration-none text-dark">
+          <div class="card h-100 position-relative">
+            {% if room.get('discount') %}
+              <span class="badge bg-warning text-dark position-absolute top-0 start-0 m-2">Скидка</span>
+            {% elif room.get('rating') and room['rating']|float >= 4.5 %}
+              <span class="badge bg-success position-absolute top-0 start-0 m-2">Топ</span>
+            {% else %}
+              <span class="badge bg-primary position-absolute top-0 start-0 m-2">Свободна сейчас</span>
+            {% endif %}
+
+            {% if room.photo_src %}
+              <img src="{{ room.photo_src }}" class="card-img-top" alt="Фото">
+            {% else %}
+              <div style="width:100%; height:200px; background-color:#f0f0f0; display:flex; align-items:center; justify-content:center;">
+                Нет фото
+              </div>
+            {% endif %}
+
+            <div class="card-body">
+              <h5 class="card-title mb-1">{{ room.room_number or 'Без названия' }}</h5>
+              <p class="card-text mb-1">
+                {% if room.get('country') %}{{ room.country }}{% endif %}
+                {% if room.get('country') and room.get('city') %}, {% endif %}
+                {% if room.get('city') %}{{ room.city }}{% endif %}
+              </p>
+              <p class="card-text mb-1">
+                {% set nr = room.get('num_rooms') %}
+                {% set mg = room.get('max_guests') %}
+                {{ nr if nr else '?' }} ком. • {{ mg if mg else '?' }} гостя
+              </p>
+              {% if room.get('price_per_night') %}
+              <p class="card-text fw-bold mb-0">
+                {% if room.get('price_per_night_formatted') %}
+                  {{ room.price_per_night_formatted }} ₸ за ночь
+                {% else %}
+                  {{ room.price_per_night|int }} ₸ за ночь
+                {% endif %}
+              </p>
+              {% endif %}
+            </div>
+          </div>
+        </a>
+      </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p>Квартиры не найдены.</p>
+  {% endif %}
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(function() {
+      var skeletons = document.getElementById('listing-skeletons');
+      var content = document.getElementById('listing-content');
+      if (skeletons) skeletons.style.display = 'none';
+      if (content) content.classList.remove('d-none');
+    }, 300);
+  });
+</script>

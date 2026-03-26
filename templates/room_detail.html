@@ -1,111 +1,59 @@
-<!DOCTYPE html>
-<html>
-<head>
-	<meta http-equiv="content-type" content="text/html; charset=utf-8"/>
-	<title></title>
-	<meta name="generator" content="LibreOffice 25.2.3.2 (Linux)"/>
-	<meta name="created" content="2026-03-25T22:14:34.919717400"/>
-	<meta name="changed" content="2026-03-25T22:18:15.597390957"/>
-	<style type="text/css">
-		@page { size: 8.27in 11.69in; margin: 0.79in }
-		p { margin-bottom: 0.1in; line-height: 115%; background: transparent }
-		a:link { color: #000080; text-decoration: underline }
-		a:visited { color: #800000; text-decoration: underline }
-	</style>
-</head>
-<body lang="en-US" link="#000080" vlink="#800000" dir="ltr"><p style="line-height: 100%; margin-bottom: 0in">
-{% extends &quot;base.html&quot; %}</p>
-<p style="line-height: 100%; margin-bottom: 0in">{% block title %}{{
-room['room_number'] or 'Объявление' }}{% endblock %}</p>
-<p style="line-height: 100%; margin-bottom: 0in"><br/>
+{% extends 'base.html' %}
 
-</p>
-<p style="line-height: 100%; margin-bottom: 0in">{% block content %}</p>
-<p style="line-height: 100%; margin-bottom: 0in">&lt;div
-class=&quot;container py-4&quot;&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in"><br/>
+{% block title %}{{ room['room_number'] or 'Объявление' }}{% endblock %}
 
-</p>
-<p style="line-height: 100%; margin-bottom: 0in">  &lt;a href=&quot;{{
-url_for('public_listings') }}&quot; class=&quot;btn btn-link
-mb-3&quot;&gt;&amp;larr; Назад к каталогу&lt;/a&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in"><br/>
+{% block content %}
+<div class="container py-4">
+  <a href="{{ url_for('public_listings') }}" class="btn btn-link mb-3">&larr; Назад к каталогу</a>
+  <h2 class="mb-3">{{ room['room_number'] or 'Объявление' }}</h2>
 
-</p>
-<p style="line-height: 100%; margin-bottom: 0in">  &lt;h2
-class=&quot;mb-3&quot;&gt;{{ room['room_number'] or 'Объявление'
-}}&lt;/h2&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in"><br/>
+  {% if photos and photos|length > 0 %}
+  <div class="row">
+    <div class="col-md-8">
+      <img id="main-image" src="{{ photos[0] }}" alt="Фото" class="img-fluid mb-3" style="max-height: 400px; object-fit: cover;">
+    </div>
+    <div class="col-md-4">
+      <div class="row g-2">
+        {% for photo in photos[1:5] %}
+        <div class="col-3 col-md-6">
+          <img src="{{ photo }}" data-index="{{ loop.index }}" class="img-fluid thumbnail-image" style="cursor: pointer;">
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
 
-</p>
-<p style="line-height: 100%; margin-bottom: 0in">  {% if photos and
-photos|length &gt; 0 %}</p>
-<p style="line-height: 100%; margin-bottom: 0in">  &lt;div
-class=&quot;mb-4&quot;&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in">    &lt;img
-id=&quot;mainPhoto&quot; src=&quot;{{ photos[0] }}&quot;
-class=&quot;img-fluid rounded w-100&quot; alt=&quot;Фотография
-объекта&quot; style=&quot;max-height: 500px; object-fit:
-cover;&quot;&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in">    {% if
-photos|length &gt; 1 %}</p>
-<p style="line-height: 100%; margin-bottom: 0in">    &lt;div
-class=&quot;d-flex mt-2 overflow-auto&quot;&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in">      {% for src in
-photos %}</p>
-<p style="line-height: 100%; margin-bottom: 0in">      &lt;img
-src=&quot;{{ src }}&quot; class=&quot;img-thumbnail me-2&quot;
-style=&quot;width: 100px; height: 80px; object-fit: cover; cursor:
-pointer;&quot;
-onclick=&quot;document.getElementById('mainPhoto').src=this.src;&quot;&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in">      {% endfor %}</p>
-<p style="line-height: 100%; margin-bottom: 0in">    &lt;/div&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in">    {% endif %}</p>
-<p style="line-height: 100%; margin-bottom: 0in">  &lt;/div&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in">  {% endif %}</p>
-<p style="line-height: 100%; margin-bottom: 0in"><br/>
+  <div class="mt-4">
+    <p><strong>Описание:</strong> {{ room.get('description') or 'Описание отсутствует' }}</p>
+    <p><strong>Страна:</strong> {{ room.get('country') or 'Не указано' }}</p>
+    <p><strong>Город:</strong> {{ room.get('city') or 'Не указано' }}</p>
+    <p><strong>Количество комнат:</strong> {{ room.get('num_rooms') or 'Не указано' }}</p>
+    <p><strong>Максимум гостей:</strong> {{ room.get('max_guests') or 'Не указано' }}</p>
+    <p><strong>Цена за ночь:</strong>
+      {% if room.get('price_per_night_formatted') %}
+        {{ room.price_per_night_formatted }} ₸
+      {% elif room.get('price_per_night') %}
+        {{ room.price_per_night|int }} ₸
+      {% else %}
+        Не указана
+      {% endif %}
+    </p>
+    <!-- Additional details can be added here -->
+  </div>
+</div>
 
-</p>
-<p style="line-height: 100%; margin-bottom: 0in">  &lt;div
-class=&quot;mb-4&quot;&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in">    {% if
-room.get('description') %}</p>
-<p style="line-height: 100%; margin-bottom: 0in">      &lt;p&gt;{{
-room['description']|trim }}&lt;/p&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in">    {% endif %}</p>
-<p style="line-height: 100%; margin-bottom: 0in">    {% if
-room.get('price_per_night') %}</p>
-<p style="line-height: 100%; margin-bottom: 0in">      &lt;h4&gt;{{
-room.get('price_per_night_formatted') or room['price_per_night']|int
-}} ₸/сутки&lt;/h4&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in">    {% endif %}</p>
-<p style="line-height: 100%; margin-bottom: 0in">  &lt;/div&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in"><br/>
-
-</p>
-<p style="line-height: 100%; margin-bottom: 0in">  &lt;div
-class=&quot;mb-4&quot;&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in">    {% if
-room.get('country') or room.get('city') %}</p>
-<p style="line-height: 100%; margin-bottom: 0in">      &lt;p&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in">        {% if
-room.get('country') %}{{ room['country'] }}{% endif %}</p>
-<p style="line-height: 100%; margin-bottom: 0in">        {% if
-room.get('country') and room.get('city') %}, {% endif %}</p>
-<p style="line-height: 100%; margin-bottom: 0in">        {% if
-room.get('city') %}{{ room['city'] }}{% endif %}</p>
-<p style="line-height: 100%; margin-bottom: 0in">      &lt;/p&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in">    {% endif %}</p>
-<p style="line-height: 100%; margin-bottom: 0in">    {% if
-room.get('amenities') %}</p>
-<p style="line-height: 100%; margin-bottom: 0in">      &lt;p&gt;Удобства:
-{{ room['amenities'] }}&lt;/p&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in">    {% endif %}</p>
-<p style="line-height: 100%; margin-bottom: 0in">  &lt;/div&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in"><br/>
-
-</p>
-<p style="line-height: 100%; margin-bottom: 0in">&lt;/div&gt;</p>
-<p style="line-height: 100%; margin-bottom: 0in">{% endblock %}</p>
-</body>
-</html>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const mainImage = document.getElementById('main-image');
+  const thumbnails = document.querySelectorAll('.thumbnail-image');
+  thumbnails.forEach(function(thumbnail) {
+    thumbnail.addEventListener('click', function() {
+      if (mainImage) {
+        mainImage.src = thumbnail.src;
+      }
+    });
+  });
+});
+</script>
+{% endblock %}
