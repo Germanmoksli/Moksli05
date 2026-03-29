@@ -10881,11 +10881,12 @@ def new_room_step9():
                                     watermarked_bytes = apply_watermark_to_image_data(img_bytes)
                                 except Exception:
                                     watermarked_bytes = img_bytes
-                            # Only compute base64 string for the first photo.  For
-                            # subsequent photos, leave image_data as None to avoid
-                            # converting large blobs into memory‑heavy strings.
+                            # Compute a base64 string for every uploaded photo.  Previously, only the
+                            # first photo was encoded to conserve memory, which resulted in missing
+                            # thumbnails in listings.  Encoding all photos ensures that they
+                            # are available from the database even if the file is unavailable on disk.
                             img_data_value: typing.Optional[str] = None
-                            if watermarked_bytes and idx == 0:
+                            if watermarked_bytes:
                                 try:
                                     img_data_value = base64.b64encode(watermarked_bytes).decode('utf-8')
                                 except Exception:
