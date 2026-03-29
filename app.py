@@ -8805,11 +8805,36 @@ def public_listings():
                 mime = 'image/jpeg'
             photo_src = f"data:{mime};base64,{image_data}"
         elif file_name:
-            # Use the dedicated upload route as fallback
+            # Attempt to read the file from disk and embed as base64.  If reading
+            # fails, use the dedicated upload route as fallback.
             try:
-                photo_src = url_for('uploaded_room_image', filename=file_name)
+                file_path_pl = os.path.join(UPLOAD_ROOMS_FOLDER, file_name)
+                with open(file_path_pl, 'rb') as f_pl:
+                    data_pl = f_pl.read()
+                if data_pl:
+                    mime_pl = 'image/jpeg'
+                    try:
+                        ext_pl = file_name.rsplit('.', 1)[-1].lower()
+                        if ext_pl == 'png':
+                            mime_pl = 'image/png'
+                        elif ext_pl == 'gif':
+                            mime_pl = 'image/gif'
+                        elif ext_pl == 'webp':
+                            mime_pl = 'image/webp'
+                    except Exception:
+                        mime_pl = 'image/jpeg'
+                    b64_pl = base64.b64encode(data_pl).decode('utf-8')
+                    photo_src = f"data:{mime_pl};base64,{b64_pl}"
+                else:
+                    photo_src = None
             except Exception:
                 photo_src = None
+            if not photo_src:
+                # Use the dedicated upload route as fallback
+                try:
+                    photo_src = url_for('uploaded_room_image', filename=file_name)
+                except Exception:
+                    photo_src = None
         room_dict['photo_src'] = photo_src
         # Append the room dictionary to our list. We defer additional price computations
         # until after this loop so that we know the number of nights selected.
@@ -9160,9 +9185,13 @@ def view_room_public(room_id: int):
                     img_data = str(img_data)
             except Exception:
                 img_data = str(img_data)
-        # Build the photo source string.  Prefer base64-encoded data.
+        # Build the photo source string.  Prefer base64-encoded data (either from
+        # the database or by reading the file from disk).  This ensures that
+        # photos display even when the uploaded_room_image route is not
+        # accessible.
         src = None
         if img_data:
+            # Use image_data from database as is, prefixing with MIME
             mime = 'image/jpeg'
             try:
                 fn_temp = f_name or ''
@@ -9177,10 +9206,35 @@ def view_room_public(room_id: int):
                 mime = 'image/jpeg'
             src = f"data:{mime};base64,{img_data}"
         elif f_name:
+            # Attempt to read the photo from disk and embed as base64.  If
+            # reading fails, fall back to the uploaded_room_image route.
             try:
-                src = url_for('uploaded_room_image', filename=f_name)
+                file_path_vrp = os.path.join(UPLOAD_ROOMS_FOLDER, f_name)
+                with open(file_path_vrp, 'rb') as f_vrp:
+                    data_vrp = f_vrp.read()
+                if data_vrp:
+                    mime_vrp = 'image/jpeg'
+                    try:
+                        ext_vrp = f_name.rsplit('.', 1)[-1].lower()
+                        if ext_vrp == 'png':
+                            mime_vrp = 'image/png'
+                        elif ext_vrp == 'gif':
+                            mime_vrp = 'image/gif'
+                        elif ext_vrp == 'webp':
+                            mime_vrp = 'image/webp'
+                    except Exception:
+                        mime_vrp = 'image/jpeg'
+                    b64_vrp = base64.b64encode(data_vrp).decode('utf-8')
+                    src = f"data:{mime_vrp};base64,{b64_vrp}"
+                else:
+                    src = None
             except Exception:
                 src = None
+            if not src:
+                try:
+                    src = url_for('uploaded_room_image', filename=f_name)
+                except Exception:
+                    src = None
         if src:
             photos.append(src)
     # Determine whether the current user has favorited this room.  If the user
@@ -11042,24 +11096,54 @@ def room_preview():
         # base64‑encoded images stored in the temporary photo table.
         filenames = session.get('new_listing_photos') or []
         photos: list[str] = []
+        # Build a list of photo sources for preview.  For each filename, attempt to
+        # read the file from disk and encode it as a base64 data URI.  This
+        # ensures that all uploaded photos display correctly in preview even
+        # when they are not yet persisted to the permanent room_photos table.
         for fname in filenames:
             try:
-                photos.append(url_for('uploaded_room_image', filename=fname))
+                if fname:
+                    # Read image bytes from the uploads folder
+                    file_path = os.path.join(UPLOAD_ROOMS_FOLDER, fname)
+                    try:
+                        with open(file_path, 'rb') as f_img:
+                            img_bytes = f_img.read()
+                        if img_bytes:
+                            # Determine MIME type from extension
+                            mime = 'image/jpeg'
+                            try:
+                                ext = fname.rsplit('.', 1)[-1].lower()
+                                if ext == 'png':
+                                    mime = 'image/png'
+                                elif ext == 'gif':
+                                    mime = 'image/gif'
+                                elif ext == 'webp':
+                                    mime = 'image/webp'
+                            except Exception:
+                                mime = 'image/jpeg'
+                            b64 = base64.b64encode(img_bytes).decode('utf-8')
+                            photos.append(f"data:{mime};base64,{b64}")
+                            continue
+                    except Exception:
+                        # If reading fails, fall back to serving via uploaded_room_image
+                        pass
+                # As a fallback, build a URL to the uploaded image route
+                try:
+                    photos.append(url_for('uploaded_room_image', filename=fname))
+                except Exception:
+                    continue
             except Exception:
-                # Skip invalid filenames silently
                 continue
         # Fallback: if no photos resolved, attempt to derive filenames from the
-        # temporary photo table without loading image data into memory.  This
-        # avoids converting large binary blobs to base64, which can quickly
-        # exhaust memory on constrained deployments.  If filenames are found,
-        # construct their URLs using the uploaded_room_image route.
+        # temporary photo table.  Only the file names are fetched to avoid
+        # loading large base64 strings into memory.  When filenames are found,
+        # their images are read from disk and encoded in the same way as above.
         if not photos:
             sid_local = session.get('_upload_temp_id')
             if sid_local:
                 try:
                     temp_conn = get_db_connection()
                     ensure_room_photos_temp_table(temp_conn)
-                    # Fetch only the file_name column for this session
                     rows = temp_conn.execute(
                         "SELECT file_name FROM room_photos_temp WHERE session_id = ?",
                         (sid_local,),
@@ -11071,6 +11155,29 @@ def room_preview():
                             fname_key = None
                         if fname_key:
                             try:
+                                # Attempt to read the file from disk and base64 encode
+                                file_path2 = os.path.join(UPLOAD_ROOMS_FOLDER, fname_key)
+                                try:
+                                    with open(file_path2, 'rb') as f_img2:
+                                        img_bytes2 = f_img2.read()
+                                    if img_bytes2:
+                                        mime2 = 'image/jpeg'
+                                        try:
+                                            ext2 = str(fname_key).rsplit('.', 1)[-1].lower()
+                                            if ext2 == 'png':
+                                                mime2 = 'image/png'
+                                            elif ext2 == 'gif':
+                                                mime2 = 'image/gif'
+                                            elif ext2 == 'webp':
+                                                mime2 = 'image/webp'
+                                        except Exception:
+                                            mime2 = 'image/jpeg'
+                                        b64_2 = base64.b64encode(img_bytes2).decode('utf-8')
+                                        photos.append(f"data:{mime2};base64,{b64_2}")
+                                        continue
+                                except Exception:
+                                    pass
+                                # Fallback to URL route
                                 photos.append(url_for('uploaded_room_image', filename=fname_key))
                             except Exception:
                                 continue
