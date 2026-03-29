@@ -109,6 +109,40 @@ def uploaded_room_image(filename: str):
     photos uploaded prior to introducing the ``image_data`` field and
     the new uploads directory.
     """
+    # Normalize filename to guard against incorrect types and nested paths.
+    # Sometimes filenames stored in the database may be returned as memoryview or bytes
+    # objects when using different database drivers (e.g. psycopg2 on PostgreSQL).
+    # Convert such values to a string and strip any directory components before
+    # attempting to locate the file on disk.  Without this normalization, a filename
+    # like b'rooms/example.jpg' or memoryview(b'example.jpg') would cause the
+    # generated path to include an extra "rooms/" segment (e.g. uploads/rooms/rooms/example.jpg),
+    # resulting in a 404 and missing image.
+    try:
+        # Decode memoryview/bytes to str when necessary
+        if filename is not None and not isinstance(filename, str):
+            if isinstance(filename, memoryview):
+                try:
+                    filename = filename.tobytes().decode('utf-8', errors='ignore')
+                except Exception:
+                    filename = str(filename)
+            elif isinstance(filename, (bytes, bytearray)):
+                try:
+                    filename = filename.decode('utf-8', errors='ignore')
+                except Exception:
+                    filename = str(filename)
+            else:
+                filename = str(filename)
+        # Remove any directory components to avoid duplicated paths
+        try:
+            filename = os.path.basename(filename)
+        except Exception:
+            pass
+    except Exception:
+        # If normalization fails, ensure filename is a simple string
+        try:
+            filename = str(filename)
+        except Exception:
+            pass
     # Attempt to serve from the new uploads directory
     file_path = os.path.join(UPLOAD_ROOMS_FOLDER, filename)
     try:
@@ -3669,11 +3703,64 @@ def list_rooms():
                 image_data = row['photo_image_data']  # type: ignore[index]
             except Exception:
                 image_data = None
+        # Normalize the filename and image_data prior to computing the photo_src.
+        # Different database drivers may return file_name or image_data as memoryview
+        # objects or bytes.  Convert them to plain strings and strip any directory
+        # components from the filename to avoid duplicated paths (e.g. "rooms/rooms/file.jpg").
+        if file_name is not None and not isinstance(file_name, str):
+            try:
+                if isinstance(file_name, memoryview):
+                    file_name = file_name.tobytes().decode('utf-8', errors='ignore')
+                elif isinstance(file_name, (bytes, bytearray)):
+                    file_name = file_name.decode('utf-8', errors='ignore')
+                else:
+                    file_name = str(file_name)
+            except Exception:
+                file_name = str(file_name)
+        try:
+            file_name = os.path.basename(file_name) if file_name else file_name
+        except Exception:
+            pass
+        if image_data is not None and not isinstance(image_data, str):
+            try:
+                if isinstance(image_data, memoryview):
+                    image_data = image_data.tobytes().decode('utf-8', errors='ignore')
+                elif isinstance(image_data, (bytes, bytearray)):
+                    image_data = image_data.decode('utf-8', errors='ignore')
+                else:
+                    image_data = str(image_data)
+            except Exception:
+                image_data = str(image_data)
         # Compute the photo_src used in the template.  Prefer the embedded
         # image_data because it avoids a filesystem lookup.  Determine the
         # MIME type from the filename extension when available; default to
         # image/jpeg.  If both image_data and file_name are missing, the
         # template will display a placeholder image.
+        # Normalize the filename and image_data similar to list_rooms to avoid type issues.
+        if file_name is not None and not isinstance(file_name, str):
+            try:
+                if isinstance(file_name, memoryview):
+                    file_name = file_name.tobytes().decode('utf-8', errors='ignore')
+                elif isinstance(file_name, (bytes, bytearray)):
+                    file_name = file_name.decode('utf-8', errors='ignore')
+                else:
+                    file_name = str(file_name)
+            except Exception:
+                file_name = str(file_name)
+        try:
+            file_name = os.path.basename(file_name) if file_name else file_name
+        except Exception:
+            pass
+        if image_data is not None and not isinstance(image_data, str):
+            try:
+                if isinstance(image_data, memoryview):
+                    image_data = image_data.tobytes().decode('utf-8', errors='ignore')
+                elif isinstance(image_data, (bytes, bytearray)):
+                    image_data = image_data.decode('utf-8', errors='ignore')
+                else:
+                    image_data = str(image_data)
+            except Exception:
+                image_data = str(image_data)
         photo_src: str | None = None
         if image_data:
             mime = 'image/jpeg'
@@ -3925,6 +4012,31 @@ def archive_rooms():
                 image_data = row['photo_image_data']  # type: ignore[index]
             except Exception:
                 image_data = None
+        # Normalize the filename and image_data similar to list_rooms to avoid type issues.
+        if file_name is not None and not isinstance(file_name, str):
+            try:
+                if isinstance(file_name, memoryview):
+                    file_name = file_name.tobytes().decode('utf-8', errors='ignore')
+                elif isinstance(file_name, (bytes, bytearray)):
+                    file_name = file_name.decode('utf-8', errors='ignore')
+                else:
+                    file_name = str(file_name)
+            except Exception:
+                file_name = str(file_name)
+        try:
+            file_name = os.path.basename(file_name) if file_name else file_name
+        except Exception:
+            pass
+        if image_data is not None and not isinstance(image_data, str):
+            try:
+                if isinstance(image_data, memoryview):
+                    image_data = image_data.tobytes().decode('utf-8', errors='ignore')
+                elif isinstance(image_data, (bytes, bytearray)):
+                    image_data = image_data.decode('utf-8', errors='ignore')
+                else:
+                    image_data = str(image_data)
+            except Exception:
+                image_data = str(image_data)
         photo_src: str | None = None
         if image_data:
             mime = 'image/jpeg'
@@ -8645,6 +8757,34 @@ def public_listings():
                 image_data = row['photo_image_data']  # type: ignore[index]
             except Exception:
                 pass
+        # Normalize the filename and image_data prior to computing the photo_src.
+        # Different database drivers may return file_name or image_data as memoryview
+        # objects or bytes.  Convert them to plain strings and strip any directory
+        # components from the filename to avoid duplicated paths (e.g. "rooms/rooms/file.jpg").
+        if file_name is not None and not isinstance(file_name, str):
+            try:
+                if isinstance(file_name, memoryview):
+                    file_name = file_name.tobytes().decode('utf-8', errors='ignore')
+                elif isinstance(file_name, (bytes, bytearray)):
+                    file_name = file_name.decode('utf-8', errors='ignore')
+                else:
+                    file_name = str(file_name)
+            except Exception:
+                file_name = str(file_name)
+        try:
+            file_name = os.path.basename(file_name) if file_name else file_name
+        except Exception:
+            pass
+        if image_data is not None and not isinstance(image_data, str):
+            try:
+                if isinstance(image_data, memoryview):
+                    image_data = image_data.tobytes().decode('utf-8', errors='ignore')
+                elif isinstance(image_data, (bytes, bytearray)):
+                    image_data = image_data.decode('utf-8', errors='ignore')
+                else:
+                    image_data = str(image_data)
+            except Exception:
+                image_data = str(image_data)
         # Compute the photo_src used in the template.  Prefer image_data
         # because it avoids a filesystem lookup.  Determine MIME type
         # based on filename extension when available.  Default to
@@ -8991,13 +9131,42 @@ def view_room_public(room_id: int):
                 img_data = r[1]
             except Exception:
                 img_data = None
+        # Normalize the filename and image_data before constructing the src.
+        # Some database adapters return TEXT columns as memoryview or bytes objects.  To
+        # ensure compatibility, convert these types to plain strings and strip any
+        # directory components from filenames.  This avoids duplicated path
+        # segments (e.g. "rooms/rooms/example.jpg") and ensures base64 data is a string.
+        if f_name is not None and not isinstance(f_name, str):
+            try:
+                if isinstance(f_name, memoryview):
+                    f_name = f_name.tobytes().decode('utf-8', errors='ignore')
+                elif isinstance(f_name, (bytes, bytearray)):
+                    f_name = f_name.decode('utf-8', errors='ignore')
+                else:
+                    f_name = str(f_name)
+            except Exception:
+                f_name = str(f_name)
+        try:
+            f_name = os.path.basename(f_name) if f_name else f_name
+        except Exception:
+            pass
+        if img_data is not None and not isinstance(img_data, str):
+            try:
+                if isinstance(img_data, memoryview):
+                    img_data = img_data.tobytes().decode('utf-8', errors='ignore')
+                elif isinstance(img_data, (bytes, bytearray)):
+                    img_data = img_data.decode('utf-8', errors='ignore')
+                else:
+                    img_data = str(img_data)
+            except Exception:
+                img_data = str(img_data)
         # Build the photo source string.  Prefer base64-encoded data.
         src = None
         if img_data:
             mime = 'image/jpeg'
             try:
-                fn = f_name or ''
-                ext = fn.rsplit('.', 1)[-1].lower()
+                fn_temp = f_name or ''
+                ext = fn_temp.rsplit('.', 1)[-1].lower()
                 if ext == 'png':
                     mime = 'image/png'
                 elif ext == 'gif':
