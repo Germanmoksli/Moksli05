@@ -1,59 +1,1488 @@
-{% extends 'base.html' %}
-
-{% block title %}{{ room['room_number'] or 'Объявление' }}{% endblock %}
-
+{% extends "base.html" %}
+{% block title %}{{ room['room_number'] }}{% endblock %}
 {% block content %}
+{# удаляем тестовый комментарий, добавленный ранее #}
 <div class="container py-4">
-  <a href="{{ url_for('public_listings') }}" class="btn btn-link mb-3">&larr; Назад к каталогу</a>
-  <h2 class="mb-3">{{ room['room_number'] or 'Объявление' }}</h2>
+  <!-- Заголовок и кнопки действий будут размещаться внутри галереи -->
+  <div class="row justify-content-center">
+    <!-- Левая колонка: галерея и дополнительные сведения -->
+    <div class="col-lg-10">
+      <div class="row">
+        <div class="col-12 mb-3 mx-auto" style="max-width: 1200px;">
+          <!-- Заголовок квартиры и кнопки действий, выравнены по краям галереи -->
+          <!-- Центрируем название объявления и увеличиваем отступ снизу для создания пространства между
+               заголовком и галереей -->
+          <!-- Центрируем название объявления и увеличиваем отступ снизу, чтобы создать больше пространства
+               между заголовком и галереей -->
+          {#
+            Верхний блок с кнопкой «Назад в каталог» и кнопками «Избранное/Поделиться»
+            отображается только в полноценном просмотре.  В режиме предпросмотра
+            (is_preview == True) этот блок скрывается полностью, чтобы не
+            отвлекать владельца от содержания объявления.  Вместо него
+            выводится только название объекта, выровненное по центру.
+          #}
+          {% if not is_preview %}
+          <div class="position-relative text-center mb-5">
+            <!-- Кнопка назад в каталог размещается в одной строке с названием объявления. Она
+                 представлена как иконка синей стрелки на белом фоне. Размер увеличен в два раза. -->
+            <a href="{{ url_for('public_listings') }}"
+               class="back-to-catalog-btn position-absolute start-0 top-50 translate-middle-y"
+               title="Назад в каталог">
+              <i class="bi bi-arrow-left"></i>
+            </a>
+            <h1 class="fw-bold fs-2 mb-0">{{ room['room_number'] }}</h1>
+            <!-- Кнопки «Избранное» и «Поделиться» располагаются на одной строке с заголовком объявления. -->
+            <div class="position-absolute end-0 top-50 translate-middle-y d-flex gap-3">
+              <a href="{{ url_for('toggle_favorite', room_id=room['id']) }}"
+                 class="btn btn-link p-0"
+                 title="Избранное">
+                <i class="bi bi-heart{% if is_favorite %}-fill{% endif %} fs-4{% if is_favorite %} text-danger{% else %} text-primary{% endif %}"></i>
+              </a>
+              <button type="button"
+                      class="btn btn-link p-0"
+                      id="shareButton"
+                      title="Поделиться">
+                <i class="bi bi-share fs-4 text-primary"></i>
+              </button>
+            </div>
+          </div>
+          {% else %}
+          <!-- В режиме предпросмотра не показываем панель навигации; выводим
+               только название объекта по центру с небольшим отступом снизу. -->
+          <h1 class="fw-bold fs-2 mb-5 text-center">{{ room['room_number'] }}</h1>
+          {% endif %}
+          {% if photos and photos|length > 0 %}
+          <!-- Галерея: кнопки «Избранное» и «Поделиться» теперь располагаются на той же строке, что и заголовок -->
+          <!-- Галерея: новая сетка из пяти фотографий.  Первая фотография занимает левую половину галереи,
+               а четыре другие отображаются в виде двух столбцов по две фотографии справа.  В правом
+               верхнем углу размещена кнопка увеличения. -->
+          <!-- Контейнер галереи с фиксированным нижним отступом (класс mb-5)
+               обеспечивает пространство между галереей и следующим блоком.
+               Не задаём дополнительный margin-bottom через стиль, чтобы
+               избежать слишком большого расстояния и сохранить корректное
+               отображение миниатюр. -->
+          <div class="mb-3">
+            <div id="galleryGrid" class="position-relative gallery-grid">
+              <!-- Кнопки "Избранное" и "Поделиться" перенесены в правый верхний угол галереи.
+                   Размещаем их абсолютным позиционированием, чтобы они всегда находились
+                   над фотографиями и выравнивались по правому краю. -->
+              <!-- Кнопки «Избранное» и «Поделиться» перенесены над галереей -->
+              <!-- Большая фотография слева -->
+              <img id="imgBig" class="gallery-img big" src="{{ photos[0] if photos else '' }}" data-index="0" onclick="openGalleryModal(this.dataset.index)">
+              <!-- Четыре маленьких фотографии справа.  Изначально источники задаются в скрипте -->
+              <img id="imgSmall1" class="gallery-img small1" src="" data-index="" onclick="openGalleryModal(this.dataset.index)">
+              <img id="imgSmall2" class="gallery-img small2" src="" data-index="" onclick="openGalleryModal(this.dataset.index)">
+              <img id="imgSmall3" class="gallery-img small3" src="" data-index="" onclick="openGalleryModal(this.dataset.index)">
+              <img id="imgSmall4" class="gallery-img small4" src="" data-index="" onclick="openGalleryModal(this.dataset.index)">
+              <!-- Кнопка для открытия модальной галереи: отображаем иконку в виде четырёх
+                   квадратиков и подпись «Показать все фотографии».  Кнопка больше не круглая,
+                   чтобы вместить текст. -->
+              <!-- Кнопка «Показать все фотографии» перенесена в левый верхний угол и
+                   уменьшена в размерах.  Вместо правой привязки (end‑0) используем
+                   start‑0 для позиционирования слева.  Отступы, размер шрифта и
+                   паддинги уменьшены, чтобы кнопка выглядела компактнее. -->
+              <button type="button"
+                      class="btn btn-light position-absolute top-0 start-0 d-flex align-items-center"
+                      style="opacity: 0.7; margin: 0.5rem; padding: 0.25rem 0.5rem; border-radius: 0.5rem; font-size: 0.85rem;"
+                      onclick="openGalleryModal(currentGalleryIndex)">
+                <i class="bi bi-grid-3x3-gap-fill me-2" style="font-size: 1rem;"></i>
+                <span>Показать все фотографии</span>
+              </button>
+              <!-- Удалены стрелки для ручного переключения фотографий -->
+            </div>
+          </div>
+          {% endif %}
 
-  {% if photos and photos|length > 0 %}
-  <div class="row">
-    <div class="col-md-8">
-      <img id="main-image" src="{{ photos[0] }}" alt="Фото" class="img-fluid mb-3" style="max-height: 400px; object-fit: cover;">
-    </div>
-    <div class="col-md-4">
-      <div class="row g-2">
-        {% for photo in photos[1:5] %}
-        <div class="col-3 col-md-6">
-          <img src="{{ photo }}" data-index="{{ loop.index }}" class="img-fluid thumbnail-image" style="cursor: pointer;">
+          {# Информационный блок со статистикой: отзывы, рейтинг, бронирования.
+             Размещаем его под галереей и выравниваем по правому краю, чтобы совпадать
+             с правым краем галереи. #}
+          {% set reviews_count = room.get('review_count', 0) %}
+          {% set reviews_mod10 = reviews_count % 10 %}
+          {% set reviews_mod100 = reviews_count % 100 %}
+          {% if 11 <= reviews_mod100 <= 14 %}
+            {% set reviews_label = 'отзывов' %}
+          {% elif reviews_mod10 == 1 %}
+            {% set reviews_label = 'отзыв' %}
+          {% elif reviews_mod10 in [2, 3, 4] %}
+            {% set reviews_label = 'отзыва' %}
+          {% else %}
+            {% set reviews_label = 'отзывов' %}
+          {% endif %}
+          {% set rv_tmp = room.get('rating') %}
+          {% if rv_tmp %}
+            {% set rating_value = '%.2f' % rv_tmp %}
+          {% else %}
+            {% set rating_value = '5.00' %}
+          {% endif %}
+          {% set bc = booking_count or 0 %}
+          {% set bc_mod10 = bc % 10 %}
+          {% set bc_mod100 = bc % 100 %}
+          {% if 11 <= bc_mod100 <= 14 %}
+            {% set booking_label = 'бронирований' %}
+          {% elif bc_mod10 == 1 %}
+            {% set booking_label = 'бронирование' %}
+          {% elif bc_mod10 in [2, 3, 4] %}
+            {% set booking_label = 'бронирования' %}
+          {% else %}
+            {% set booking_label = 'бронирований' %}
+          {% endif %}
+          <div class="d-flex justify-content-end align-items-center flex-wrap gap-4 mb-2">
+            <div class="info-stat text-end">
+              {{ reviews_count }} {{ reviews_label }}
+            </div>
+            <div class="info-stat text-end d-flex align-items-center">
+              <i class="bi bi-star-fill text-warning me-1"></i>
+              {{ rating_value }}
+            </div>
+            <div class="info-stat text-end">
+              {{ bc }} {{ booking_label }}
+            </div>
+          </div>
+
+          <!-- Блок выбора дат и описание владельца. Календарь занимает левую часть, а текстовое
+               описание от владельца располагается справа. -->
+          <!-- Добавляем класс gx-0, чтобы устранить горизонтальные отступы между колонками и
+               тем самым сильнее приблизить описание к календарю -->
+          <!-- Добавляем отступ сверху, чтобы создать пространство между галереей и календарем/инфо-блоками -->
+          <!-- Увеличиваем отступ сверху, чтобы создать пространство между галереей и календарём/инфо-блоками -->
+          <div class="row mb-3 mt-3 gx-0">
+            <!-- Календарь бронирования -->
+            <div class="col-md-6 mb-3 align-self-start" id="calendarColumn">
+              <div class="card shadow-sm" id="calendar-card">
+                <div class="card-body">
+                  <!-- Контейнер для генерации календаря -->
+                  <div id="booking-calendar"></div>
+                  <div class="mt-3">
+                    <!-- Цена: по умолчанию за ночь; будет обновляться скриптом -->
+                    <h4 class="fw-bold text-dark mb-2 text-end" id="priceDisplay">{{ room['price_per_night'] }} ₸/сутки</h4>
+                    <form method="post" action="#">
+                      <!-- скрытые поля для передачи выбранных дат -->
+                      <input type="hidden" id="checkin_date" name="checkin_date">
+                      <input type="hidden" id="checkout_date" name="checkout_date">
+                      <!-- Добавляем класс mt-3 для отступа сверху, равного
+                           отступу между календарём и ценой -->
+                      <button type="submit" class="btn btn-outline-primary w-100 mt-3">Забронировать</button>
+                    </form>
+                    {% if room['owner_messenger'] %}
+                    <a href="{{ room['owner_messenger'] }}" class="btn btn-outline-secondary w-100 mt-2">Написать владельцу</a>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Блок с описанием квартиры от владельца.  Заголовок удалён по просьбе пользователя,
+                 оставляем только текст описания.  Отступы между колонками уменьшены классом gx-1,
+                 поэтому отдельный отступ слева для текста не требуется. -->
+            <!-- Колонка с описанием.  Левый отступ внутри колонки убираем, чтобы описание можно было
+                 сдвинуть ближе к календарю посредством отрицательного отступа только для текста. -->
+            <div class="col-md-6 mb-3">
+              {# Блок статистики и кнопки "Избранное/Поделиться" удалён из колонки описания.
+                 Он перемещён выше, чтобы выравниваться по правому краю галереи. #}
+              {% if room['description'] %}
+              <!-- Контейнер для описания. Используем white-space: pre-wrap, чтобы сохранять
+                   все отступы и переносы строк, как они были введены пользователем.  Теперь
+                   описание отображается полностью без скрытия текста и без кнопки
+                   разворачивания. -->
+              <div id="descriptionContainer" class="mt-2 mb-0"
+                   style="white-space: pre-wrap;">
+                {{ room['description']|trim }}
+              </div>
+
+              {# Отображаем удобства под описанием объявления — перемещён ниже блока описания для
+                 корректного отображения даже если описание отсутствует. #}
+              {% endif %}
+              {# Определяем список выбранных удобств и выводим их независимо от наличия описания. #}
+              {% set raw_amenities = room.get('amenities') %}
+              {# Определяем строковое представление удобств. Если значение уже строка, используем его.
+                 Если это список (например, возвращён из PostgreSQL как массив), объединяем элементы
+                 через запятую. В противном случае получаем пустую строку. #}
+              {% if raw_amenities %}
+                {% if raw_amenities is string %}
+                  {% set amenities_string = raw_amenities %}
+                {% elif raw_amenities is sequence %}
+                  {% set amenities_string = raw_amenities|join(',') %}
+                {% else %}
+                  {% set amenities_string = '' %}
+                {% endif %}
+              {% else %}
+                {% set amenities_string = '' %}
+              {% endif %}
+              {#
+                Разбираем строку удобств в список.  Удаляем пробелы и
+                символы новой строки из каждого значения и отбрасываем
+                пустые элементы.  Такой подход надёжнее, чем простое
+                удаление пробелов перед разделением, поскольку данные
+                могут содержать непредвиденные пробелы, табуляции или
+                перевод строки (например, если PostgreSQL вернул
+                значение как ``memoryview`` или со вставками).
+              #}
+              {% if amenities_string %}
+                {% set _temp_list = amenities_string.split(',') %}
+                {% set selected_amenities = [] %}
+                {% for item in _temp_list %}
+                  {% set itm = item.strip() %}
+                  {% if itm %}
+                    {% set selected_amenities = selected_amenities + [itm] %}
+                  {% endif %}
+                {% endfor %}
+              {% else %}
+                {% set selected_amenities = [] %}
+              {% endif %}
+              {% set amenities_categories = [
+                {
+                  'name': 'Базовые удобства',
+                  'options': [
+                    {'value': 'wifi_fast', 'label': 'Wi‑Fi (быстрый, стабильный)', 'icon': 'bi-wifi'},
+                    {'value': 'smart_tv', 'label': 'Телевизор / Smart TV', 'icon': 'bi-tv'},
+                    {'value': 'climate_control', 'label': 'Кондиционер или отопление', 'icon': 'bi-thermometer-half'},
+                    {'value': 'hot_water_247', 'label': 'Горячая вода 24/7', 'icon': 'bi-droplet-half'},
+                    {'value': 'kitchen_area', 'label': 'Кухня или кухонная зона', 'icon': 'bi-egg-fried'},
+                    {'value': 'fridge', 'label': 'Холодильник', 'icon': 'bi-snow'},
+                    {'value': 'stove', 'label': 'Плита (газ/электро)', 'icon': 'bi-egg-fried'},
+                    {'value': 'microwave', 'label': 'Микроволновка', 'icon': 'bi-microwave'},
+                    {'value': 'washing_machine', 'label': 'Стиральная машина', 'icon': 'bi-washer'},
+                    {'value': 'iron_board', 'label': 'Утюг + гладильная доска', 'icon': 'bi-iron'},
+                    {'value': 'hairdryer', 'label': 'Фен', 'icon': 'bi-wind'},
+                    {'value': 'clean_bedding', 'label': 'Чистое постельное бельё', 'icon': 'bi-bed'},
+                    {'value': 'towel_set', 'label': 'Набор полотенец', 'icon': 'bi-emoji-smile'},
+                    {'value': 'dishes_cutlery', 'label': 'Посуда и столовые приборы', 'icon': 'bi-cup-straw'},
+                    {'value': 'hygiene_essentials', 'label': 'Гигиенические принадлежности (мыло, туалетная бумага)', 'icon': 'bi-droplet-fill'},
+                  ],
+                },
+                {
+                  'name': 'Домашняя техника',
+                  'options': [
+                    {'value': 'oven', 'label': 'Духовой шкаф', 'icon': 'bi-fire'},
+                    {'value': 'dishwasher', 'label': 'Посудомоечная машина', 'icon': 'bi-droplet-half'},
+                    {'value': 'coffee_machine', 'label': 'Кофемашина / турка / чайник', 'icon': 'bi-cup-hot'},
+                    {'value': 'big_wardrobe', 'label': 'Большой шкаф или гардероб', 'icon': 'bi-door-closed'},
+                    {'value': 'balcony', 'label': 'Балкон', 'icon': 'bi-house-door'},
+                    {'value': 'workspace', 'label': 'Рабочее место / письменный стол', 'icon': 'bi-laptop'},
+                    {'value': 'soundproof_windows', 'label': 'Шумозащитные окна', 'icon': 'bi-window'},
+                    {'value': 'blackout_curtains', 'label': 'Блэкаут-шторы', 'icon': 'bi-moon'},
+                    {'value': 'extra_pillows_blankets', 'label': 'Дополнительные подушки и одеяла', 'icon': 'bi-cloud-plus'},
+                    {'value': 'free_parking', 'label': 'Бесплатная парковка', 'icon': 'bi-car-front'},
+                    {'value': 'elevator', 'label': 'Лифт', 'icon': 'bi-arrow-up-square'},
+                    {'value': 'luggage_storage', 'label': 'Хранение багажа (если есть такая возможность)', 'icon': 'bi-suitcase'},
+                  ],
+                },
+                {
+                  'name': 'Стильный интерьер',
+                  'options': [
+                    {'value': 'decor', 'label': 'Картины, декор, растения', 'icon': 'bi-flower1'},
+                    {'value': 'sofa_chairs', 'label': 'Диван/кресла', 'icon': 'bi-sofa'},
+                    {'value': 'plaids', 'label': 'Пледы', 'icon': 'bi-star'},
+                    {'value': 'warm_light', 'label': 'Тёплый свет', 'icon': 'bi-lightbulb'},
+                    {'value': 'carpet', 'label': 'Ковёр', 'icon': 'bi-square'},
+                    {'value': 'aroma_diffuser', 'label': 'Аромадиффузор (безопасный)', 'icon': 'bi-wind'},
+                    {'value': 'large_mirror', 'label': 'Большое зеркало', 'icon': 'bi-arrows-fullscreen'},
+                    {'value': 'intercom', 'label': 'Домофон', 'icon': 'bi-telephone'},
+                    {'value': 'lockable_door', 'label': 'Закрывающаяся дверь (надёжный замок)', 'icon': 'bi-lock'},
+                    {'value': 'security_cameras_outdoor', 'label': 'Видеонаблюдение снаружи (не внутри!)', 'icon': 'bi-camera-video'},
+                    {'value': 'fire_detector', 'label': 'Пожарный датчик', 'icon': 'bi-bell'},
+                    {'value': 'carbon_monoxide_detector', 'label': 'Датчик угарного газа', 'icon': 'bi-speedometer'},
+                    {'value': 'fire_extinguisher', 'label': 'Огнетушитель', 'icon': 'bi-fire'},
+                    {'value': 'first_aid_kit', 'label': 'Аптечка', 'icon': 'bi-heart-pulse'},
+                  ],
+                },
+                {
+                  'name': 'Электроника и климат',
+                  'options': [
+                    {'value': 'bedside_outlets', 'label': 'Зарядки: USB, USB‑C, розетки около кровати', 'icon': 'bi-usb'},
+                    {'value': 'wireless_charging', 'label': 'Беспроводная зарядка', 'icon': 'bi-broadcast-pin'},
+                    {'value': 'smart_speaker', 'label': 'Умная колонка (опционально)', 'icon': 'bi-speaker'},
+                    {'value': 'heater', 'label': 'Обогреватель', 'icon': 'bi-fire'},
+                    {'value': 'humidifier', 'label': 'Увлажнитель воздуха', 'icon': 'bi-droplet'},
+                    {'value': 'fan', 'label': 'Вентилятор', 'icon': 'bi-fan'},
+                  ],
+                },
+                {
+                  'name': 'Кухонные принадлежности',
+                  'options': [
+                    {'value': 'full_dish_set', 'label': 'Полный набор посуды (тарелки, чашки, ножи, бокалы)', 'icon': 'bi-cup-straw'},
+                    {'value': 'pans_pots', 'label': 'Сковородки / кастрюли', 'icon': 'bi-egg-fried'},
+                    {'value': 'multicooker', 'label': 'Мультиварка / аэрогриль', 'icon': 'bi-lightning-charge'},
+                    {'value': 'toaster', 'label': 'Тостер', 'icon': 'bi-grid'},
+                    {'value': 'cutting_boards', 'label': 'Разделочные доски', 'icon': 'bi-layout-text-sidebar'},
+                    {'value': 'spices', 'label': 'Приправы: соль, перец, масло', 'icon': 'bi-basket'},
+                    {'value': 'sponges_detergent', 'label': 'Губки, моющее средство', 'icon': 'bi-droplet-fill'},
+                  ],
+                },
+                {
+                  'name': 'Средства для душа и хранения',
+                  'options': [
+                    {'value': 'shower_essentials', 'label': 'Средства для душа (шампунь, гель)', 'icon': 'bi-droplet-fill'},
+                    {'value': 'hairdryer2', 'label': 'Фен', 'icon': 'bi-wind'},
+                    {'value': 'storage_space', 'label': 'Место для хранения вещей', 'icon': 'bi-box'},
+                    {'value': 'washer_dryer', 'label': 'Стиралка/сушилка', 'icon': 'bi-washer'},
+                    {'value': 'water_heater', 'label': 'Нагреватель воды (если нужно)', 'icon': 'bi-droplet-half'},
+                  ],
+                },
+                {
+                  'name': 'Чистота и уборка',
+                  'options': [
+                    {'value': 'vacuum_cleaner', 'label': 'Пылесос', 'icon': 'bi-robot'},
+                    {'value': 'mop_bucket', 'label': 'Швабра и ведро', 'icon': 'bi-bucket'},
+                    {'value': 'clothes_dryer', 'label': 'Сушилка для белья', 'icon': 'bi-wind'},
+                    {'value': 'cleaning_supplies', 'label': 'Средства для уборки', 'icon': 'bi-broom'},
+                    {'value': 'extra_supplies', 'label': 'Запас: мусорные пакеты, туалетная бумага', 'icon': 'bi-trash'},
+                  ],
+                },
+                {
+                  'name': 'Детские удобства',
+                  'options': [
+                    {'value': 'baby_bed', 'label': 'Детская кроватка', 'icon': 'bi-buggy'},
+                    {'value': 'high_chair', 'label': 'Детский стул', 'icon': 'bi-chair'},
+                    {'value': 'corner_protectors', 'label': 'Защита на углы', 'icon': 'bi-shield-check'},
+                    {'value': 'toys', 'label': 'Игрушки', 'icon': 'bi-emoji-smile'},
+                  ],
+                },
+                {
+                  'name': 'Отдых на свежем воздухе',
+                  'options': [
+                    {'value': 'bbq_area', 'label': 'Барбекю зона', 'icon': 'bi-fire'},
+                    {'value': 'garden_furniture', 'label': 'Садовая мебель', 'icon': 'bi-tree'},
+                    {'value': 'terrace', 'label': 'Терраса', 'icon': 'bi-house-door'},
+                    {'value': 'outdoor_shower', 'label': 'Душ на улице', 'icon': 'bi-droplet'},
+                    {'value': 'pool', 'label': 'Бассейн', 'icon': 'bi-droplet-fill'},
+                    {'value': 'sunbeds', 'label': 'Шезлонги', 'icon': 'bi-sun'},
+                    {'value': 'fire_pit', 'label': 'Костровая яма', 'icon': 'bi-fire'},
+                  ],
+                },
+              ] %}
+              {# Блок удобств: выводит выбранные удобства из шага 3 под описанием.
+                 Используем данные room['filtered_amenity_categories'], подготовленные
+                 на сервере. Блок выравниваем по левому краю описания, используя
+                 те же классы ms-md-n6 и ps-md-4. Удобства отображаются плитками
+                 с иконками. #}
+              {# Выводим удобства. Сначала отображаем до шести основных удобств.  Кнопка
+                 «Показать все удобства» открывает модальное окно с полным списком,
+                 если дополнительных удобств больше, чем шесть. #}
+              {% if room.get('top_amenities') and room['top_amenities']|length > 0 %}
+              <!-- Удаляем отрицательные и внутренние отступы (ms-md-n6, ps-md-4), чтобы выровнять удобства
+                   по левому краю описания. -->
+              <div class="mt-4">
+                <h5 class="fw-bold mb-3">Удобства</h5>
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                  {% for amenity in room['top_amenities'] %}
+                    <div class="amenity-tile d-flex align-items-center">
+                      <i class="bi {{ amenity.icon }} me-2 text-primary"></i>
+                      <span>{{ amenity.label }}</span>
+                    </div>
+                  {% endfor %}
+                </div>
+                {% if room.get('more_amenities') %}
+                <!-- Кнопка «Показать все удобства»: белый фон без подчёркивания.  Используем
+                     собственный класс show-amenities-btn для визуального согласования
+                     с остальными элементами интерфейса и предотвращения выхода текста
+                     за пределы рамки. -->
+                <button type="button" class="show-amenities-btn" data-bs-toggle="modal" data-bs-target="#amenitiesModal">Показать все удобства</button>
+                {% endif %}
+              </div>
+              {% endif %}
+
+              {# Модальное окно со всеми удобствами, сгруппированными по категориям. #}
+              {% if room.get('filtered_amenity_categories') and room['filtered_amenity_categories']|length > 0 %}
+              <div class="modal fade" id="amenitiesModal" tabindex="-1" aria-labelledby="amenitiesModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-scrollable">
+                  <div class="modal-content">
+                    <!-- Убираем нижнюю кнопку закрытия и делаем скруглённые углы -->
+                    <div class="modal-header">
+                      <h5 class="modal-title fw-bold" id="amenitiesModalLabel">Все удобства</h5>
+                      <!-- Синий крестик для закрытия модального окна -->
+                      <button type="button" class="btn p-0 text-primary" data-bs-dismiss="modal" aria-label="Close">
+                        <i class="bi bi-x-lg" style="font-size: 1.5rem;"></i>
+                      </button>
+                    </div>
+                    <div class="modal-body">
+                      <div class="row">
+                        {% for category in room['filtered_amenity_categories'] %}
+                        <div class="col-12 col-md-6 amenity-category-block">
+                          <h6 class="fw-bold fs-5">{{ category.name }}</h6>
+                          <div class="row row-cols-2">
+                            {% for option in category.options %}
+                            <div class="col d-flex align-items-center mb-2">
+                              <i class="bi {{ option.icon }} me-2 text-primary"></i>
+                              <span>{{ option.label }}</span>
+                            </div>
+                            {% endfor %}
+                          </div>
+                        </div>
+                        {% endfor %}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {% endif %}
+
+            <!-- Информация о доме, параметры размещения и правила проживания. Переносим эти блоки
+                 в правую часть страницы под удобствами и выравниваем по левому краю описания. -->
+            <div class="card shadow-sm mb-3 mt-4">
+              <div class="card-body">
+                <h5 class="fw-bold mb-3">Информация о доме</h5>
+                {% if room.get('floor') or room.get('floors_total') %}
+                <p class="mb-1"><strong>Этаж:</strong> {{ room.get('floor') }}{% if room.get('floors_total') %}/{{ room['floors_total'] }}{% endif %}</p>{% endif %}
+                {% if room.get('area_total') %}<p class="mb-1"><strong>Общая площадь:</strong> {{ room['area_total'] }} м²</p>{% endif %}
+                {% if room.get('living_area') %}<p class="mb-1"><strong>Жилая площадь:</strong> {{ room['living_area'] }} м²</p>{% endif %}
+                {% if room.get('area_kitchen') %}<p class="mb-1"><strong>Кухня:</strong> {{ room['area_kitchen'] }} м²</p>{% endif %}
+                <p class="mb-1"><strong>Лифт:</strong> {% if room.get('elevator') %}Да{% else %}Нет{% endif %}</p>
+                {% if room.get('condition') %}<p class="mb-1"><strong>Состояние:</strong> {{ room['condition'] }}</p>{% endif %}
+                <p class="mb-0"><strong>Адрес:</strong> {{ room['country'] or '' }}{% if room['city'] %}, {{ room['city'] }}{% endif %}{% if room['street'] %}, {{ room['street'] }}{% endif %}{% if room['house_number'] %}, {{ room['house_number'] }}{% endif %}</p>
+              </div>
+            </div>
+            <div class="card shadow-sm mb-3">
+              <div class="card-body">
+                <h5 class="fw-bold mb-3">Параметры размещения</h5>
+                {% if room.get('num_rooms') %}<p class="mb-1"><strong>Комнат:</strong> {{ room['num_rooms'] }}</p>{% endif %}
+                {% if room.get('max_guests') %}<p class="mb-1"><strong>Гостей:</strong> {{ room['max_guests'] }}</p>{% endif %}
+                {% if room.get('beds_count') %}<p class="mb-1"><strong>Кроватей:</strong> {{ room['beds_count'] }}</p>{% endif %}
+                {% if room.get('sofas_count') %}<p class="mb-1"><strong>Диванов:</strong> {{ room['sofas_count'] }}</p>{% endif %}
+                {% if room.get('weekend_markup') %}<p class="mb-0"><strong>Наценка за выходные:</strong> {{ room['weekend_markup'] }}%</p>{% endif %}
+              </div>
+            </div>
+            <div class="card shadow-sm mb-3">
+              <div class="card-body">
+                <h5 class="fw-bold mb-3">Правила проживания</h5>
+                {% if room.get('check_in_time') %}<p class="mb-1"><strong>Заезд:</strong> {{ room['check_in_time'] }}</p>{% endif %}
+                {% if room.get('check_out_time') %}<p class="mb-1"><strong>Выезд:</strong> {{ room['check_out_time'] }}</p>{% endif %}
+                <p class="mb-1"><strong>Курение:</strong> {% if room.get('smoking_allowed') %}Разрешено{% else %}Запрещено{% endif %}</p>
+                <p class="mb-1"><strong>Домашние животные:</strong> {% if room.get('pets_allowed') %}Можно{% else %}Нельзя{% endif %}</p>
+                {% if room.get('discounts') %}
+                {% set discount_list = room['discounts'] if room['discounts'] is sequence else [] %}
+                {% set discount_texts = [] %}
+                {% for d in discount_list %}
+                  {% if d == 20 %}
+                    {% set discount_texts = discount_texts + ['20 % — первые 3 бронирования'] %}
+                  {% elif d == 5 %}
+                    {% set discount_texts = discount_texts + ['5 % — от 7 дней'] %}
+                  {% elif d == 10 %}
+                    {% set discount_texts = discount_texts + ['10 % — от 30 дней'] %}
+                  {% endif %}
+                {% endfor %}
+                {% if discount_texts %}<p class="mb-0"><strong>Скидки:</strong> {{ discount_texts|join(', ') }}</p>{% endif %}
+                {% endif %}
+              </div>
+            </div>
+            </div>
+          </div>
+          {% if room['owner_name'] %}
+          <div class="card shadow-sm mb-3" style="max-width: 450px;">
+            <div class="card-body d-flex align-items-start">
+              <div class="me-3">
+                <i class="bi bi-person-circle" style="font-size: 2.5rem;"></i>
+              </div>
+              <div>
+                <h5 class="fw-bold mb-1">{{ room['owner_name'] }}</h5>
+                {% if room.get('owner_experience') %}<p class="mb-1">Стаж: {{ room['owner_experience'] }} лет</p>{% endif %}
+                {% if room.get('owner_comment') %}<p class="mb-0">{{ room['owner_comment'] }}</p>{% endif %}
+              </div>
+            </div>
+          </div>
+          {% endif %}
         </div>
+
+        
+
+        {#
+        We removed the separate right-hand column that contained the pricing/booking card.
+        Instead, the pricing and booking information will be displayed below the photo
+        gallery within the main (left) column.  The markup previously contained in
+        the removed column is inserted after the gallery below.
+        #}
+      </div>
+      {# Блок отзывов и рейтинга под календарём удалён по просьбе пользователя #}
+
+      {# Блок удобств выводится под описанием объявления #}
+
+
+      <!-- Дополнительные сведения: карта. Блок информации о доме перемещён в правую колонку. -->
+      {# Отображаем карту с адресом квартиры.  Используем embed API Google Maps, который не требует ключа. #}
+      {% if encoded_address %}
+      <div class="card shadow-sm mb-3">
+        <div class="card-body">
+          <h5 class="fw-bold mb-3">Карта</h5>
+          <div class="ratio ratio-16x9">
+            <iframe src="https://maps.google.com/maps?q={{ encoded_address }}&amp;output=embed" width="100%" height="100%" style="border:0;" loading="lazy" allowfullscreen></iframe>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+      {# Блок последних отзывов удалён по просьбе пользователя #}
+      {# Описание от владельца перенесено в блок рядом с календарём. #}
+    </div>
+    {# Правая колонка удалена. Информация о доме, карта и отзывы будут показаны под галереей в основной колонке. #}
+  </div>
+  {# Кнопка возврата перенесена в верхнюю часть страницы в виде иконки стрелки. #}
+
+  <!-- Модальная галерея -->
+  <div id="galleryModal" class="d-none" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1050;">
+    <div class="container h-100 d-flex flex-column justify-content-center align-items-center">
+      <div class="position-relative w-100" style="max-width: 800px;">
+        <img id="modalMainImage" src="" class="img-fluid rounded"
+             style="width: 100%; max-height: 80vh; object-fit: contain;" alt="Фото">
+        <button type="button"
+                class="btn btn-light position-absolute top-50 p-0 d-flex align-items-center justify-content-center rounded-circle"
+                style="opacity: 0.7; width: 56px; height: 56px; left: 2rem; transform: translateY(-50%);"
+                onclick="stopAutoScroll(); prevPhoto(true)">
+          <i class="bi bi-chevron-left fs-3"></i>
+        </button>
+        <button type="button"
+                class="btn btn-light position-absolute top-50 p-0 d-flex align-items-center justify-content-center rounded-circle"
+                style="opacity: 0.7; width: 56px; height: 56px; right: 2rem; transform: translateY(-50%);"
+                onclick="stopAutoScroll(); nextPhoto(true)">
+          <i class="bi bi-chevron-right fs-3"></i>
+        </button>
+        <button type="button" class="btn btn-light position-absolute top-0 end-0 m-2" onclick="closeGalleryModal()">×</button>
+      </div>
+      <div id="modalThumbnails" class="d-flex flex-nowrap overflow-auto gap-2 mt-3 w-100 justify-content-center" style="max-width: 800px;">
+        {% for photo_src in photos %}
+        <img src="{{ photo_src }}" class="img-thumbnail" style="width: 100px; height: 75px; object-fit: cover; cursor: pointer; flex: 0 0 auto;" onclick="showPhoto({{ loop.index0 }}, true)">
         {% endfor %}
       </div>
     </div>
   </div>
-  {% endif %}
 
-  <div class="mt-4">
-    <p><strong>Описание:</strong> {{ room.get('description') or 'Описание отсутствует' }}</p>
-    <p><strong>Страна:</strong> {{ room.get('country') or 'Не указано' }}</p>
-    <p><strong>Город:</strong> {{ room.get('city') or 'Не указано' }}</p>
-    <p><strong>Количество комнат:</strong> {{ room.get('num_rooms') or 'Не указано' }}</p>
-    <p><strong>Максимум гостей:</strong> {{ room.get('max_guests') or 'Не указано' }}</p>
-    <p><strong>Цена за ночь:</strong>
-      {% if room.get('price_per_night_formatted') %}
-        {{ room.price_per_night_formatted }} ₸
-      {% elif room.get('price_per_night') %}
-        {{ room.price_per_night|int }} ₸
-      {% else %}
-        Не указана
-      {% endif %}
-    </p>
-    <!-- Additional details can be added here -->
-  </div>
-</div>
+  <script>
+    /*
+      Список занятых дат для данного объявления.  Сгенерирован на
+      сервере на основе существующих бронирований и передан в шаблон
+      как JavaScript‑массив.  Каждый элемент имеет формат YYYY‑MM‑DD.
+    */
+    const bookedDates = {{ booked_dates|tojson|safe }};
+    // Prepare photos array for JavaScript
+    var photos = [
+      {% for photo_src in photos %}
+        "{{ photo_src }}"{% if not loop.last %}, {% endif %}
+      {% endfor %}
+    ];
+    var currentPhotoIndex = 0;
+    // Индекс текущей фотографии для основной галереи (левый большой кадр)
+    var currentGalleryIndex = 0;
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-  const mainImage = document.getElementById('main-image');
-  const thumbnails = document.querySelectorAll('.thumbnail-image');
-  thumbnails.forEach(function(thumbnail) {
-    thumbnail.addEventListener('click', function() {
-      if (mainImage) {
-        mainImage.src = thumbnail.src;
+    // Порядок элементов галереи (большое фото и четыре миниатюры).  Мы будем
+    // вращать этот массив при переключении вперёд/назад, чтобы
+    // анимировать перемещение изображений.  Порядок совпадает с
+    // исходной разметкой: первый элемент — большая фотография, далее
+    // миниатюры 1–4.  Классы из galleryClassOrder определяют области
+    // сетки для каждого элемента.
+    var galleryElements = [];
+    var galleryClassOrder = ['big','small1','small2','small3','small4'];
+
+    /**
+     * Инициализирует массив galleryElements, заполняя его DOM‑элементами
+     * изображений галереи в исходном порядке. Вызывается после
+     * рендеринга галереи, когда элементы уже существуют на странице.
+     */
+    function setupGallery() {
+      galleryElements = [
+        document.getElementById('imgBig'),
+        document.getElementById('imgSmall1'),
+        document.getElementById('imgSmall2'),
+        document.getElementById('imgSmall3'),
+        document.getElementById('imgSmall4')
+      ];
+    }
+
+    /**
+     * Выполняет анимированное переключение галереи в указанном направлении.
+     * Использует технику FLIP (First‑Last Invert‑Play) для плавного
+     * перемещения и масштабирования элементов между областями сетки.
+     * @param {string} direction Направление: 'next' для вперёд,
+     *                           'prev' для назад.
+     */
+    function flipGallery(direction) {
+      if (!photos || photos.length === 0 || galleryElements.length === 0) return;
+      var total = photos.length;
+      // Индекс будущей главной фотографии
+      var newIndex = direction === 'next'
+        ? (currentGalleryIndex + 1) % total
+        : (currentGalleryIndex - 1 + total) % total;
+      // Список индексов фотографий после переключения
+      var newPhotoIndices = [];
+      for (var i = 0; i < galleryClassOrder.length; i++) {
+        newPhotoIndices.push((newIndex + i) % total);
+      }
+      // Сохраняем текущие позиции и размеры элементов в карту, чтобы
+      // сохранить соответствие между элементом и его исходным прямоугольником.
+      var oldRectsMap = new Map();
+      for (var i = 0; i < galleryElements.length; i++) {
+        var el = galleryElements[i];
+        oldRectsMap.set(el, el.getBoundingClientRect());
+      }
+      var containerEl = document.getElementById('galleryGrid');
+      // При переключении вперёд удаляем первый элемент (текущую большую фото) и переносим в конец
+      // При переключении назад наоборот, перемещаем последний в начало
+      var leavingEl = null;
+      if (direction === 'next') {
+        leavingEl = galleryElements[0];
+        var firstEl = galleryElements.shift();
+        galleryElements.push(firstEl);
+        if (containerEl && firstEl) {
+          containerEl.appendChild(firstEl);
+        }
+      } else {
+        leavingEl = galleryElements[galleryElements.length - 1];
+        var lastEl = galleryElements.pop();
+        galleryElements.unshift(lastEl);
+        if (containerEl && lastEl) {
+          containerEl.insertBefore(lastEl, containerEl.firstChild);
+        }
+      }
+      // Обновляем классы расположения на сетке
+      for (var i = 0; i < galleryElements.length; i++) {
+        var el = galleryElements[i];
+        for (var j = 0; j < galleryClassOrder.length; j++) {
+          el.classList.remove(galleryClassOrder[j]);
+        }
+        el.classList.add(galleryClassOrder[i]);
+      }
+      // Обновляем источники фотографий и data-index
+      for (var i = 0; i < galleryElements.length; i++) {
+        var el = galleryElements[i];
+        var photoIndex = newPhotoIndices[i];
+        el.dataset.index = photoIndex;
+        el.src = photos[photoIndex];
+      }
+      // Контейнер для расчёта высоты при уходе фото вверх
+      // Прежде чем вычислять новые прямоугольники для каждого элемента,
+      // принудительно вызываем reflow, чтобы браузер применил новую
+      // верстку после перестановки элементов и изменения классов.
+      // Чтение offsetHeight заставит браузер пересчитать макет.
+      if (containerEl) {
+        // присваиваем в временную переменную, чтобы предотвратить оптимизацию
+        var _unusedHeight = containerEl.offsetHeight;
+      }
+      var containerRect = containerEl ? containerEl.getBoundingClientRect() : null;
+      // Для каждого элемента задаём исходное состояние и анимацию
+      for (var i = 0; i < galleryElements.length; i++) {
+        var el = galleryElements[i];
+        // Получаем исходный прямоугольник для данного элемента
+        var oldRect = oldRectsMap.get(el);
+        // Получаем новый прямоугольник после смены расположения/размера
+        var newRect = el.getBoundingClientRect();
+        var dx = oldRect.left - newRect.left;
+        var dy = oldRect.top - newRect.top;
+        var scaleX = oldRect.width / newRect.width;
+        var scaleY = oldRect.height / newRect.height;
+        // Если это элемент, который покидает большую позицию, задаём ему
+        // смещение вверх за пределы контейнера. Это создаёт эффект
+        // «ухода вверх», при этом элемент затем плавно появляется на
+        // новой позиции (внизу справа) после завершения анимации.
+        if (el === leavingEl && containerRect) {
+          // Смещаем элемент на высоту контейнера + собственную высоту вверх
+          dy = (oldRect.top - newRect.top) - (containerRect.height);
+        }
+        // Устанавливаем начало трансформации в верхний левый угол
+        el.style.transformOrigin = 'top left';
+        // Начальное состояние: элемент находится в старой позиции и масштабе
+        el.style.transform = 'translate(' + dx + 'px, ' + dy + 'px) scale(' + scaleX + ', ' + scaleY + ')';
+        // Задаём плавный переход. Длительность равна продолжительности цикла,
+        // чтобы фотографии находились в движении практически всё время.
+        // Используем кривую ease‑in‑out для плавного разгона и замедления.
+        el.style.transition = 'transform 2s cubic-bezier(0.42, 0.0, 0.58, 1)';
+        (function(element) {
+          var onEnd = function() {
+            element.style.transition = '';
+            element.removeEventListener('transitionend', onEnd);
+          };
+          element.addEventListener('transitionend', onEnd);
+        })(el);
+      }
+      // Во втором и третьем кадрах удаляем transform, чтобы элементы плавно переместились.
+      // Используем двойной requestAnimationFrame, чтобы браузер успел применить
+      // начальные значения transform и transition перед их сбросом. Такой подход
+      // гарантирует, что анимация запускается на каждом цикле, даже когда
+      // страница не теряет фокус. Без двойного rAF браузер может проигнорировать
+      // изменение transform и переход, если layout ещё не завершён.
+      requestAnimationFrame(function() {
+        requestAnimationFrame(function() {
+          for (var i = 0; i < galleryElements.length; i++) {
+            galleryElements[i].style.transform = '';
+          }
+        });
+      });
+      // Обновляем текущий индекс главной фотографии
+      currentGalleryIndex = newIndex;
+    }
+
+    // Переменная для хранения интервала автоматической прокрутки.
+    // Мы используем setInterval, чтобы на протяжении всего времени пребывания
+    // пользователя на странице фотографии циклично сменялись с плавной анимацией.
+    var autoScrollInterval = null;
+
+    /**
+     * Запускает автоматическую прокрутку галереи. При каждом срабатывании
+     * таймера вызывается flipGallery('next'), что обеспечивает плавное
+     * перемещение: большая фотография уходит вверх, следующая миниатюра
+     * увеличивается и занимает её место, а остальные миниатюры сдвигаются.
+     * Интервал равен 4 секундам, что соответствует длительности анимации.
+     */
+    function startAutoScroll() {
+      // Запускаем автоматическую прокрутку галереи. Каждые 8 секунд
+      // вызываем flipGallery('next'), чтобы переходы происходили циклично.
+      if (autoScrollInterval) return;
+      autoScrollInterval = setInterval(function() {
+        flipGallery('next');
+      }, 8000);
+      // Запускаем первую итерацию сразу, чтобы анимация началась без задержки
+      flipGallery('next');
+    }
+
+    /**
+     * Останавливает автоматическую прокрутку галереи. Используется при
+     * открытии модального окна, чтобы изображения не менялись в фоне.
+     */
+    function stopAutoScroll() {
+      if (autoScrollInterval) {
+        clearInterval(autoScrollInterval);
+        autoScrollInterval = null;
+      }
+    }
+
+    /**
+     * Обновляет отображение галереи: выбирает главную (большую) фотографию
+     * и четыре следующих миниатюры в соответствии с текущим индексом.  Все
+     * изображения получают правильные атрибуты src и data-index, чтобы
+     * по клику можно было открыть модальную галерею на нужной фотографии.
+     */
+    function renderGallery() {
+      if (!photos || photos.length === 0) return;
+      var total = photos.length;
+      // главная фотография
+      var bigImg = document.getElementById('imgBig');
+      var bigIndex = currentGalleryIndex % total;
+      if (bigImg) {
+        bigImg.src = photos[bigIndex];
+        bigImg.dataset.index = bigIndex;
+      }
+      // четыре миниатюры
+      var offsets = [1, 2, 3, 4];
+      var ids = ['imgSmall1','imgSmall2','imgSmall3','imgSmall4'];
+      for (var i = 0; i < ids.length; i++) {
+        var img = document.getElementById(ids[i]);
+        if (img) {
+          var photoIndex = (currentGalleryIndex + offsets[i]) % total;
+          img.src = photos[photoIndex];
+          img.dataset.index = photoIndex;
+        }
+      }
+    }
+
+    /**
+     * Обновляет только миниатюры в галерее, не трогая главное изображение.
+     * Используется для синхронной смены маленьких фотографий во время
+     * анимации перемещения главной фотографии.
+     * @param {number} startIndex Индекс будущей главной фотографии.
+     */
+    function updateSmallImages(startIndex) {
+      if (!photos || photos.length === 0) return;
+      var total = photos.length;
+      var offsets = [1, 2, 3, 4];
+      var ids = ['imgSmall1','imgSmall2','imgSmall3','imgSmall4'];
+      for (var i = 0; i < ids.length; i++) {
+        var img = document.getElementById(ids[i]);
+        if (img) {
+          var photoIndex = (startIndex + offsets[i]) % total;
+          img.src = photos[photoIndex];
+          img.dataset.index = photoIndex;
+        }
+      }
+    }
+
+    /**
+     * Выполняет анимацию слайдера для большой фотографии.  Текущее
+     * изображение уходит за пределы видимой области, после чего
+     * загружается новое изображение и плавно появляется с противоположной
+     * стороны.  Используется для анимированного переключения между
+     * изображениями в пятифотографной галерее.
+     * @param {string} nextSrc Ссылка на изображение, которое нужно показать
+     * @param {string} direction Направление сдвига: 'left' для
+     *     переключения вперёд, 'right' для переключения назад.
+     */
+    function animateBigImage(nextSrc, direction) {
+      var img = document.getElementById('imgBig');
+      if (!img) return;
+      var duration = 400;
+      // начальная фаза: плавно уводим текущее изображение в сторону.
+      // Используем cubic-bezier для плавного начала и конца анимации
+      img.style.transition = 'transform ' + duration + 'ms cubic-bezier(0.42, 0, 0.58, 1)';
+      img.style.transform = direction === 'left' ? 'translateX(-100%)' : 'translateX(100%)';
+      setTimeout(function() {
+        // быстро переносим картинку в противоположный край и меняем src
+        img.style.transition = 'none';
+        img.style.transform = direction === 'left' ? 'translateX(100%)' : 'translateX(-100%)';
+        img.src = nextSrc;
+        // вызываем reflow
+        void img.offsetWidth;
+        // плавное возвращение к центру
+        img.style.transition = 'transform ' + duration + 'ms cubic-bezier(0.42, 0, 0.58, 1)';
+        img.style.transform = 'translateX(0)';
+      }, duration);
+    }
+
+    /**
+     * Переключает галерею на следующую фотографию.  Обновляет
+     * currentGalleryIndex, запускает анимацию для большой фотографии и
+     * затем перерисовывает миниатюры.  Используется как в автоматическом
+     * режиме, так и при ручном переключении.
+     */
+    function nextGallery() {
+      // Переключаем галерею с помощью FLIP‑анимации в направлении вперёд
+      flipGallery('next');
+    }
+
+    /**
+     * Переключает галерею на предыдущую фотографию.  Логика аналогична
+     * nextGallery(), но направление смещения обратное.
+     */
+    function prevGallery() {
+      // Переключаем галерею с помощью FLIP‑анимации в направлении назад
+      flipGallery('prev');
+    }
+    function showPhoto(index, inModal) {
+      currentPhotoIndex = index;
+      var modalMainImage = document.getElementById('modalMainImage');
+      var src = photos[index];
+      if (modalMainImage) {
+        modalMainImage.src = src;
+      }
+      // Scroll thumbnail into view
+      var thumbsContainer = document.querySelector('.d-flex.flex-nowrap.overflow-auto.gap-2');
+      if (thumbsContainer && thumbsContainer.children[index]) {
+        thumbsContainer.children[index].scrollIntoView({inline: 'center', behavior: 'smooth'});
+      }
+      var modalThumbs = document.getElementById('modalThumbnails');
+      if (modalThumbs && modalThumbs.children[index]) {
+        modalThumbs.children[index].scrollIntoView({inline: 'center', behavior: 'smooth'});
+      }
+    }
+    /**
+     * Выполняет анимацию слайдера для основной фотографии. Текущая картинка
+     * уходит за пределы видимой области, после чего загружается новое
+     * изображение и плавно появляется с противоположной стороны.
+     * @param {string} nextSrc Ссылка на изображение, которое нужно показать
+     * @param {string} direction Направление сдвига: 'left' для
+     *     переключения вперёд, 'right' для переключения назад.
+     */
+    function animateSlide(nextSrc, direction) {
+      var img = document.getElementById('mainImage');
+      if (!img) return;
+      var duration = 400; // длительность анимации в мс
+      // Подготовка: задаём переход и уводим текущее изображение
+      img.style.transition = 'transform ' + duration + 'ms ease';
+      img.style.transform = direction === 'left' ? 'translateX(-100%)' : 'translateX(100%)';
+      // После завершения первой фазы переносим изображение за край и меняем src
+      setTimeout(function() {
+        // отключаем анимацию временно, чтобы не было плавности при переносе и смене src
+        img.style.transition = 'none';
+        // переносим изображение в противоположный край
+        img.style.transform = direction === 'left' ? 'translateX(100%)' : 'translateX(-100%)';
+        // меняем картинку
+        img.src = nextSrc;
+        // принудительно перерисовываем элемент
+        void img.offsetWidth;
+        // включаем плавный возврат к центру
+        img.style.transition = 'transform ' + duration + 'ms ease';
+        img.style.transform = 'translateX(0)';
+      }, duration);
+    }
+
+    function nextPhoto(inModal) {
+      var newIndex = (currentPhotoIndex + 1) % photos.length;
+      if (!inModal) {
+        // Сначала обновляем текущий индекс и миниатюры/модальное окно,
+        // но не обновляем основное изображение (передаём true).
+        currentPhotoIndex = newIndex;
+        showPhoto(newIndex, true);
+        animateSlide(photos[newIndex], 'left');
+      } else {
+        currentPhotoIndex = newIndex;
+        showPhoto(newIndex, true);
+      }
+    }
+    function prevPhoto(inModal) {
+      var newIndex = (currentPhotoIndex - 1 + photos.length) % photos.length;
+      if (!inModal) {
+        currentPhotoIndex = newIndex;
+        showPhoto(newIndex, true);
+        animateSlide(photos[newIndex], 'right');
+      } else {
+        currentPhotoIndex = newIndex;
+        showPhoto(newIndex, true);
+      }
+    }
+    function openGalleryModal(index) {
+      // При открытии модального окна приостанавливаем автоматическую прокрутку,
+      // чтобы изображения не менялись в фоне.
+      stopAutoScroll();
+      showPhoto(index || 0, true);
+      var modal = document.getElementById('galleryModal');
+      if (modal) modal.classList.remove('d-none');
+    }
+    function closeGalleryModal() {
+      var modal = document.getElementById('galleryModal');
+      if (modal) modal.classList.add('d-none');
+
+      // После закрытия модального окна возобновляем автоматическую прокрутку,
+      // чтобы анимация продолжалась после просмотра фотографий.
+      startAutoScroll();
+    }
+
+    // После загрузки DOM и определения массива фотографий
+    // инициализируем галерею и запускаем автоматическую прокрутку.
+    document.addEventListener('DOMContentLoaded', function() {
+      // Только если элемент сетки существует и массив фотографий не пустой
+      if (document.getElementById('galleryGrid') && photos && photos.length > 0) {
+        renderGallery();
+        // Инициализируем массив элементов галереи и задаём исходный порядок
+        setupGallery();
+        // Запускаем автоматическую прокрутку галереи с интервалом 8 секунд.
+        // Используем requestAnimationFrame, чтобы дождаться завершения
+        // первоначальной отрисовки галереи, иначе первый вызов может
+        // происходить до полной разметки и нарушать анимацию.
+        requestAnimationFrame(function() {
+          startAutoScroll();
+        });
       }
     });
-  });
-});
-</script>
+
+    // Добавляем обработчик события visibilitychange. Когда пользователь
+    // возвращается на вкладку или приложение восстанавливает фокус,
+    // заново запускаем автоматическую анимацию, чтобы она не останавливалась
+    // после переключения между вкладками браузера. Когда вкладка скрыта,
+    // приостанавливаем анимацию, чтобы она не продолжала в фоновом режиме.
+    // При желании можно добавить обработчик visibilitychange для
+    // приостановки анимации при уходе пользователя с вкладки, но это не требуется.
+  </script>
+</div>
+{# Удалили Leaflet: карта отображается через Google Maps embed выше #}
+
+  {# Share button script: copy the current page URL to the clipboard or prompt the user. #}
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      var shareBtn = document.getElementById('shareButton');
+      if (shareBtn) {
+        shareBtn.addEventListener('click', function() {
+          var url = window.location.href;
+          // Use the Clipboard API when available and the page is served over HTTPS (secure context).
+          if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(url).then(function() {
+              alert('Ссылка скопирована в буфер обмена');
+            }).catch(function() {
+              alert('Не удалось скопировать ссылку');
+            });
+          } else {
+            // Fallback: show a prompt so the user can copy manually.
+            prompt('Скопируйте ссылку на объявление:', url);
+          }
+        });
+      }
+    });
+  </script>
+
+  <!-- Скрипт управления описанием больше не требуется, так как описание отображается полностью -->
+  <style>
+    /* Стили календаря бронирования: сетка, дни недели и подсветка выбранного диапазона. */
+    #booking-calendar {
+      user-select: none;
+    }
+    /* Уменьшаем ширину карточки с календарём.  После первой итерации ширина
+       составляла 80%% от исходного размера.  В рамках текущего требования
+       снижаем её ещё на 20%%, то есть примерно до 64%% от базовой ширины. */
+    #calendar-card {
+      /* Уменьшаем ширину карточки до 80% колонки, чтобы сделать календарь
+         и все его элементы более компактными */
+      width: 80%;
+    }
+
+    /* Скрываем кнопки избранного/поделиться внутри галереи, так как они
+       перенесены выше галереи.  Контейнер остаётся в разметке, но теперь
+       невидим — новые кнопки расположены перед галереей. */
+    .gallery-grid .position-absolute.top-0.end-0.d-flex {
+      display: none !important;
+    }
+
+    /* Закрепляем колонку с календарём под фиксированным меню навигации.  Теперь при
+       прокрутке страницы календарь будет оставаться на месте под шапкой. */
+    #calendarColumn {
+      position: sticky;
+      top: 120px;
+      z-index: 10;
+    }
+    #booking-calendar .calendar-nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+    #booking-calendar .calendar-title {
+      /* Заголовок месяца и года отображаем таким же жирным шрифтом, как и
+         дни и даты, чтобы улучшить читаемость */
+      font-weight: 700;
+      text-align: center;
+      flex-grow: 1;
+    }
+
+    /* Делаем иконки стрелок навигации по месяцам такими же жирными,
+       как числа календаря.  Применяется ко всем иконкам внутри навигационной
+       панели календаря */
+    #booking-calendar .calendar-nav .bi {
+      font-weight: 700;
+    }
+
+    /* Кнопка раскрытия описания. Используем прозрачный фон и основной синий цвет.
+       Добавляем синюю полоску снизу вместо рамки. Убираем лишние отступы и
+       подчёркивания, чтобы кнопка выглядела как текстовая ссылка с полоской. */
+    .toggle-description-text {
+      color: var(--bs-primary);
+      border-bottom: 3px solid var(--bs-primary);
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 0;
+      display: inline-block;
+    }
+    .toggle-description-text:hover,
+    .toggle-description-text:focus {
+      text-decoration: none;
+      color: var(--bs-primary);
+      border-bottom-color: var(--bs-primary);
+    }
+
+    /* Плитка для удобств: небольшие карточки со скруглёнными углами, лёгкой рамкой
+       и фоном. Иконка и текст располагаются в одной строке.  Округление углов
+       синхронизировано с другими элементами приложения, поэтому используем
+       одинаковое значение радиуса. */
+    .amenity-tile {
+      background-color: #f8f9fa;
+      border: 1px solid #e0e0e0;
+      /* Синхронизируем скругление углов с карточками каталога – 20px. */
+      border-radius: 20px;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.95rem;
+    }
+
+    /* Кнопка для отображения всех удобств. Белый фон, лёгкая рамка и
+       более широкая горизонтальная «подушка», чтобы текст не выходил
+       за пределы рамки. Отсутствует подчёркивание текста. */
+    .show-amenities-btn {
+      background-color: #ffffff;
+      color: var(--bs-primary);
+      border: 1px solid #e0e0e0;
+      /* Скругляем углы аналогично карточкам каталога (20px) */
+      border-radius: 20px;
+      padding: 0.5rem 1rem;
+      font-weight: 600;
+      font-size: 0.95rem;
+      text-decoration: none;
+      white-space: nowrap;
+      display: inline-block;
+    }
+    .show-amenities-btn:hover,
+    .show-amenities-btn:focus {
+      text-decoration: none;
+      background-color: #f8f9fa;
+    }
+
+    /* Стили для модального окна удобств.  Окно имеет скруглённые углы,
+       верхняя граница без линии.  Кнопка закрытия оформлена без
+       стандартных рамок и фонов. */
+    #amenitiesModal .modal-content {
+      /* Устанавливаем общий радиус 20px для модального окна */
+      border-radius: 20px;
+    }
+    #amenitiesModal .modal-header {
+      border-bottom: none;
+    }
+    #amenitiesModal .modal-header .btn {
+      border: none;
+      background: transparent;
+      box-shadow: none;
+    }
+
+    /* Линия под заголовком каждого блока удобств.  Вместо разделительных
+       линий между блоками используем нижнюю рамку у заголовка,
+       чтобы отделить название блока от списка удобств. */
+    #amenitiesModal .amenity-category-block h6 {
+      border-bottom: 1px solid #e0e0e0;
+      padding-bottom: 0.25rem;
+      /* увеличиваем нижний отступ, чтобы добавить пространства между
+         заголовком и списком удобств */
+      margin-bottom: 0.75rem;
+    }
+
+    /* Увеличиваем ширину и высоту всплывающего окна удобств.  По умолчанию
+       Bootstrap ограничивает модальное окно по ширине и высоте.  Мы
+       расширяем максимальную ширину до 1000px и высоту до 80% высоты
+       окна, чтобы текст не переносился на новую строку и оставалось
+       достаточно места для комфортного чтения. */
+    #amenitiesModal .modal-dialog {
+      /* Дополнительно увеличиваем ширину модального окна, чтобы
+         длинные названия удобств не переносились. 90 % ширины
+         экрана и максимум 1200px позволяют поместить весь текст
+         в одну строку. */
+      max-width: 1200px;
+      width: 90%;
+      max-height: 80vh;
+    }
+    #amenitiesModal .modal-content {
+      width: 100%;
+      max-height: 80vh;
+    }
+
+    /* Увеличиваем расстояние между блоками удобств для лучшей читаемости. */
+    #amenitiesModal .amenity-category-block {
+      /* Стандартный нижний отступ для каждого блока внутри строки */
+      margin-bottom: 1rem;
+      padding-right: 2rem;
+    }
+
+    /* Для блоков второй строки (начиная с третьего) добавляем увеличенный
+       верхний отступ, чтобы визуально разделить ряды удобств. 2.5rem
+       приблизительно соответствует 1 см вертикального пространства на
+       большинстве экранов. */
+    #amenitiesModal .amenity-category-block:nth-child(n+3) {
+      margin-top: 2.5rem;
+    }
+
+    /* Стиль для кнопки «Назад в каталог». Белый фон, синяя стрелка, увеличенный размер. */
+    .back-to-catalog-btn {
+      background-color: #ffffff;
+      color: var(--bs-primary);
+      border: none;
+      /* Скругляем углы как у карточек каталога – 20px. */
+      border-radius: 20px;
+      width: 4rem;
+      height: 4rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+    }
+    .back-to-catalog-btn i {
+      font-size: 2rem;
+      font-weight: 700;
+    }
+    #booking-calendar .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 0.25rem;
+    }
+    #booking-calendar .calendar-day,
+    #booking-calendar .calendar-date {
+      text-align: center;
+      padding: 0.4rem 0;
+      /* уменьшенный размер шрифта делает календарь компактнее */
+      font-size: 0.8rem;
+      /* увеличиваем жирность для лучшей читаемости */
+      font-weight: 700;
+    }
+    #booking-calendar .calendar-date {
+      cursor: pointer;
+      /* Используем общий радиус 20px для дат */
+      border-radius: 20px;
+    }
+    #booking-calendar .calendar-date.disabled {
+      color: #ced4da;
+      pointer-events: none;
+    }
+    /* Дополнительный стиль для дат, которые уже забронированы: делаем
+       текст и фон серыми и отключаем возможность клика.  Этот класс
+       применяется из JavaScript в ходе построения календаря. */
+    #booking-calendar .calendar-date.booked-date {
+      color: #adb5bd;
+      background-color: #f5f5f5;
+      pointer-events: none;
+    }
+    #booking-calendar .calendar-date.selected {
+      background-color: var(--bs-primary);
+      color: #ffffff;
+    }
+    #booking-calendar .calendar-date.in-range {
+      background-color: rgba(var(--bs-primary-rgb), 0.1);
+      color: var(--bs-primary);
+    }
+
+    /* Удаляем возможный отступ первой строки в описании и убираем
+       внутренние отступы, чтобы выровнять текст по левому краю. */
+    #descriptionContainer {
+      text-indent: 0;
+      margin-left: 0;
+      padding-left: 0;
+    }
+
+    /* Форматирование ячеек календаря для отображения цены под датой. */
+    #booking-calendar .calendar-date {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 0.2rem 0;
+    }
+    #booking-calendar .calendar-date .day-number {
+      /* Увеличиваем размер числа даты, чтобы оно выделялось сильнее. */
+      font-size: 1rem;
+      font-weight: 700;
+    }
+    #booking-calendar .calendar-date .day-price {
+      font-size: 0.7rem;
+      font-weight: 500;
+      color: #6c757d;
+      line-height: 1;
+    }
+
+    /* Информационные блоки (количество отзывов, рейтинг, бронирования) подчеркиваются
+       жирной синей линией и не имеют своего собственного фона или рамок.  Выравнивание
+       текста осуществляется по правому краю. */
+    .info-stat {
+      border-bottom: 3px solid var(--bs-primary);
+      font-weight: 600;
+    }
+
+    /*
+      Грид‑галерея для отображения пяти фотографий.  Первая фотография
+      (большая) занимает весь левый столбец и обе строки.  Четыре
+      оставшиеся изображения располагаются в двух столбцах по две
+      фотографии.  Это обеспечивает композицию вида: одна высокая
+      фотография слева и две колонки маленьких фото справа.  Высота
+      задаётся фиксированно для сохранения пропорций.
+    */
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      gap: 0.25rem;
+      width: 100%;
+      height: 500px;
+      /* возвращаем скрытие содержимого, чтобы галерея оставалась прежнего размера;
+         при высоте 500px две строки умещаются целиком, так что нижние
+         изображения будут видны полностью, а сам блок не разрастётся */
+      overflow: hidden;
+    }
+    /* Общие стили для картинок галереи */
+    .gallery-grid .gallery-img {
+      /* Запрещаем изображениям влиять на размеры ячеек. Без min-width/height 0
+         элементам-сеткам не позволяется уменьшаться и они вылазят за пределы
+         контейнера. */
+      min-width: 0;
+      min-height: 0;
+      display: block;
+      width: 100%;
+      height: 100%;
+      /* Растягиваем изображение так, чтобы оно целиком заполняло свою
+         ячейку, лишнее обрезалось. */
+      object-fit: cover;
+      /* Размещаем центр фотографии в центре видимой зоны, чтобы кадр
+         был симметричным. */
+      object-position: center center;
+      cursor: pointer;
+      /* Скругляем углы изображений, чтобы соответствовать другим элементам интерфейса. */
+      /* Скругляем углы как у карточек (20px) */
+      border-radius: 20px;
+    }
+
+    /* Маленькие фотографии справа всегда должны иметь одинаковую
+       видимую область и не выходить за пределы своих ячеек.
+       Переполнение скрываем, чтобы изображения не вылезали за
+       границы сетки. */
+    .gallery-grid .small1,
+    .gallery-grid .small2,
+    .gallery-grid .small3,
+    .gallery-grid .small4 {
+      overflow: hidden;
+    }
+    /* Расположение каждой картинки в сетке */
+    .gallery-grid .big { grid-area: 1 / 1 / span 2 / span 1; }
+    .gallery-grid .small1 { grid-area: 1 / 2 / span 1 / span 1; }
+    .gallery-grid .small2 { grid-area: 2 / 2 / span 1 / span 1; }
+    .gallery-grid .small3 { grid-area: 1 / 3 / span 1 / span 1; }
+    .gallery-grid .small4 { grid-area: 2 / 3 / span 1 / span 1; }
+  </style>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      var calendarContainer = document.getElementById('booking-calendar');
+      if (!calendarContainer) return;
+      var priceDisplay = document.getElementById('priceDisplay');
+      var checkinInput = document.getElementById('checkin_date');
+      var checkoutInput = document.getElementById('checkout_date');
+      var rawPrice = '{{ room["price_per_night"] }}';
+      // Убираем все символы кроме цифр и точек, чтобы получить числовое значение цены
+      var pricePerNight = parseFloat(rawPrice.replace(/[^0-9.]/g, '')) || 0;
+      // Наценка за выходные дни (в процентах).  Передаём из Python число или 0, затем
+      // конвертируем в число. Например, значение 20 означает +20% к цене в выходные.
+      // Преобразуем значение из шаблона в число. Используем двойные кавычки внутри,
+      // чтобы избежать конфликтов с одинарными кавычками.
+      var weekendMarkup = parseFloat("{{ room.get('weekend_markup', 0) }}") || 0;
+      var months = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+      var days = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+      var today = new Date();
+      var currentMonth = today.getMonth();
+      var currentYear = today.getFullYear();
+      var startDate = null;
+      var endDate = null;
+      function isSameDate(a, b) {
+        return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+      }
+      function formatDate(date) {
+        var y = date.getFullYear();
+        var m = (date.getMonth() + 1).toString().padStart(2, '0');
+        var d = date.getDate().toString().padStart(2, '0');
+        return y + '-' + m + '-' + d;
+      }
+      function updateSelection() {
+        if (startDate && !endDate) {
+          checkinInput.value = formatDate(startDate);
+          checkoutInput.value = '';
+          // показываем исходную цену за ночь
+          priceDisplay.innerText = rawPrice + ' ₸/сутки';
+        } else if (startDate && endDate) {
+          checkinInput.value = formatDate(startDate);
+          checkoutInput.value = formatDate(endDate);
+          // Количество ночей между датами (без округления) используется для отображения.
+          var nights = Math.round((endDate - startDate) / (1000 * 60 * 60 * 24));
+          // Рассчитываем общую стоимость с учётом наценки в выходные.  Для каждой ночи
+          // проходим от даты заезда до даты выезда (не включая дату выезда) и
+          // проверяем день недели: 0 (воскресенье) и 6 (суббота) считаются
+          // выходными.  Если есть наценка, увеличиваем цену за ночь на заданный
+          // процент.
+          var total = 0;
+          var iterDate = new Date(startDate);
+          while (iterDate < endDate) {
+            var dow = iterDate.getDay();
+            var nightPrice = pricePerNight;
+            if (weekendMarkup && (dow === 0 || dow === 5 || dow === 6)) {
+              nightPrice = pricePerNight + (pricePerNight * weekendMarkup / 100);
+            }
+            total += nightPrice;
+            iterDate.setDate(iterDate.getDate() + 1);
+          }
+          // Округляем итоговую сумму до целого (тенге не имеют копеек) и
+          // формируем подпись с правильным окончанием слова «ночь».
+          var totalRounded = Math.round(total);
+          priceDisplay.innerText = totalRounded + ' ₸ за ' + nights + ' ' + (nights === 1 ? 'ночь' : 'ночей');
+        } else {
+          checkinInput.value = '';
+          checkoutInput.value = '';
+          priceDisplay.innerText = rawPrice + ' ₸/сутки';
+        }
+      }
+      function onDateClick(date) {
+        if (!startDate || (startDate && endDate)) {
+          startDate = date;
+          endDate = null;
+        } else {
+          if (date < startDate) {
+            startDate = date;
+            endDate = null;
+          } else if (isSameDate(date, startDate)) {
+            startDate = null;
+            endDate = null;
+          } else {
+            endDate = date;
+          }
+        }
+        updateSelection();
+        renderCalendar();
+      }
+      function renderCalendar() {
+        calendarContainer.innerHTML = '';
+        // навигационная панель
+        var nav = document.createElement('div');
+        nav.classList.add('calendar-nav');
+        var prevBtn = document.createElement('button');
+        prevBtn.type = 'button';
+        prevBtn.className = 'btn btn-light btn-sm rounded-circle d-flex align-items-center justify-content-center';
+        // Добавляем класс fw-bold к иконке стрелки, чтобы она была жирной
+        prevBtn.innerHTML = '<i class="bi bi-chevron-left fw-bold"></i>';
+        prevBtn.onclick = function() {
+          if (currentMonth === 0) { currentMonth = 11; currentYear--; } else { currentMonth--; }
+          renderCalendar();
+        };
+        var nextBtn = document.createElement('button');
+        nextBtn.type = 'button';
+        nextBtn.className = 'btn btn-light btn-sm rounded-circle d-flex align-items-center justify-content-center';
+        // Добавляем класс fw-bold к иконке стрелки, чтобы она была жирной
+        nextBtn.innerHTML = '<i class="bi bi-chevron-right fw-bold"></i>';
+        nextBtn.onclick = function() {
+          if (currentMonth === 11) { currentMonth = 0; currentYear++; } else { currentMonth++; }
+          renderCalendar();
+        };
+        var title = document.createElement('div');
+        title.classList.add('calendar-title');
+        title.innerText = months[currentMonth] + ' ' + currentYear;
+        nav.appendChild(prevBtn);
+        nav.appendChild(title);
+        nav.appendChild(nextBtn);
+        calendarContainer.appendChild(nav);
+        // заголовки дней недели
+        var grid = document.createElement('div');
+        grid.classList.add('calendar-grid');
+        days.forEach(function(label) {
+          var dayCell = document.createElement('div');
+          // Используем класс fw-bold вместо fw-semibold, чтобы названия дней недели
+          // были такими же жирными, как цифры и заголовок месяца
+          dayCell.classList.add('calendar-day', 'fw-bold');
+          dayCell.innerText = label;
+          grid.appendChild(dayCell);
+        });
+        // вычисление начала месяца (смещение для понедельника)
+        var firstDate = new Date(currentYear, currentMonth, 1);
+        var startIndex = firstDate.getDay();
+        startIndex = (startIndex + 6) % 7;
+        var lastDate = new Date(currentYear, currentMonth + 1, 0).getDate();
+        // пустые ячейки до начала месяца
+        for (var i = 0; i < startIndex; i++) {
+          var empty = document.createElement('div');
+          empty.classList.add('calendar-date', 'disabled');
+          empty.innerText = '';
+          grid.appendChild(empty);
+        }
+        // дни месяца
+        for (var d = 1; d <= lastDate; d++) {
+          (function(day) {
+            var cell = document.createElement('div');
+            cell.classList.add('calendar-date');
+            var cellDate = new Date(currentYear, currentMonth, day);
+            // Определяем цену за этот день: применяем наценку в выходные (суббота и воскресенье).
+            var dow = cellDate.getDay();
+            var dayPrice = pricePerNight;
+            if (weekendMarkup && (dow === 0 || dow === 5 || dow === 6)) {
+              dayPrice = pricePerNight + (pricePerNight * weekendMarkup / 100);
+            }
+            // Оставляем только число без символа валюты для отображения под датой.
+            var priceStr = Math.round(dayPrice).toString();
+            // Заполняем ячейку: номер дня и цена, каждая на своей строке.
+            cell.innerHTML = '<div class="day-number">' + day + '</div><div class="day-price">' + priceStr + '</div>';
+            // Преобразуем дату в строку формата YYYY-MM-DD, чтобы сравнить с массивом
+            var cellDateStr = cellDate.toISOString().split('T')[0];
+            // Если дата забронирована, отмечаем её как недоступную
+            if (bookedDates && Array.isArray(bookedDates) && bookedDates.includes(cellDateStr)) {
+              cell.classList.add('booked-date');
+            } else {
+              // Выделяем выбранный диапазон дат
+              if (startDate && isSameDate(cellDate, startDate)) {
+                cell.classList.add('selected');
+              }
+              if (startDate && endDate && cellDate > startDate && cellDate < endDate) {
+                cell.classList.add('in-range');
+              }
+              if (startDate && endDate && isSameDate(cellDate, endDate)) {
+                cell.classList.add('selected');
+              }
+              // Только доступные даты реагируют на клики
+              cell.onclick = function() {
+                onDateClick(cellDate);
+              };
+            }
+            grid.appendChild(cell);
+          })(d);
+        }
+        calendarContainer.appendChild(grid);
+      }
+      // первая отрисовка и вывод цены
+      updateSelection();
+      renderCalendar();
+    });
+  </script>
 {% endblock %}
