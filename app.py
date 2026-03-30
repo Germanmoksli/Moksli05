@@ -92,6 +92,14 @@ except Exception:
     # images if possible.
     pass
 
+# Define a corresponding static upload folder for apartment photos.  All
+# uploaded images are copied into this directory so that Flask's static
+# route can serve them directly via `/static/uploads/rooms/<filename>`.
+# Use ``STATIC_ROOMS_FOLDER`` in code instead of recomputing the path in
+# multiple places.  The directory will be created at runtime when
+# necessary.
+STATIC_ROOMS_FOLDER = os.path.join(app.static_folder, 'uploads', 'rooms')
+
 # Expose a route to serve uploaded apartment photos.  Since the uploads
 # directory is outside of the ``static`` folder, Flask will not serve
 # these files automatically.  Clients request images via
@@ -8851,32 +8859,45 @@ def public_listings():
                 mime = 'image/jpeg'
             photo_src = f"data:{mime};base64,{image_data}"
         elif file_name:
-            # Attempt to read the file from disk and embed as base64.  If reading
-            # fails, use the dedicated upload route as fallback.
+            # If the file exists in the static uploads directory, build a static URL.  This
+            # avoids reading the file into memory when the static folder is accessible.
             try:
-                file_path_pl = os.path.join(UPLOAD_ROOMS_FOLDER, file_name)
-                with open(file_path_pl, 'rb') as f_pl:
-                    data_pl = f_pl.read()
-                if data_pl:
-                    mime_pl = 'image/jpeg'
-                    try:
-                        ext_pl = file_name.rsplit('.', 1)[-1].lower()
-                        if ext_pl == 'png':
-                            mime_pl = 'image/png'
-                        elif ext_pl == 'gif':
-                            mime_pl = 'image/gif'
-                        elif ext_pl == 'webp':
-                            mime_pl = 'image/webp'
-                    except Exception:
-                        mime_pl = 'image/jpeg'
-                    b64_pl = base64.b64encode(data_pl).decode('utf-8')
-                    photo_src = f"data:{mime_pl};base64,{b64_pl}"
+                static_path_pl = os.path.join(STATIC_ROOMS_FOLDER, file_name)
+                if os.path.exists(static_path_pl):
+                    photo_src = url_for('static', filename=f"uploads/rooms/{file_name}")
                 else:
-                    photo_src = None
+                    raise FileNotFoundError
             except Exception:
                 photo_src = None
+            # If not found in static or if building the URL fails, attempt to read the
+            # file from the primary uploads folder and embed it as base64.  Reading
+            # directly avoids problems with the uploaded_room_image route on some
+            # deployment platforms.  Only if this fails, fall back to the upload route.
             if not photo_src:
-                # Use the dedicated upload route as fallback
+                try:
+                    file_path_pl = os.path.join(UPLOAD_ROOMS_FOLDER, file_name)
+                    with open(file_path_pl, 'rb') as f_pl:
+                        data_pl = f_pl.read()
+                    if data_pl:
+                        mime_pl = 'image/jpeg'
+                        try:
+                            ext_pl = file_name.rsplit('.', 1)[-1].lower()
+                            if ext_pl == 'png':
+                                mime_pl = 'image/png'
+                            elif ext_pl == 'gif':
+                                mime_pl = 'image/gif'
+                            elif ext_pl == 'webp':
+                                mime_pl = 'image/webp'
+                        except Exception:
+                            mime_pl = 'image/jpeg'
+                        b64_pl = base64.b64encode(data_pl).decode('utf-8')
+                        photo_src = f"data:{mime_pl};base64,{b64_pl}"
+                    else:
+                        photo_src = None
+                except Exception:
+                    photo_src = None
+            # Final fallback: use the dedicated upload route if available
+            if not photo_src:
                 try:
                     photo_src = url_for('uploaded_room_image', filename=file_name)
                 except Exception:
@@ -9252,30 +9273,41 @@ def view_room_public(room_id: int):
                 mime = 'image/jpeg'
             src = f"data:{mime};base64,{img_data}"
         elif f_name:
-            # Attempt to read the photo from disk and embed as base64.  If
-            # reading fails, fall back to the uploaded_room_image route.
+            # If the file exists in the static uploads directory, build a static URL.
             try:
-                file_path_vrp = os.path.join(UPLOAD_ROOMS_FOLDER, f_name)
-                with open(file_path_vrp, 'rb') as f_vrp:
-                    data_vrp = f_vrp.read()
-                if data_vrp:
-                    mime_vrp = 'image/jpeg'
-                    try:
-                        ext_vrp = f_name.rsplit('.', 1)[-1].lower()
-                        if ext_vrp == 'png':
-                            mime_vrp = 'image/png'
-                        elif ext_vrp == 'gif':
-                            mime_vrp = 'image/gif'
-                        elif ext_vrp == 'webp':
-                            mime_vrp = 'image/webp'
-                    except Exception:
-                        mime_vrp = 'image/jpeg'
-                    b64_vrp = base64.b64encode(data_vrp).decode('utf-8')
-                    src = f"data:{mime_vrp};base64,{b64_vrp}"
+                static_path_vrp = os.path.join(STATIC_ROOMS_FOLDER, f_name)
+                if os.path.exists(static_path_vrp):
+                    src = url_for('static', filename=f"uploads/rooms/{f_name}")
                 else:
-                    src = None
+                    raise FileNotFoundError
             except Exception:
                 src = None
+            # If not found in static, attempt to read the file from the primary uploads
+            # folder and embed it as base64.  If that also fails, fall back to the
+            # uploaded_room_image route.
+            if not src:
+                try:
+                    file_path_vrp = os.path.join(UPLOAD_ROOMS_FOLDER, f_name)
+                    with open(file_path_vrp, 'rb') as f_vrp:
+                        data_vrp = f_vrp.read()
+                    if data_vrp:
+                        mime_vrp = 'image/jpeg'
+                        try:
+                            ext_vrp = f_name.rsplit('.', 1)[-1].lower()
+                            if ext_vrp == 'png':
+                                mime_vrp = 'image/png'
+                            elif ext_vrp == 'gif':
+                                mime_vrp = 'image/gif'
+                            elif ext_vrp == 'webp':
+                                mime_vrp = 'image/webp'
+                        except Exception:
+                            mime_vrp = 'image/jpeg'
+                        b64_vrp = base64.b64encode(data_vrp).decode('utf-8')
+                        src = f"data:{mime_vrp};base64,{b64_vrp}"
+                    else:
+                        src = None
+                except Exception:
+                    src = None
             if not src:
                 try:
                     src = url_for('uploaded_room_image', filename=f_name)
