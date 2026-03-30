@@ -4488,6 +4488,27 @@ def add_room():
                         file.save(os.path.join(UPLOAD_ROOMS_FOLDER, unique_name))
                 except Exception:
                     pass
+                # Также копируем файл в static/uploads/rooms, чтобы изображения были
+                # доступны через статические URL.  Если есть watermarked_bytes,
+                # используем их; иначе сбрасываем указатель файла и сохраняем
+                # исходный файл.
+                try:
+                    static_dir_create = os.path.join(app.static_folder, 'uploads', 'rooms')
+                    os.makedirs(static_dir_create, exist_ok=True)
+                    if watermarked_bytes:
+                        with open(os.path.join(static_dir_create, unique_name), 'wb') as out_static:
+                            out_static.write(watermarked_bytes)
+                    else:
+                        try:
+                            file.seek(0)
+                        except Exception:
+                            try:
+                                file.stream.seek(0)
+                            except Exception:
+                                pass
+                        file.save(os.path.join(static_dir_create, unique_name))
+                except Exception:
+                    pass
                 saved_photos.append((unique_name, image_data_str))
         # Устанавливаем порядок фотографий: выбранная пользователем главная
         # фотография должна быть первой.  Пользователь указывает номер
@@ -4820,11 +4841,36 @@ def edit_room(room_id: int):
                                 pass
                             try:
                                 if watermarked_bytes:
+                                    # Write watermarked bytes to the primary uploads folder
                                     with open(os.path.join(UPLOAD_ROOMS_FOLDER, unique_name), 'wb') as out_f:
                                         out_f.write(watermarked_bytes)
                                 else:
+                                    # Save original file to the uploads folder
                                     file.save(os.path.join(UPLOAD_ROOMS_FOLDER, unique_name))
                             except Exception:
+                                pass
+                            # Также сохраняем копию файла в static/uploads/rooms, чтобы картинки
+                            # были доступны через /static/ URL.  Создаём папку при необходимости
+                            # и используем тот же watermarked_bytes, если он доступен.  Если
+                            # watermarked_bytes отсутствуют, сбрасываем указатель файла для
+                            # второй записи.
+                            try:
+                                static_dir_edit = os.path.join(app.static_folder, 'uploads', 'rooms')
+                                os.makedirs(static_dir_edit, exist_ok=True)
+                                if watermarked_bytes:
+                                    with open(os.path.join(static_dir_edit, unique_name), 'wb') as out_fs:
+                                        out_fs.write(watermarked_bytes)
+                                else:
+                                    try:
+                                        file.seek(0)
+                                    except Exception:
+                                        try:
+                                            file.stream.seek(0)
+                                        except Exception:
+                                            pass
+                                    file.save(os.path.join(static_dir_edit, unique_name))
+                            except Exception:
+                                # Если копирование в static не удалось, тихо игнорируем ошибку
                                 pass
                             # Save the photo record in the database.  Attempt to
                             # insert the image data; if the image_data column
@@ -9935,6 +9981,24 @@ def new_room_step4():
                     pass
             try:
                 file.save(os.path.join(UPLOAD_ROOMS_FOLDER, unique_name))
+                # Also save to static/uploads/rooms for compatibility
+                try:
+                    static_dir_step4 = os.path.join(app.static_folder, 'uploads', 'rooms')
+                    os.makedirs(static_dir_step4, exist_ok=True)
+                except Exception:
+                    pass
+                try:
+                    # Reset file pointer for second save
+                    try:
+                        file.seek(0)
+                    except Exception:
+                        try:
+                            file.stream.seek(0)
+                        except Exception:
+                            pass
+                    file.save(os.path.join(static_dir_step4, unique_name))
+                except Exception:
+                    pass
             except Exception:
                 pass
             saved_filenames.append(unique_name)
@@ -10033,9 +10097,33 @@ def upload_new_listing_photo():
             temp_conn.close()
         except Exception:
             pass
-    # Save file to the uploads directory
+    # Save file to the primary uploads directory.  Also copy to the static uploads
+    # directory so that templates referencing /static/uploads/rooms can serve the
+    # images without relying on the uploaded_room_image route.  We need to seek
+    # back to the beginning of the stream before saving a second time because
+    # the file object may have been read previously during validation.
     try:
         file.save(os.path.join(UPLOAD_ROOMS_FOLDER, unique_name))
+        # Also save a copy into static/uploads/rooms for backward compatibility
+        static_dir = os.path.join(app.static_folder, 'uploads', 'rooms')
+        try:
+            os.makedirs(static_dir, exist_ok=True)
+        except Exception:
+            pass
+        try:
+            # Seek back to the beginning of the file stream.  Use stream
+            # attribute if direct seek is unavailable (e.g. Werkzeug FileStorage)
+            try:
+                file.seek(0)
+            except Exception:
+                try:
+                    file.stream.seek(0)
+                except Exception:
+                    pass
+            file.save(os.path.join(static_dir, unique_name))
+        except Exception:
+            # If copying to static fails, ignore silently
+            pass
     except Exception:
         # Even if saving fails, we still add the filename to the session list
         pass
@@ -10901,8 +10989,22 @@ def new_room_step9():
                                 pass
                             try:
                                 if watermarked_bytes:
+                                    # Write the watermarked image to the main uploads directory
                                     with open(os.path.join(UPLOAD_ROOMS_FOLDER, fname), 'wb') as out_f:
                                         out_f.write(watermarked_bytes)
+                                    # Also write a copy into static/uploads/rooms so that
+                                    # static references can serve the photo without hitting
+                                    # uploaded_room_image.  Create the directory if needed.
+                                    try:
+                                        static_dir_pub = os.path.join(app.static_folder, 'uploads', 'rooms')
+                                        os.makedirs(static_dir_pub, exist_ok=True)
+                                    except Exception:
+                                        pass
+                                    try:
+                                        with open(os.path.join(static_dir_pub, fname), 'wb') as out_fs:
+                                            out_fs.write(watermarked_bytes)
+                                    except Exception:
+                                        pass
                             except Exception:
                                 pass
                             # Insert the photo record.  When img_data_value is None,
