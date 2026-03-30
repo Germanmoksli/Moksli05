@@ -3785,11 +3785,53 @@ def list_rooms():
                 mime = 'image/jpeg'
             photo_src = f"data:{mime};base64,{image_data}"
         elif file_name:
-            # Fall back to serving the uploaded file via the dedicated route
+            # If an embedded image_data is not available, attempt to locate the photo
+            # in the static uploads directory.  Serving images via /static/uploads/rooms
+            # avoids hitting the uploaded_room_image route when possible.  Only fall
+            # back to reading the file from disk or using the dedicated route if the
+            # static file is missing.
             try:
-                photo_src = url_for('uploaded_room_image', filename=file_name)
+                # Build a path to the static uploads folder
+                static_path_lr = os.path.join(STATIC_ROOMS_FOLDER, file_name)
+                if os.path.exists(static_path_lr):
+                    photo_src = url_for('static', filename=f"uploads/rooms/{file_name}")
+                else:
+                    raise FileNotFoundError
             except Exception:
                 photo_src = None
+            # If the static file does not exist or URL generation failed, try to read
+            # the photo from the primary uploads folder and embed it as a base64
+            # data URI.  This ensures that photos uploaded prior to populating the
+            # static directory still display correctly.
+            if not photo_src:
+                try:
+                    file_path_lr = os.path.join(UPLOAD_ROOMS_FOLDER, file_name)
+                    with open(file_path_lr, "rb") as f_lr:
+                        data_lr = f_lr.read()
+                    if data_lr:
+                        mime_lr = "image/jpeg"
+                        try:
+                            ext_lr = file_name.rsplit(".", 1)[-1].lower()
+                            if ext_lr == "png":
+                                mime_lr = "image/png"
+                            elif ext_lr == "gif":
+                                mime_lr = "image/gif"
+                            elif ext_lr == "webp":
+                                mime_lr = "image/webp"
+                        except Exception:
+                            mime_lr = "image/jpeg"
+                        b64_lr = base64.b64encode(data_lr).decode("utf-8")
+                        photo_src = f"data:{mime_lr};base64,{b64_lr}"
+                    else:
+                        photo_src = None
+                except Exception:
+                    photo_src = None
+            # As a last resort, use the dedicated upload route to generate a URL.
+            if not photo_src:
+                try:
+                    photo_src = url_for("uploaded_room_image", filename=file_name)
+                except Exception:
+                    photo_src = None
         room_dict['photo_src'] = photo_src
         rooms.append(room_dict)
     # Attempt to fetch draft listings; if the table doesn't exist or query
@@ -4061,10 +4103,49 @@ def archive_rooms():
                 mime = 'image/jpeg'
             photo_src = f"data:{mime};base64,{image_data}"
         elif file_name:
+            # When no embedded image data is available, first attempt to serve
+            # the photo from the static uploads directory.  If the file does
+            # not exist in ``static/uploads/rooms``, try reading it from the
+            # primary uploads folder and encode it into a base64 data URI.
+            # Only if both attempts fail do we fall back to the
+            # ``uploaded_room_image`` route.  This order of precedence
+            # maximises compatibility across deployment environments.
             try:
-                photo_src = url_for('uploaded_room_image', filename=file_name)
+                static_path_arch = os.path.join(STATIC_ROOMS_FOLDER, file_name)
+                if os.path.exists(static_path_arch):
+                    photo_src = url_for('static', filename=f"uploads/rooms/{file_name}")
+                else:
+                    raise FileNotFoundError
             except Exception:
                 photo_src = None
+            if not photo_src:
+                try:
+                    file_path_arch = os.path.join(UPLOAD_ROOMS_FOLDER, file_name)
+                    with open(file_path_arch, 'rb') as f_arch:
+                        data_arch = f_arch.read()
+                    if data_arch:
+                        mime_arch = 'image/jpeg'
+                        try:
+                            ext_arch = file_name.rsplit('.', 1)[-1].lower()
+                            if ext_arch == 'png':
+                                mime_arch = 'image/png'
+                            elif ext_arch == 'gif':
+                                mime_arch = 'image/gif'
+                            elif ext_arch == 'webp':
+                                mime_arch = 'image/webp'
+                        except Exception:
+                            mime_arch = 'image/jpeg'
+                        b64_arch = base64.b64encode(data_arch).decode('utf-8')
+                        photo_src = f"data:{mime_arch};base64,{b64_arch}"
+                    else:
+                        photo_src = None
+                except Exception:
+                    photo_src = None
+            if not photo_src:
+                try:
+                    photo_src = url_for('uploaded_room_image', filename=file_name)
+                except Exception:
+                    photo_src = None
         room_dict['photo_src'] = photo_src
         rooms.append(room_dict)
     conn.close()
@@ -11260,13 +11341,22 @@ def room_preview():
                             photos.append(f"data:{mime};base64,{b64}")
                             continue
                     except Exception:
-                        # If reading fails, fall back to serving via uploaded_room_image
-                        pass
-                # As a fallback, build a URL to the uploaded image route
-                try:
-                    photos.append(url_for('uploaded_room_image', filename=fname))
-                except Exception:
-                    continue
+                        # If reading fails, attempt to serve from the static uploads
+                        # directory.  If the file exists under ``static/uploads/rooms``,
+                        # use a static URL.  Otherwise fall back to the dedicated
+                        # uploaded_room_image route.
+                        try:
+                            static_path_preview = os.path.join(STATIC_ROOMS_FOLDER, fname)
+                            if os.path.exists(static_path_preview):
+                                photos.append(url_for('static', filename=f"uploads/rooms/{fname}"))
+                                continue
+                        except Exception:
+                            pass
+                    # As a fallback, build a URL to the uploaded image route
+                    try:
+                        photos.append(url_for('uploaded_room_image', filename=fname))
+                    except Exception:
+                        continue
             except Exception:
                 continue
         # Fallback: if no photos resolved, attempt to derive filenames from the
@@ -11309,6 +11399,16 @@ def room_preview():
                                             mime2 = 'image/jpeg'
                                         b64_2 = base64.b64encode(img_bytes2).decode('utf-8')
                                         photos.append(f"data:{mime2};base64,{b64_2}")
+                                        continue
+                                except Exception:
+                                    pass
+                                # If reading from disk fails, attempt to serve via the static
+                                # uploads directory.  If the static file exists, build a
+                                # static URL.  Otherwise fall back to the dedicated upload route.
+                                try:
+                                    static_path_preview2 = os.path.join(STATIC_ROOMS_FOLDER, fname_key)
+                                    if os.path.exists(static_path_preview2):
+                                        photos.append(url_for('static', filename=f"uploads/rooms/{fname_key}"))
                                         continue
                                 except Exception:
                                     pass
