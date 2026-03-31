@@ -10180,14 +10180,34 @@ def upload_new_listing_photo():
         return jsonify({'error': 'Unsupported file type'}), 400
     # Create unique name to avoid collisions
     unique_name = f"{uuid.uuid4().hex}{ext}"
-    # We deliberately avoid reading the entire file into memory or storing a
-    # base64 representation at this stage.  Base64 encoding every uploaded
-    # photo can quickly exhaust limited memory.  Instead we simply save the
-    # file to disk and record the filename in a temporary table for
-    # potential cleanup.  If the file cannot be read into memory, it is
-    # still persisted on disk via file.save().
+    # Read the uploaded file into memory so that a base64 representation can be
+    # stored in the temporary table.  Although base64 encoding consumes
+    # memory, storing the data here ensures that previews and the final
+    # published listing have access to the image even if the file is not
+    # available on disk.  If reading fails, image_data will be stored as
+    # NULL in the temporary table.
+    data_str: str | None = None
+    try:
+        file_bytes = file.read()
+        try:
+            file.seek(0)
+        except Exception:
+            try:
+                file.stream.seek(0)  # type: ignore[attr-defined]
+            except Exception:
+                pass
+        if file_bytes:
+            try:
+                data_str = base64.b64encode(file_bytes).decode('utf-8')
+            except Exception:
+                data_str = None
+    except Exception:
+        data_str = None
     # Create the temporary table if needed and insert an entry for this
-    # upload.  We store image_data as NULL to minimise memory usage.
+    # upload.  We store image_data as the base64 string when available,
+    # otherwise NULL.  Storing base64 for all photos ensures that the
+    # preview and publish steps have consistent access to the uploaded
+    # image without relying solely on filesystem persistence.
     try:
         temp_conn = get_db_connection()
         ensure_room_photos_temp_table(temp_conn)
@@ -10197,7 +10217,7 @@ def upload_new_listing_photo():
             session['_upload_temp_id'] = sid
         temp_conn.execute(
             "INSERT INTO room_photos_temp (session_id, file_name, image_data) VALUES (?, ?, ?)",
-            (sid, unique_name, None),
+            (sid, unique_name, data_str),
         )
         temp_conn.commit()
     except Exception:
@@ -11312,6 +11332,40 @@ def room_preview():
         # base64‑encoded images stored in the temporary photo table.
         filenames = session.get('new_listing_photos') or []
         photos: list[str] = []
+        # Preload any base64-encoded images from the temporary room_photos_temp table.  When
+        # photos are uploaded asynchronously, their image data is stored in the temp table.  Using
+        # these base64 strings avoids reading the file from disk if it is missing.  Build a map
+        # keyed by filename for fast lookup.
+        temp_data_map: dict[str, str] = {}
+        sid_local_preview = session.get('_upload_temp_id')
+        if sid_local_preview:
+            try:
+                temp_conn_preview = get_db_connection()
+                ensure_room_photos_temp_table(temp_conn_preview)
+                rows_preview = temp_conn_preview.execute(
+                    "SELECT file_name, image_data FROM room_photos_temp WHERE session_id = ?",
+                    (sid_local_preview,),
+                ).fetchall()
+                for r in rows_preview:
+                    try:
+                        fname_key = r['file_name'] if hasattr(r, 'keys') else r[0]
+                    except Exception:
+                        fname_key = None
+                    try:
+                        img_val = r['image_data'] if hasattr(r, 'keys') else r[1]
+                    except Exception:
+                        img_val = None
+                    if fname_key and img_val:
+                        try:
+                            temp_data_map[str(fname_key)] = str(img_val)
+                        except Exception:
+                            pass
+                try:
+                    temp_conn_preview.close()
+                except Exception:
+                    pass
+            except Exception:
+                pass
         # Build a list of photo sources for preview.  For each filename, attempt to
         # read the file from disk and encode it as a base64 data URI.  This
         # ensures that all uploaded photos display correctly in preview even
@@ -11319,6 +11373,22 @@ def room_preview():
         for fname in filenames:
             try:
                 if fname:
+                    # If base64 data is available in the temp_data_map, use it
+                    temp_b64 = temp_data_map.get(fname)
+                    if temp_b64:
+                        mime = 'image/jpeg'
+                        try:
+                            ext = fname.rsplit('.', 1)[-1].lower()
+                            if ext == 'png':
+                                mime = 'image/png'
+                            elif ext == 'gif':
+                                mime = 'image/gif'
+                            elif ext == 'webp':
+                                mime = 'image/webp'
+                        except Exception:
+                            mime = 'image/jpeg'
+                        photos.append(f"data:{mime};base64,{temp_b64}")
+                        continue
                     # Read image bytes from the uploads folder
                     file_path = os.path.join(UPLOAD_ROOMS_FOLDER, fname)
                     try:
