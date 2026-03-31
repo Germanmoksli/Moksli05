@@ -9278,8 +9278,12 @@ def view_room_public(room_id: int):
         ).fetchall()
     except Exception:
         try:
+            # Fetch both the file_name and image_data for all photos associated with this room.
+            # Selecting both columns ensures that image_data is available for each photo row.  Without
+            # selecting image_data, attempts to access r['image_data'] or r[1] would yield None and
+            # prevent additional photos from being displayed.  Ordering by id preserves the upload order.
             photo_rows = conn.execute(
-                "SELECT file_name FROM room_photos WHERE room_id = ? ORDER BY id",
+                "SELECT file_name, image_data FROM room_photos WHERE room_id = ? ORDER BY id",
                 (room_id,)
             ).fetchall()
         except Exception:
